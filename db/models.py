@@ -4,6 +4,23 @@ from sqlalchemy import Column, String, Text, Date, DateTime, ForeignKey, Boolean
 from .base import Base
 
 
+class EmailConfigORM(Base):
+    __tablename__ = "email_config"
+
+    id               = Column(Integer, primary_key=True, default=1)
+    recipient_email  = Column(String(255), default="")
+    smtp_host        = Column(String(255), default="smtp.gmail.com")
+    smtp_port        = Column(Integer,     default=587)
+    smtp_user        = Column(String(255), default="")
+    smtp_password    = Column(Text,        default="")  # stored as plaintext; use App Password
+    sod_time         = Column(String(5),   default="08:00")  # HH:MM local
+    eod_time         = Column(String(5),   default="18:00")
+    sod_enabled      = Column(Boolean,     default=True)
+    eod_enabled      = Column(Boolean,     default=True)
+    created_at       = Column(DateTime,    default=datetime.utcnow)
+    updated_at       = Column(DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def _uuid():
     return str(uuid.uuid4())
 

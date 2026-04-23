@@ -832,6 +832,122 @@
             </div>
           </div>
         </div>
+
+        <!-- ── Email Briefings Settings ─────────────────────────────────────── -->
+        <div class="card" style="margin-top:20px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:22px;">✉️</div>
+            <div>
+              <div style="font-size:16px;font-weight:700;color:#1e293b;">Email Briefings</div>
+              <div style="font-size:12px;color:#94a3b8;">Automated SOD &amp; EOD emails via Gmail / SMTP</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <a href="/api/email/preview-sod" target="_blank"
+                style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;text-decoration:none;cursor:pointer;">
+                🌅 Preview SOD
+              </a>
+              <a href="/api/email/preview-eod" target="_blank"
+                style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;text-decoration:none;cursor:pointer;">
+                🌇 Preview EOD
+              </a>
+            </div>
+          </div>
+
+          <!-- SMTP / Recipient row -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:12px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Recipient Email</label>
+              <input x-model="emailCfg.recipient_email" type="email" placeholder="you@example.com"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">SMTP Host</label>
+              <input x-model="emailCfg.smtp_host" placeholder="smtp.gmail.com"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Port</label>
+              <input x-model.number="emailCfg.smtp_port" type="number" placeholder="587"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Gmail / SMTP User</label>
+              <input x-model="emailCfg.smtp_user" placeholder="you@gmail.com"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">App Password</label>
+              <input x-model="emailCfg.smtp_password" type="password" placeholder="Gmail App Password"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+          </div>
+
+          <!-- SOD / EOD schedule row -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+            <div style="padding:16px;border-radius:14px;background:linear-gradient(135deg,#fefce8,#fef3c7);border:1.5px solid #fde68a;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:18px;">🌅</span>
+                  <span style="font-size:13px;font-weight:700;color:#92400e;">Morning Briefing</span>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input type="checkbox" x-model="emailCfg.sod_enabled" style="width:16px;height:16px;accent-color:#f59e0b;">
+                  <span style="font-size:12px;font-weight:600;color:#92400e;" x-text="emailCfg.sod_enabled?'Enabled':'Disabled'"></span>
+                </label>
+              </div>
+              <input x-model="emailCfg.sod_time" type="time"
+                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1.5px solid #fcd34d;background:#fffbeb;font-size:14px;font-weight:700;color:#78350f;outline:none;">
+              <div style="font-size:11px;color:#a16207;margin-top:6px;">Sends today's overdue + due items + project status</div>
+            </div>
+            <div style="padding:16px;border-radius:14px;background:linear-gradient(135deg,#f0fdfa,#ccfbf1);border:1.5px solid #99f6e4;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:18px;">🌇</span>
+                  <span style="font-size:13px;font-weight:700;color:#134e4a;">Evening Summary</span>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input type="checkbox" x-model="emailCfg.eod_enabled" style="width:16px;height:16px;accent-color:#0d9488;">
+                  <span style="font-size:12px;font-weight:600;color:#134e4a;" x-text="emailCfg.eod_enabled?'Enabled':'Disabled'"></span>
+                </label>
+              </div>
+              <input x-model="emailCfg.eod_time" type="time"
+                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1.5px solid #5eead4;background:#f0fdfa;font-size:14px;font-weight:700;color:#134e4a;outline:none;">
+              <div style="font-size:11px;color:#0f766e;margin-top:6px;">Sends completed today + missed + carry-forward backlog</div>
+            </div>
+          </div>
+
+          <!-- Action row -->
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button @click="saveEmailConfig()"
+              style="padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;">
+              💾 Save Settings
+            </button>
+            <button @click="sendEmailNow('sod')" :disabled="emailSending"
+              style="padding:9px 18px;border-radius:10px;background:#fef9c3;border:1.5px solid #fde047;color:#854d0e;font-size:13px;font-weight:600;cursor:pointer;">
+              🌅 Send SOD Now
+            </button>
+            <button @click="sendEmailNow('eod')" :disabled="emailSending"
+              style="padding:9px 18px;border-radius:10px;background:#ccfbf1;border:1.5px solid #5eead4;color:#134e4a;font-size:13px;font-weight:600;cursor:pointer;">
+              🌇 Send EOD Now
+            </button>
+            <span x-show="emailMsg" x-text="emailMsg"
+              :style="emailMsgOk ? 'color:#16a34a' : 'color:#ef4444'"
+              style="font-size:13px;font-weight:600;margin-left:4px;"></span>
+          </div>
+
+          <div style="margin-top:14px;padding:11px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;">
+            <span style="font-size:12px;color:#64748b;font-weight:600;">💡 Gmail tip: </span>
+            <span style="font-size:12px;color:#94a3b8;">Use a Gmail <strong style="color:#475569;">App Password</strong> (Google Account → Security → 2-Step Verification → App Passwords). Never use your main account password.</span>
+          </div>
+        </div>
       </div>
 
       <!-- ══ ESTIMATOR ══ -->
@@ -1457,6 +1573,9 @@ function app() {
     estPlanProjectId: '',
     _estIdCounter: 0,
 
+    emailCfg: { recipient_email:'', smtp_host:'smtp.gmail.com', smtp_port:587, smtp_user:'', smtp_password:'', sod_time:'08:00', eod_time:'18:00', sod_enabled:true, eod_enabled:true },
+    emailMsg: '', emailMsgOk: true, emailSending: false,
+
     taskModal:       { open:false, editing:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
     milestoneModal:  { open:false, editing:false, data:{} },
@@ -1484,7 +1603,7 @@ function app() {
       await Promise.all([
         this.loadDashboard(), this.loadTasks(), this.loadProjects(),
         this.loadMilestones(), this.loadCommitments(), this.loadAlerts(),
-        this.loadSummaries(), this.loadEstimations(),
+        this.loadSummaries(), this.loadEstimations(), this.loadEmailConfig(),
       ]);
       this.loading = false;
     },
@@ -1782,6 +1901,39 @@ function app() {
     },
     async deleteEstimation(id) {
       await fetch(`/api/estimations/${id}`,{method:'DELETE'}); await this.loadEstimations();
+    },
+
+    // ── Email ────────────────────────────────────────────────────────────────
+    async loadEmailConfig() {
+      try {
+        const cfg = await fetch('/api/email/config').then(r=>r.json());
+        this.emailCfg = { ...this.emailCfg, ...cfg };
+      } catch(e) {}
+    },
+    async saveEmailConfig() {
+      try {
+        await fetch('/api/email/config', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(this.emailCfg),
+        });
+        this.emailMsg = '✓ Settings saved'; this.emailMsgOk = true;
+        setTimeout(() => { this.emailMsg = ''; }, 3000);
+      } catch(e) {
+        this.emailMsg = 'Save failed: ' + e.message; this.emailMsgOk = false;
+      }
+    },
+    async sendEmailNow(type) {
+      this.emailSending = true; this.emailMsg = 'Sending…'; this.emailMsgOk = true;
+      try {
+        const r = await fetch(`/api/email/send-${type}`, { method:'POST' });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || 'Unknown error');
+        this.emailMsg = '✓ ' + data.message; this.emailMsgOk = true;
+      } catch(e) {
+        this.emailMsg = '✕ ' + e.message; this.emailMsgOk = false;
+      }
+      this.emailSending = false;
+      setTimeout(() => { this.emailMsg = ''; }, 5000);
     },
 
     // ── Badge helpers ────────────────────────────────────────────────────────
