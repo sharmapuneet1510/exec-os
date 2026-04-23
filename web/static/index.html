@@ -239,6 +239,11 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
     ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    /* Gantt horizontal scrollbar — slightly taller so it's easy to grab */
+    .gantt-scroll::-webkit-scrollbar         { height: 8px; }
+    .gantt-scroll::-webkit-scrollbar-track   { background: #f1f5f9; border-radius: 99px; }
+    .gantt-scroll::-webkit-scrollbar-thumb   { background: #c7d2fe; border-radius: 99px; }
+    .gantt-scroll::-webkit-scrollbar-thumb:hover { background: #818cf8; }
 
     /* ── Misc ── */
     .overdue-row td:first-child { border-left: 3px solid #ef4444; }
@@ -823,7 +828,7 @@
             </div>
 
             <!-- Gantt chart -->
-            <div style="overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0;"
+            <div class="gantt-scroll" style="overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0;scroll-behavior:smooth;"
                  x-html="buildGanttSvg(p)">
             </div>
 
@@ -2268,7 +2273,7 @@ function app() {
 
     // ── Project Tracker / Gantt ──────────────────────────────────────────────
     buildGanttSvg(project) {
-      const LW=190, CW=640, W=LW+CW, PAD=8, RH=30, HH=46;
+      const LW=190, PAD=8, RH=30, HH=46;
       const pTasks = this.tasks.filter(t=>t.project_id===project.project_id&&t.status!=='cancelled');
       const pMs    = this.milestones.filter(m=>m.project_id===project.project_id);
       const today  = new Date(); today.setHours(12,0,0,0);
@@ -2280,6 +2285,10 @@ function app() {
       const ext = (iso)=>{ if(!iso) return; const d=new Date(iso.slice(0,10)+'T12:00:00'); if(d>re){re=new Date(d);re.setDate(re.getDate()+5);} };
       ext(project.due_date); pTasks.forEach(t=>ext(t.due_date)); pMs.forEach(m=>ext(m.due_date));
       const rms = re - rs;
+      // At least 10px per day so longer timelines stay readable and scroll
+      const rangeDays = Math.round(rms / 86400000);
+      const CW = Math.max(680, rangeDays * 10);
+      const W  = LW + CW;
 
       const cx  = (iso)=>{ if(!iso) return -999; return LW+PAD+((new Date(iso.slice(0,10)+'T12:00:00')-rs)/rms)*(CW-PAD*2); };
       const clamp = (x)=>Math.max(LW+PAD, Math.min(W-PAD, x));
