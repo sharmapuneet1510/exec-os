@@ -357,23 +357,30 @@
 
       <!-- ══ OPERATIONAL DASHBOARD ══ -->
       <div x-show="view==='dashboard'" x-cloak>
-        <!-- Stat row -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;">
-          <div class="stat-card" style="background:linear-gradient(135deg,#6366f1,#818cf8);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Total Tasks</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.total_tasks ?? '—'"></div>
+
+        <!-- Today's Briefing Banner -->
+        <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:20px;padding:20px 24px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+          <div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:5px;">Execution Pulse</div>
+            <div style="font-size:18px;font-weight:700;color:#fff;" x-text="today"></div>
           </div>
-          <div class="stat-card" style="background:linear-gradient(135deg,#10b981,#34d399);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Done Today</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.done_today ?? '—'"></div>
-          </div>
-          <div class="stat-card" style="background:linear-gradient(135deg,#ef4444,#f87171);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Overdue</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.overdue_count ?? '—'"></div>
-          </div>
-          <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#fcd34d);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">In Progress</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.in_progress_count ?? '—'"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="text-align:center;padding:10px 16px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.25);border-radius:14px;">
+              <div style="font-size:22px;font-weight:800;color:#f87171;line-height:1;" x-text="opDash?.overdue_count??0"></div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Overdue</div>
+            </div>
+            <div style="text-align:center;padding:10px 16px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);border-radius:14px;">
+              <div style="font-size:22px;font-weight:800;color:#a5b4fc;line-height:1;" x-text="opDash?.total_tasks??0"></div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Total</div>
+            </div>
+            <div style="text-align:center;padding:10px 16px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.25);border-radius:14px;">
+              <div style="font-size:22px;font-weight:800;color:#fde68a;line-height:1;" x-text="opDash?.in_progress_count??0"></div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">In Progress</div>
+            </div>
+            <div style="text-align:center;padding:10px 16px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.25);border-radius:14px;">
+              <div style="font-size:22px;font-weight:800;color:#6ee7b7;line-height:1;" x-text="opDash?.done_today??0"></div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Done Today</div>
+            </div>
           </div>
         </div>
 
@@ -451,49 +458,106 @@
 
       <!-- ══ EXECUTIVE DASHBOARD ══ -->
       <div x-show="view==='executive'" x-cloak>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;">
-          <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Active Projects</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash?.projects_total ?? '—'"></div>
-          </div>
-          <div class="stat-card" style="background:linear-gradient(135deg,#ef4444,#fb7185);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">At Risk</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash?.projects_at_risk ?? '—'"></div>
-          </div>
-          <div class="stat-card" style="background:linear-gradient(135deg,#10b981,#6ee7b7);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">On Track</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash?.projects_on_track ?? '—'"></div>
-          </div>
-          <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#fde68a);">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Commitment Risk</div>
-            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash ? (exDash.commitment_risk_score*100).toFixed(0)+'%' : '—'"></div>
+
+        <!-- Portfolio Health Banner (teal, distinct from Dashboard) -->
+        <div style="background:linear-gradient(135deg,#0f766e,#0d9488,#0891b2);border-radius:20px;padding:22px 26px;margin-bottom:18px;color:#fff;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+            <div>
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px;">Portfolio Health</div>
+              <div style="display:flex;align-items:baseline;gap:10px;">
+                <span style="font-size:42px;font-weight:900;letter-spacing:-1.5px;line-height:1;" x-text="exDash?.projects_on_track ?? '—'"></span>
+                <span style="font-size:16px;color:rgba(255,255,255,.6);font-weight:500;" x-text="'of '+(exDash?.projects_total??0)+' projects on track'"></span>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div style="text-align:center;padding:12px 20px;background:rgba(0,0,0,0.18);border-radius:16px;min-width:80px;">
+                <div style="font-size:26px;font-weight:800;line-height:1;" x-text="exDash?.projects_at_risk ?? '—'"></div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;">At Risk</div>
+              </div>
+              <div style="text-align:center;padding:12px 20px;background:rgba(0,0,0,0.18);border-radius:16px;min-width:80px;">
+                <div style="font-size:26px;font-weight:800;line-height:1;" x-text="exDash ? (exDash.commitment_risk_score*100).toFixed(0)+'%' : '—'"></div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;">Commit Risk</div>
+              </div>
+              <div style="text-align:center;padding:12px 20px;background:rgba(0,0,0,0.18);border-radius:16px;min-width:80px;">
+                <div style="font-size:26px;font-weight:800;line-height:1;" x-text="commitments.filter(c=>c.status==='pending').length"></div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;">Open Commits</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:18px;">Project Health Overview</div>
-          <div x-show="!exDash?.project_health?.length" style="text-align:center;padding:40px;color:#94a3b8;">No active projects</div>
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            <template x-for="p in exDash?.project_health" :key="p.project_id">
-              <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:#fafafa;transition:background .15s;"
-                onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#fafafa'">
-                <div :class="'dot-'+p.health" style="flex-shrink:0;"></div>
-                <div style="flex:1;min-width:0;">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                    <span style="font-size:14px;font-weight:600;color:#1e293b;" x-text="p.name"></span>
-                    <span :class="'chip ' + healthChip(p.health)" x-text="p.health"></span>
-                    <span x-show="p.overdue_count>0" class="chip chip-red" x-text="p.overdue_count+' overdue'"></span>
+
+        <!-- Two-column body -->
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;">
+
+          <!-- Project Portfolio Grid -->
+          <div class="card">
+            <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:16px;">Project Portfolio</div>
+            <div x-show="!exDash?.project_health?.length" style="text-align:center;padding:40px;color:#94a3b8;">No active projects</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+              <template x-for="p in exDash?.project_health" :key="p.project_id">
+                <div style="padding:16px;border-radius:16px;border:1.5px solid #f1f5f9;background:#fafafa;transition:all .18s;cursor:default;"
+                  onmouseenter="this.style.background='#f1f5f9';this.style.borderColor='#e2e8f0'" onmouseleave="this.style.background='#fafafa';this.style.borderColor='#f1f5f9'">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:13.5px;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="p.name"></div>
+                      <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
+                        <span :class="'chip '+healthChip(p.health)" x-text="p.health"></span>
+                        <span x-show="p.overdue_count>0" class="chip chip-red" x-text="p.overdue_count+' overdue'"></span>
+                      </div>
+                    </div>
+                    <div style="font-size:24px;font-weight:900;line-height:1;flex-shrink:0;"
+                      :style="'color:'+(p.health==='green'?'#10b981':p.health==='yellow'?'#f59e0b':'#ef4444')"
+                      x-text="p.completion_pct+'%'"></div>
                   </div>
                   <div class="progress-track">
                     <div class="progress-fill"
                       :style="'width:'+p.completion_pct+'%;background:'+(p.health==='green'?'linear-gradient(90deg,#10b981,#34d399)':p.health==='yellow'?'linear-gradient(90deg,#f59e0b,#fcd34d)':'linear-gradient(90deg,#ef4444,#fb7185)')"></div>
                   </div>
+                  <div style="font-size:11.5px;color:#94a3b8;margin-top:7px;" x-text="p.task_count+' tasks'"></div>
                 </div>
-                <div style="text-align:right;flex-shrink:0;">
-                  <div style="font-size:18px;font-weight:800;color:#1e293b;" x-text="p.completion_pct+'%'"></div>
-                  <div style="font-size:11.5px;color:#94a3b8;" x-text="p.task_count+' tasks'"></div>
-                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Right: Risk meter + Commitments -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+
+            <!-- Commitment Risk Meter -->
+            <div class="card" style="text-align:center;">
+              <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:14px;text-align:left;">Commitment Risk Score</div>
+              <div style="font-size:48px;font-weight:900;letter-spacing:-2px;line-height:1;margin-bottom:6px;"
+                :style="'color:'+(exDash?.commitment_risk_score>0.5?'#ef4444':exDash?.commitment_risk_score>0.25?'#f59e0b':'#10b981')"
+                x-text="exDash ? (exDash.commitment_risk_score*100).toFixed(0)+'%' : '—'"></div>
+              <div style="font-size:12px;color:#94a3b8;margin-bottom:14px;"
+                x-text="(exDash?.commitment_risk_score||0)>0.5?'High — review open commitments':(exDash?.commitment_risk_score||0)>0.25?'Moderate — monitor closely':'Healthy — on track'"></div>
+              <div class="progress-track" style="height:8px;">
+                <div class="progress-fill"
+                  :style="'width:'+(exDash?(exDash.commitment_risk_score*100):0)+'%;background:'+(
+                    (exDash?.commitment_risk_score||0)>0.5?'linear-gradient(90deg,#ef4444,#fb7185)':
+                    (exDash?.commitment_risk_score||0)>0.25?'linear-gradient(90deg,#f59e0b,#fcd34d)':
+                    'linear-gradient(90deg,#10b981,#34d399)')"></div>
               </div>
-            </template>
+            </div>
+
+            <!-- Open Commitments -->
+            <div class="card" style="flex:1;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:#0f172a;">Open Commitments</div>
+                <span class="chip chip-blue" x-text="commitments.filter(c=>c.status==='pending').length"></span>
+              </div>
+              <div x-show="!commitments.filter(c=>c.status==='pending').length" style="color:#94a3b8;font-size:13px;text-align:center;padding:16px;">None open</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <template x-for="c in commitments.filter(c=>c.status==='pending').slice(0,6)" :key="c.commitment_id">
+                  <div style="padding:9px 11px;border-radius:10px;background:#fafafa;transition:background .15s;"
+                    onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#fafafa'">
+                    <div style="font-size:13px;font-weight:500;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="c.title"></div>
+                    <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;" x-show="c.due_date"
+                      :style="c.due_date < todayStr ? 'color:#ef4444;font-weight:600' : ''"
+                      x-text="(c.due_date < todayStr ? '⚠ ' : '') + 'Due: ' + c.due_date"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1368,13 +1432,13 @@ function app() {
 
     navItems: [
       { id:'dashboard',   icon:'📊', label:'Dashboard' },
+      { id:'summaries',   icon:'📋', label:'Summaries' },
       { id:'executive',   icon:'🎯', label:'Executive' },
       { id:'tasks',       icon:'✅', label:'Tasks' },
       { id:'projects',    icon:'📁', label:'Projects' },
       { id:'milestones',  icon:'🏁', label:'Milestones' },
       { id:'commitments', icon:'🤝', label:'Commitments' },
       { id:'alerts',      icon:'🔔', label:'Alerts' },
-      { id:'summaries',   icon:'📋', label:'Summaries' },
       { id:'estimate',    icon:'📐', label:'Estimate' },
     ],
 
