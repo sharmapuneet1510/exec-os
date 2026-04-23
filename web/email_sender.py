@@ -438,18 +438,36 @@ def build_eod_html(db: Session) -> str:
 # ── send ──────────────────────────────────────────────────────────────────────
 
 def send_html_email(subject: str, html_body: str, cfg) -> None:
-    if not cfg.smtp_user or not cfg.recipient_email:
-        raise ValueError("Email not configured — set SMTP credentials and recipient first.")
+    if not cfg.recipient_email:
+        raise ValueError("Recipient email is required.")
+    sender = cfg.smtp_user or f"execos@{cfg.smtp_host}"
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"ExecOS <{cfg.smtp_user}>"
+    msg["From"] = f"ExecOS <{sender}>"
     msg["To"] = cfg.recipient_email
     msg.attach(MIMEText(html_body, "html", "utf-8"))
-    with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20) as s:
-        s.ehlo()
-        s.starttls()
-        s.login(cfg.smtp_user, cfg.smtp_password)
-        s.sendmail(cfg.smtp_user, [cfg.recipient_email], msg.as_string())
+
+    mode = (cfg.smtp_mode or "starttls").lower()
+    if mode == "ssl":
+        import ssl as _ssl
+        ctx = _ssl.create_default_context()
+        with smtplib.SMTP_SSL(cfg.smtp_host, cfg.smtp_port, timeout=20, context=ctx) as s:
+            if cfg.smtp_user and cfg.smtp_password:
+                s.login(cfg.smtp_user, cfg.smtp_password)
+            s.sendmail(sender, [cfg.recipient_email], msg.as_string())
+    elif mode == "plain":
+        with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20) as s:
+            s.ehlo()
+            if cfg.smtp_user and cfg.smtp_password:
+                s.login(cfg.smtp_user, cfg.smtp_password)
+            s.sendmail(sender, [cfg.recipient_email], msg.as_string())
+    else:  # starttls (default)
+        with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=20) as s:
+            s.ehlo()
+            s.starttls()
+            if cfg.smtp_user and cfg.smtp_password:
+                s.login(cfg.smtp_user, cfg.smtp_password)
+            s.sendmail(sender, [cfg.recipient_email], msg.as_string())
 
 
 def _get_cfg(db: Session):

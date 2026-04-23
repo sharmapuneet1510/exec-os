@@ -36,6 +36,7 @@ class EmailConfigIn(BaseModel):
     smtp_port: Optional[int] = 587
     smtp_user: Optional[str] = ""
     smtp_password: Optional[str] = ""
+    smtp_mode: Optional[str] = "starttls"
     sod_time: Optional[str] = "08:00"
     eod_time: Optional[str] = "18:00"
     sod_enabled: Optional[bool] = True
@@ -51,6 +52,7 @@ def get_config(db: Session = Depends(_db)):
         "smtp_port": cfg.smtp_port or 587,
         "smtp_user": cfg.smtp_user or "",
         "smtp_password": "••••••••" if cfg.smtp_password else "",
+        "smtp_mode": cfg.smtp_mode or "starttls",
         "sod_time": cfg.sod_time or "08:00",
         "eod_time": cfg.eod_time or "18:00",
         "sod_enabled": cfg.sod_enabled,
@@ -64,9 +66,10 @@ def save_config(body: EmailConfigIn, db: Session = Depends(_db)):
     cfg.recipient_email = body.recipient_email or cfg.recipient_email
     cfg.smtp_host = body.smtp_host or cfg.smtp_host
     cfg.smtp_port = body.smtp_port or cfg.smtp_port
-    cfg.smtp_user = body.smtp_user or cfg.smtp_user
+    cfg.smtp_user = body.smtp_user if body.smtp_user is not None else cfg.smtp_user
     if body.smtp_password and body.smtp_password != "••••••••":
         cfg.smtp_password = body.smtp_password
+    cfg.smtp_mode = body.smtp_mode or cfg.smtp_mode
     cfg.sod_time = body.sod_time or cfg.sod_time
     cfg.eod_time = body.eod_time or cfg.eod_time
     cfg.sod_enabled = body.sod_enabled

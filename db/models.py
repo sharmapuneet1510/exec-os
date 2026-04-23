@@ -13,6 +13,7 @@ class EmailConfigORM(Base):
     smtp_port        = Column(Integer,     default=587)
     smtp_user        = Column(String(255), default="")
     smtp_password    = Column(Text,        default="")  # stored as plaintext; use App Password
+    smtp_mode        = Column(String(20),  default="starttls")  # starttls | ssl | plain
     sod_time         = Column(String(5),   default="08:00")  # HH:MM local
     eod_time         = Column(String(5),   default="18:00")
     sod_enabled      = Column(Boolean,     default=True)

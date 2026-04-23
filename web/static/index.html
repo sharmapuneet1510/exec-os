@@ -853,8 +853,34 @@
             </div>
           </div>
 
-          <!-- SMTP / Recipient row -->
-          <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:12px;margin-bottom:14px;">
+          <!-- SMTP server row -->
+          <div style="display:grid;grid-template-columns:1fr 100px 160px;gap:12px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">SMTP Host</label>
+              <input x-model="emailCfg.smtp_host" placeholder="mail.company.com"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Port</label>
+              <input x-model.number="emailCfg.smtp_port" type="number" placeholder="25"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
+                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Connection</label>
+              <select x-model="emailCfg.smtp_mode"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;background:#fff;outline:none;"
+                @change="if(emailCfg.smtp_mode==='starttls')emailCfg.smtp_port=587; else if(emailCfg.smtp_mode==='ssl')emailCfg.smtp_port=465; else emailCfg.smtp_port=25;">
+                <option value="plain">Plain (port 25)</option>
+                <option value="starttls">STARTTLS (587)</option>
+                <option value="ssl">SSL/TLS (465)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Recipient + credentials row -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
             <div>
               <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Recipient Email</label>
               <input x-model="emailCfg.recipient_email" type="email" placeholder="you@example.com"
@@ -862,29 +888,14 @@
                 @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
             </div>
             <div>
-              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">SMTP Host</label>
-              <input x-model="emailCfg.smtp_host" placeholder="smtp.gmail.com"
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">SMTP User <span style="font-weight:400;color:#cbd5e1;">(optional)</span></label>
+              <input x-model="emailCfg.smtp_user" placeholder="Leave blank if no auth"
                 style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
                 @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
             </div>
             <div>
-              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Port</label>
-              <input x-model.number="emailCfg.smtp_port" type="number" placeholder="587"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
-                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-            <div>
-              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Gmail / SMTP User</label>
-              <input x-model="emailCfg.smtp_user" placeholder="you@gmail.com"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
-                @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
-            </div>
-            <div>
-              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">App Password</label>
-              <input x-model="emailCfg.smtp_password" type="password" placeholder="Gmail App Password"
+              <label style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Password <span style="font-weight:400;color:#cbd5e1;">(optional)</span></label>
+              <input x-model="emailCfg.smtp_password" type="password" placeholder="Leave blank if no auth"
                 style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;color:#1e293b;outline:none;"
                 @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e2e8f0'">
             </div>
@@ -943,9 +954,15 @@
               style="font-size:13px;font-weight:600;margin-left:4px;"></span>
           </div>
 
-          <div style="margin-top:14px;padding:11px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;">
-            <span style="font-size:12px;color:#64748b;font-weight:600;">💡 Gmail tip: </span>
-            <span style="font-size:12px;color:#94a3b8;">Use a Gmail <strong style="color:#475569;">App Password</strong> (Google Account → Security → 2-Step Verification → App Passwords). Never use your main account password.</span>
+          <div style="margin-top:14px;padding:11px 14px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;gap:16px;flex-wrap:wrap;">
+            <div>
+              <span style="font-size:12px;color:#64748b;font-weight:600;">🏢 Internal relay: </span>
+              <span style="font-size:12px;color:#94a3b8;">Set mode to <strong style="color:#475569;">Plain</strong>, enter your mail server host/port, leave credentials blank if it allows unauthenticated relay.</span>
+            </div>
+            <div>
+              <span style="font-size:12px;color:#64748b;font-weight:600;">📧 Gmail: </span>
+              <span style="font-size:12px;color:#94a3b8;">Use <strong style="color:#475569;">STARTTLS</strong> + an App Password (Google Account → Security → 2-Step Verification → App Passwords).</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1573,7 +1590,7 @@ function app() {
     estPlanProjectId: '',
     _estIdCounter: 0,
 
-    emailCfg: { recipient_email:'', smtp_host:'smtp.gmail.com', smtp_port:587, smtp_user:'', smtp_password:'', sod_time:'08:00', eod_time:'18:00', sod_enabled:true, eod_enabled:true },
+    emailCfg: { recipient_email:'', smtp_host:'smtp.gmail.com', smtp_port:587, smtp_user:'', smtp_password:'', smtp_mode:'starttls', sod_time:'08:00', eod_time:'18:00', sod_enabled:true, eod_enabled:true },
     emailMsg: '', emailMsgOk: true, emailSending: false,
 
     taskModal:       { open:false, editing:false, data:{} },
