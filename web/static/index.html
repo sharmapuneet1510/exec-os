@@ -4,170 +4,399 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ExecOS — Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; }
     [x-cloak] { display: none !important; }
-    .sidebar-item { @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer; }
-    .sidebar-item:hover { @apply bg-white/10; }
-    .sidebar-item.active { @apply bg-white/20 text-white; }
-    .card { @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5; }
-    .badge-red { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700; }
-    .badge-yellow { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700; }
-    .badge-green { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700; }
-    .badge-blue { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700; }
-    .badge-gray { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600; }
-    .btn-primary { @apply px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors; }
-    .btn-ghost { @apply px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors; }
-    .input { @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500; }
-    .select { @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white; }
-    .health-dot-green { @apply w-2.5 h-2.5 rounded-full bg-emerald-400; }
-    .health-dot-yellow { @apply w-2.5 h-2.5 rounded-full bg-yellow-400; }
-    .health-dot-red { @apply w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse; }
-    .health-dot-grey { @apply w-2.5 h-2.5 rounded-full bg-gray-300; }
-    .modal-overlay { @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center; }
-    .modal { @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6; }
+
+    /* ── Sidebar ── */
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 14px;
+      font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: all 0.18s ease;
+      color: rgba(255,255,255,0.65);
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .nav-item.active {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .nav-icon {
+      width: 32px; height: 32px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+      background: rgba(255,255,255,0.1);
+      transition: background 0.18s;
+    }
+    .nav-item.active .nav-icon { background: rgba(255,255,255,0.25); }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      padding: 20px; transition: box-shadow 0.2s;
+    }
+    .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); }
+    .card-flat { background: #fff; border-radius: 20px; padding: 20px; border: 1.5px solid #f0f0f5; }
+
+    /* ── Stat cards ── */
+    .stat-card {
+      border-radius: 20px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::after {
+      content: ''; position: absolute; right: -20px; top: -20px;
+      width: 100px; height: 100px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* ── Badges / Chips ── */
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 99px;
+      font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+    }
+    .chip-red    { background: #fff1f2; color: #e11d48; }
+    .chip-orange { background: #fff7ed; color: #ea580c; }
+    .chip-yellow { background: #fefce8; color: #ca8a04; }
+    .chip-green  { background: #f0fdf4; color: #16a34a; }
+    .chip-blue   { background: #eff6ff; color: #2563eb; }
+    .chip-purple { background: #f5f3ff; color: #7c3aed; }
+    .chip-gray   { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+    .chip-teal   { background: #f0fdfa; color: #0d9488; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px; border-radius: 12px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff; font-size: 13.5px; font-weight: 600;
+      border: none; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+    }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px; border-radius: 12px;
+      background: #f1f5f9; color: #475569;
+      font-size: 13.5px; font-weight: 500;
+      border: none; cursor: pointer;
+      transition: all 0.18s;
+    }
+    .btn-secondary:hover { background: #e2e8f0; color: #334155; }
+    .btn-danger {
+      display: inline-flex; align-items: center;
+      padding: 6px 12px; border-radius: 10px;
+      background: #fff1f2; color: #e11d48;
+      font-size: 12px; font-weight: 600;
+      border: none; cursor: pointer; transition: all 0.18s;
+    }
+    .btn-danger:hover { background: #ffe4e6; }
+    .btn-icon {
+      width: 32px; height: 32px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      background: #f1f5f9; color: #64748b;
+      border: none; cursor: pointer; transition: all 0.18s; font-size: 14px;
+    }
+    .btn-icon:hover { background: #e2e8f0; color: #334155; }
+
+    /* ── Inputs ── */
+    .input {
+      width: 100%; padding: 10px 14px; border-radius: 12px;
+      border: 1.5px solid #e2e8f0; font-size: 13.5px;
+      font-family: 'Inter', sans-serif;
+      background: #fafafa; color: #1e293b;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+      background: #fff;
+    }
+    .input::placeholder { color: #94a3b8; }
+    select.input { cursor: pointer; }
+    textarea.input { resize: none; }
+
+    /* ── Progress bar ── */
+    .progress-track {
+      width: 100%; height: 6px; border-radius: 99px;
+      background: #f1f5f9; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 99px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ── Health dots ── */
+    .dot-green  { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px #d1fae5; }
+    .dot-yellow { width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 3px #fef3c7; }
+    .dot-red    { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 3px #fee2e2; animation: pulse 1.5s infinite; }
+    .dot-grey   { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+    @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 3px #fee2e2; } 50%{ box-shadow: 0 0 0 6px #fee2e2; } }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(15,23,42,0.55);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+      animation: fadeIn 0.15s ease;
+    }
+    .modal-box {
+      background: #fff; border-radius: 24px;
+      width: 100%; max-width: 520px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+      animation: slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1);
+      overflow: hidden;
+    }
+    .modal-box.wide { max-width: 680px; }
+    .modal-header {
+      padding: 22px 24px 18px;
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+      color: #fff;
+    }
+    .modal-body { padding: 22px 24px; }
+    .modal-footer {
+      padding: 16px 24px 20px;
+      display: flex; justify-content: flex-end; gap: 10px;
+      border-top: 1px solid #f1f5f9;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Table ── */
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .data-table th {
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: #94a3b8;
+      border-bottom: 1.5px solid #f1f5f9;
+    }
+    .data-table td {
+      padding: 13px 14px; font-size: 13.5px;
+      border-bottom: 1px solid #f8fafc;
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr { transition: background 0.15s; }
+    .data-table tbody tr:hover { background: #f8fafc; }
+
+    /* ── Toggle buttons (used in estimator) ── */
+    .toggle-btn {
+      padding: 7px 14px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+      font-size: 12.5px; font-weight: 500; cursor: pointer;
+      background: #fff; color: #64748b; transition: all 0.15s;
+    }
+    .toggle-btn:hover { border-color: #c7d2fe; color: #4f46e5; background: #f5f3ff; }
+    .toggle-btn.active {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 3px 10px rgba(99,102,241,0.3);
+    }
+
+    /* ── Fib point pill ── */
+    .fib-btn {
+      width: 42px; height: 42px; border-radius: 12px; border: 1.5px solid #e2e8f0;
+      font-size: 13.5px; font-weight: 700; cursor: pointer;
+      background: #fff; color: #475569; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fib-btn:hover { border-color: #a5b4fc; color: #4f46e5; }
+    .fib-btn.active {
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 3px 12px rgba(99,102,241,0.35);
+      transform: scale(1.08);
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+    /* ── Misc ── */
+    .overdue-row td:first-child { border-left: 3px solid #ef4444; }
+    .section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #94a3b8; margin-bottom: 12px;
+    }
   </style>
   <script>
     tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
-          }
-        }
-      }
+      theme: { extend: {
+        colors: {
+          primary: { 50:'#eef2ff', 100:'#e0e7ff', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca' }
+        },
+        borderRadius: { '2xl':'16px', '3xl':'24px', '4xl':'32px' }
+      }}
     }
   </script>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans antialiased">
+<body style="background:#f4f6fb; min-height:100vh;">
 
 <div class="flex h-screen overflow-hidden">
 
-  <!-- Sidebar -->
-  <aside class="w-60 flex-shrink-0 bg-gradient-to-b from-indigo-700 to-indigo-900 text-white/80 flex flex-col">
-    <div class="px-5 py-6 border-b border-white/10">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+  <!-- ══ SIDEBAR ══ -->
+  <aside style="width:240px;flex-shrink:0;background:linear-gradient(175deg,#312e81 0%,#3730a3 40%,#1e1b4b 100%);display:flex;flex-direction:column;">
+    <!-- Logo -->
+    <div style="padding:24px 18px 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
+      <div style="display:flex;align-items:center;gap:11px;">
+        <div style="width:38px;height:38px;border-radius:13px;background:linear-gradient(135deg,#818cf8,#6366f1);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(99,102,241,0.4);">
+          <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
         <div>
-          <div class="text-white font-bold text-base leading-tight">ExecOS</div>
-          <div class="text-white/50 text-xs">Command Center</div>
+          <div style="color:#fff;font-weight:800;font-size:16px;letter-spacing:-0.3px;">ExecOS</div>
+          <div style="color:rgba(255,255,255,0.4);font-size:11px;font-weight:500;">Command Center</div>
         </div>
       </div>
     </div>
 
-    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <!-- Nav -->
+    <nav style="flex:1;padding:14px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;">
       <template x-for="item in navItems" :key="item.id">
-        <div @click="nav(item.id)"
-             :class="['sidebar-item', view === item.id ? 'active text-white' : 'text-white/70']">
-          <span class="text-lg" x-text="item.icon"></span>
-          <span x-text="item.label"></span>
-          <span x-show="item.id === 'alerts' && unreadAlerts > 0"
-                class="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
-                x-text="unreadAlerts"></span>
+        <div @click="nav(item.id)" :class="['nav-item', view===item.id ? 'active' : '']">
+          <div class="nav-icon" x-text="item.icon"></div>
+          <span x-text="item.label" style="flex:1;"></span>
+          <span x-show="item.id==='alerts' && unreadAlerts>0"
+            style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px;min-width:20px;text-align:center;"
+            x-text="unreadAlerts"></span>
         </div>
       </template>
     </nav>
 
-    <div class="px-4 py-4 border-t border-white/10 text-xs text-white/40">
-      <div x-text="today"></div>
+    <!-- Date footer -->
+    <div style="padding:14px 18px;border-top:1px solid rgba(255,255,255,0.08);">
+      <div style="color:rgba(255,255,255,0.35);font-size:11px;" x-text="today"></div>
     </div>
   </aside>
 
-  <!-- Main -->
-  <main class="flex-1 flex flex-col overflow-hidden">
+  <!-- ══ MAIN ══ -->
+  <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
 
     <!-- Topbar -->
-    <header class="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+    <header style="background:#fff;border-bottom:1px solid #f1f5f9;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
-        <h1 class="text-base font-semibold text-gray-800" x-text="pageTitle"></h1>
-        <p class="text-xs text-gray-400 mt-0.5" x-text="pageSubtitle"></p>
+        <h1 style="font-size:18px;font-weight:700;color:#0f172a;letter-spacing:-0.3px;" x-text="pageTitle"></h1>
+        <p style="font-size:12px;color:#94a3b8;margin-top:1px;" x-text="pageSubtitle"></p>
       </div>
-      <div class="flex items-center gap-3">
-        <button @click="refreshData()" class="btn-ghost" title="Refresh">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div x-show="loading" style="width:18px;height:18px;border:2.5px solid #e0e7ff;border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite;"></div>
+        <button @click="refreshData()" class="btn-icon" title="Refresh">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
         </button>
-        <div x-show="loading" class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     </header>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-6">
+    <div style="flex:1;overflow-y:auto;padding:24px 28px;">
 
-      <!-- DASHBOARD -->
-      <div x-show="view === 'dashboard'" x-cloak>
-        <div class="grid grid-cols-4 gap-4 mb-6" x-show="opDash">
-          <div class="card">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Tasks</div>
-            <div class="text-3xl font-bold text-gray-800" x-text="opDash?.total_tasks ?? '—'"></div>
+      <!-- ══ OPERATIONAL DASHBOARD ══ -->
+      <div x-show="view==='dashboard'" x-cloak>
+        <!-- Stat row -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;">
+          <div class="stat-card" style="background:linear-gradient(135deg,#6366f1,#818cf8);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Total Tasks</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.total_tasks ?? '—'"></div>
           </div>
-          <div class="card">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Done Today</div>
-            <div class="text-3xl font-bold text-emerald-600" x-text="opDash?.done_today ?? '—'"></div>
+          <div class="stat-card" style="background:linear-gradient(135deg,#10b981,#34d399);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Done Today</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.done_today ?? '—'"></div>
           </div>
-          <div class="card border-l-4 border-red-400">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Overdue</div>
-            <div class="text-3xl font-bold text-red-600" x-text="opDash?.overdue_count ?? '—'"></div>
+          <div class="stat-card" style="background:linear-gradient(135deg,#ef4444,#f87171);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Overdue</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.overdue_count ?? '—'"></div>
           </div>
-          <div class="card">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">In Progress</div>
-            <div class="text-3xl font-bold text-indigo-600" x-text="opDash?.in_progress_count ?? '—'"></div>
+          <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#fcd34d);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">In Progress</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;line-height:1;" x-text="opDash?.in_progress_count ?? '—'"></div>
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-4">
-          <!-- Overdue tasks -->
-          <div class="card col-span-2">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-semibold text-gray-700">Overdue Tasks</h3>
-              <span class="badge-red" x-text="opDash?.overdue_count + ' overdue'"></span>
+        <div style="display:grid;grid-template-columns:1fr 340px;gap:18px;">
+          <!-- Overdue list -->
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="font-size:15px;font-weight:700;color:#0f172a;">Overdue Tasks</div>
+              <span class="chip chip-red" x-text="(opDash?.overdue_count || 0) + ' overdue'"></span>
             </div>
-            <div x-show="opDash?.overdue_tasks?.length === 0" class="text-sm text-gray-400 py-4 text-center">No overdue tasks 🎉</div>
-            <div class="space-y-2">
+            <div x-show="!opDash?.overdue_tasks?.length" style="text-align:center;padding:32px;color:#94a3b8;font-size:14px;">
+              🎉 No overdue tasks
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
               <template x-for="t in opDash?.overdue_tasks" :key="t.task_id">
-                <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer" @click="openTaskDetail(t.task_id)">
-                  <div class="w-1.5 h-8 rounded-full"
-                       :class="t.priority === 'critical' ? 'bg-red-500' : t.priority === 'high' ? 'bg-orange-400' : t.priority === 'medium' ? 'bg-yellow-400' : 'bg-gray-300'"></div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-sm font-medium text-gray-800 truncate" x-text="t.title"></div>
-                    <div class="text-xs text-red-500" x-text="'Due: ' + t.due_date"></div>
+                <div @click="openTaskModal(tasks.find(x=>x.task_id===t.task_id))"
+                  style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;cursor:pointer;transition:background .15s;"
+                  onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='transparent'">
+                  <div style="width:4px;height:38px;border-radius:99px;flex-shrink:0;"
+                    :style="'background:' + (t.priority==='critical'?'#ef4444':t.priority==='high'?'#f97316':t.priority==='medium'?'#f59e0b':'#94a3b8')"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:13.5px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="t.title"></div>
+                    <div style="font-size:12px;color:#ef4444;margin-top:2px;" x-text="'Due: ' + t.due_date"></div>
                   </div>
-                  <span :class="priorityBadge(t.priority)" x-text="t.priority"></span>
+                  <span :class="'chip ' + priorityChip(t.priority)" x-text="t.priority"></span>
                 </div>
               </template>
             </div>
           </div>
 
-          <!-- Right panel -->
-          <div class="space-y-4">
+          <!-- Right panels -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
             <div class="card">
-              <h3 class="font-semibold text-gray-700 mb-3">Upcoming (7d)</h3>
-              <div x-show="!opDash?.upcoming_tasks?.length" class="text-sm text-gray-400">Nothing scheduled</div>
-              <div class="space-y-1.5">
+              <div class="section-title">Upcoming (7 days)</div>
+              <div x-show="!opDash?.upcoming_tasks?.length" style="color:#94a3b8;font-size:13px;">Nothing scheduled</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
                 <template x-for="t in opDash?.upcoming_tasks?.slice(0,5)" :key="t.task_id">
-                  <div class="text-sm text-gray-600 flex items-center gap-2">
-                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
-                    <span class="truncate" x-text="t.title"></span>
-                    <span class="ml-auto text-xs text-gray-400 flex-shrink-0" x-text="t.due_date"></span>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:#818cf8;flex-shrink:0;"></div>
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155;" x-text="t.title"></span>
+                    <span style="font-size:11.5px;color:#94a3b8;flex-shrink:0;" x-text="t.due_date"></span>
                   </div>
                 </template>
               </div>
             </div>
             <div class="card">
-              <h3 class="font-semibold text-gray-700 mb-3">Milestones</h3>
-              <div x-show="!opDash?.upcoming_milestones?.length" class="text-sm text-gray-400">None upcoming</div>
-              <div class="space-y-1.5">
+              <div class="section-title">Milestones</div>
+              <div x-show="!opDash?.upcoming_milestones?.length" style="color:#94a3b8;font-size:13px;">None upcoming</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
                 <template x-for="m in opDash?.upcoming_milestones" :key="m.milestone_id">
-                  <div class="text-sm text-gray-600 flex items-center gap-2">
-                    <span class="text-base">🏁</span>
-                    <span class="truncate" x-text="m.title"></span>
-                    <span class="ml-auto text-xs text-gray-400 flex-shrink-0" x-text="m.due_date"></span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:15px;">🏁</span>
+                    <span style="flex:1;font-size:13px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="m.title"></span>
+                    <span style="font-size:11.5px;color:#94a3b8;flex-shrink:0;" x-text="m.due_date"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-title">Commitments Due</div>
+              <div x-show="!opDash?.upcoming_commitments?.length" style="color:#94a3b8;font-size:13px;">None this week</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <template x-for="c in opDash?.upcoming_commitments" :key="c.commitment_id">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:15px;">🤝</span>
+                    <span style="flex:1;font-size:13px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="c.title"></span>
+                    <span style="font-size:11.5px;color:#94a3b8;flex-shrink:0;" x-text="c.due_date"></span>
                   </div>
                 </template>
               </div>
@@ -176,116 +405,103 @@
         </div>
       </div>
 
-      <!-- EXECUTIVE DASHBOARD -->
-      <div x-show="view === 'executive'" x-cloak>
-        <div class="grid grid-cols-4 gap-4 mb-6">
-          <div class="card border-l-4 border-indigo-400">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Projects Active</div>
-            <div class="text-3xl font-bold text-gray-800" x-text="exDash?.projects_total ?? '—'"></div>
+      <!-- ══ EXECUTIVE DASHBOARD ══ -->
+      <div x-show="view==='executive'" x-cloak>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;">
+          <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Active Projects</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash?.projects_total ?? '—'"></div>
           </div>
-          <div class="card border-l-4 border-red-400">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">At Risk</div>
-            <div class="text-3xl font-bold text-red-600" x-text="exDash?.projects_at_risk ?? '—'"></div>
+          <div class="stat-card" style="background:linear-gradient(135deg,#ef4444,#fb7185);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">At Risk</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash?.projects_at_risk ?? '—'"></div>
           </div>
-          <div class="card border-l-4 border-emerald-400">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">On Track</div>
-            <div class="text-3xl font-bold text-emerald-600" x-text="exDash?.projects_on_track ?? '—'"></div>
+          <div class="stat-card" style="background:linear-gradient(135deg,#10b981,#6ee7b7);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">On Track</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash?.projects_on_track ?? '—'"></div>
           </div>
-          <div class="card border-l-4 border-yellow-400">
-            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Commitment Risk</div>
-            <div class="text-3xl font-bold text-yellow-600" x-text="exDash ? (exDash.commitment_risk_score * 100).toFixed(0) + '%' : '—'"></div>
+          <div class="stat-card" style="background:linear-gradient(135deg,#f59e0b,#fde68a);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:8px;">Commitment Risk</div>
+            <div style="font-size:36px;font-weight:800;color:#fff;" x-text="exDash ? (exDash.commitment_risk_score*100).toFixed(0)+'%' : '—'"></div>
           </div>
         </div>
-
         <div class="card">
-          <h3 class="font-semibold text-gray-700 mb-4">Project Health</h3>
-          <div x-show="!exDash?.project_health?.length" class="text-sm text-gray-400 py-6 text-center">No active projects</div>
-          <div class="space-y-3">
+          <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:18px;">Project Health Overview</div>
+          <div x-show="!exDash?.project_health?.length" style="text-align:center;padding:40px;color:#94a3b8;">No active projects</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
             <template x-for="p in exDash?.project_health" :key="p.project_id">
-              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50">
-                <div :class="'health-dot-' + p.health"></div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="text-sm font-medium text-gray-800" x-text="p.name"></span>
-                    <span :class="healthBadge(p.health)" x-text="p.health"></span>
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:#fafafa;transition:background .15s;"
+                onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#fafafa'">
+                <div :class="'dot-'+p.health" style="flex-shrink:0;"></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <span style="font-size:14px;font-weight:600;color:#1e293b;" x-text="p.name"></span>
+                    <span :class="'chip ' + healthChip(p.health)" x-text="p.health"></span>
+                    <span x-show="p.overdue_count>0" class="chip chip-red" x-text="p.overdue_count+' overdue'"></span>
                   </div>
-                  <div class="w-full bg-gray-100 rounded-full h-1.5">
-                    <div class="h-1.5 rounded-full transition-all"
-                         :class="p.health === 'green' ? 'bg-emerald-400' : p.health === 'yellow' ? 'bg-yellow-400' : 'bg-red-400'"
-                         :style="'width: ' + p.completion_pct + '%'"></div>
+                  <div class="progress-track">
+                    <div class="progress-fill"
+                      :style="'width:'+p.completion_pct+'%;background:'+(p.health==='green'?'linear-gradient(90deg,#10b981,#34d399)':p.health==='yellow'?'linear-gradient(90deg,#f59e0b,#fcd34d)':'linear-gradient(90deg,#ef4444,#fb7185)')"></div>
                   </div>
                 </div>
-                <div class="text-right flex-shrink-0">
-                  <div class="text-sm font-bold text-gray-700" x-text="p.completion_pct + '%'"></div>
-                  <div class="text-xs text-gray-400" x-text="p.task_count + ' tasks'"></div>
+                <div style="text-align:right;flex-shrink:0;">
+                  <div style="font-size:18px;font-weight:800;color:#1e293b;" x-text="p.completion_pct+'%'"></div>
+                  <div style="font-size:11.5px;color:#94a3b8;" x-text="p.task_count+' tasks'"></div>
                 </div>
-                <div x-show="p.overdue_count > 0" class="badge-red" x-text="p.overdue_count + ' overdue'"></div>
               </div>
             </template>
           </div>
         </div>
       </div>
 
-      <!-- TASKS -->
-      <div x-show="view === 'tasks'" x-cloak>
-        <div class="flex items-center gap-3 mb-4">
-          <input x-model="taskSearch" @input="filterTasks()" class="input max-w-xs" placeholder="Search tasks…" />
-          <select x-model="taskStatusFilter" @change="filterTasks()" class="select w-36">
+      <!-- ══ TASKS ══ -->
+      <div x-show="view==='tasks'" x-cloak>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+          <input x-model="taskSearch" @input="filterTasks()" class="input" style="max-width:260px;" placeholder="🔍  Search tasks…" />
+          <select x-model="taskStatusFilter" @change="filterTasks()" class="input" style="width:150px;">
             <option value="">All status</option>
             <option value="todo">To Do</option>
             <option value="in_progress">In Progress</option>
             <option value="done">Done</option>
             <option value="cancelled">Cancelled</option>
           </select>
-          <select x-model="taskPriorityFilter" @change="filterTasks()" class="select w-36">
+          <select x-model="taskPriorityFilter" @change="filterTasks()" class="input" style="width:150px;">
             <option value="">All priority</option>
             <option value="critical">Critical</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-          <div class="ml-auto">
+          <div style="margin-left:auto;">
             <button @click="openTaskModal()" class="btn-primary">+ New Task</button>
           </div>
         </div>
-
-        <div class="card">
-          <div x-show="filteredTasks.length === 0" class="text-sm text-gray-400 py-8 text-center">No tasks found</div>
-          <table class="w-full text-sm" x-show="filteredTasks.length > 0">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div x-show="filteredTasks.length===0" style="text-align:center;padding:60px;color:#94a3b8;">No tasks found</div>
+          <table class="data-table" x-show="filteredTasks.length>0">
             <thead>
-              <tr class="border-b border-gray-100 text-left">
-                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</th>
-                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
-                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Priority</th>
-                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Due Date</th>
-                <th class="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Project</th>
-                <th class="pb-3"></th>
+              <tr>
+                <th>Title</th><th>Status</th><th>Priority</th><th>Due Date</th><th>Project</th><th style="width:90px;"></th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-50">
+            <tbody>
               <template x-for="t in filteredTasks" :key="t.task_id">
-                <tr class="hover:bg-gray-50/70 group">
-                  <td class="py-3 pr-4">
-                    <div class="font-medium text-gray-800 truncate max-w-xs" x-text="t.title"></div>
-                    <div class="text-xs text-gray-400 truncate" x-text="t.description" x-show="t.description"></div>
+                <tr :class="t.due_date && t.due_date < todayStr && t.status!=='done' ? 'overdue-row' : ''">
+                  <td>
+                    <div style="font-weight:600;color:#1e293b;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></div>
+                    <div style="font-size:12px;color:#94a3b8;margin-top:2px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-show="t.description" x-text="t.description"></div>
                   </td>
-                  <td class="py-3 pr-4">
-                    <span :class="statusBadge(t.status)" x-text="t.status.replace('_', ' ')"></span>
+                  <td><span :class="'chip ' + statusChip(t.status)" x-text="t.status.replace('_',' ')"></span></td>
+                  <td><span :class="'chip ' + priorityChip(t.priority)" x-text="t.priority"></span></td>
+                  <td>
+                    <span :style="'font-size:13px;font-weight:500;color:' + (t.due_date && t.due_date < todayStr && t.status!=='done' ? '#ef4444' : '#475569')"
+                      x-text="t.due_date || '—'"></span>
                   </td>
-                  <td class="py-3 pr-4">
-                    <span :class="priorityBadge(t.priority)" x-text="t.priority"></span>
-                  </td>
-                  <td class="py-3 pr-4">
-                    <span :class="t.due_date && t.due_date < today && t.status !== 'done' ? 'text-red-500 font-medium' : 'text-gray-500'"
-                          x-text="t.due_date || '—'"></span>
-                  </td>
-                  <td class="py-3 pr-4">
-                    <span class="text-gray-500 text-xs" x-text="projectName(t.project_id)"></span>
-                  </td>
-                  <td class="py-3">
-                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button @click="openTaskModal(t)" class="btn-ghost text-xs">Edit</button>
-                      <button @click="deleteTask(t.task_id)" class="btn-ghost text-xs text-red-500 hover:text-red-700">Del</button>
+                  <td style="font-size:12.5px;color:#64748b;" x-text="projectName(t.project_id)"></td>
+                  <td>
+                    <div style="display:flex;gap:6px;opacity:0;transition:opacity .15s;" class="row-actions">
+                      <button @click="openTaskModal(t)" class="btn-icon" title="Edit">✏️</button>
+                      <button @click="deleteTask(t.task_id)" class="btn-icon" title="Delete" style="color:#ef4444;">🗑</button>
                     </div>
                   </td>
                 </tr>
@@ -293,166 +509,184 @@
             </tbody>
           </table>
         </div>
+        <style>.data-table tbody tr:hover .row-actions{opacity:1!important;}</style>
       </div>
 
-      <!-- PROJECTS -->
-      <div x-show="view === 'projects'" x-cloak>
-        <div class="flex justify-end mb-4">
+      <!-- ══ PROJECTS ══ -->
+      <div x-show="view==='projects'" x-cloak>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
           <button @click="openProjectModal()" class="btn-primary">+ New Project</button>
         </div>
-        <div x-show="projects.length === 0" class="text-sm text-gray-400 text-center py-12">No projects yet. Create your first project.</div>
-        <div class="grid grid-cols-3 gap-4">
+        <div x-show="!projects.length" style="text-align:center;padding:80px;color:#94a3b8;">No projects yet. Create your first project.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
           <template x-for="p in projects" :key="p.project_id">
-            <div class="card hover:shadow-md transition-shadow cursor-pointer" @click="openProjectModal(p)">
-              <div class="flex items-start justify-between mb-3">
-                <div>
-                  <h3 class="font-semibold text-gray-800 mb-1" x-text="p.name"></h3>
-                  <p class="text-xs text-gray-400 line-clamp-2" x-text="p.description || 'No description'"></p>
+            <div class="card" style="cursor:pointer;" @click="openProjectModal(p)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:4px;" x-text="p.name"></div>
+                  <div style="font-size:12.5px;color:#64748b;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" x-text="p.description||'No description'"></div>
                 </div>
-                <div :class="'health-dot-' + p.health + ' mt-1 flex-shrink-0'"></div>
+                <div :class="'dot-'+(p.health||'grey')" style="margin-left:12px;margin-top:4px;flex-shrink:0;"></div>
               </div>
-              <div class="flex items-center gap-3 mb-3">
-                <span :class="projectStatusBadge(p.status)" x-text="p.status"></span>
-                <span class="text-xs text-gray-400" x-text="p.owner ? '👤 ' + p.owner : ''"></span>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                <span :class="'chip ' + projectStatusChip(p.status)" x-text="p.status.replace('_',' ')"></span>
+                <span x-show="p.owner" style="font-size:12px;color:#64748b;" x-text="'👤 ' + p.owner"></span>
               </div>
-              <div class="w-full bg-gray-100 rounded-full h-1.5 mb-2">
-                <div class="h-1.5 rounded-full bg-indigo-500 transition-all"
-                     :style="'width: ' + (p.task_count > 0 ? Math.round(p.completed_count / p.task_count * 100) : 0) + '%'"></div>
+              <div class="progress-track" style="margin-bottom:8px;">
+                <div class="progress-fill" style="background:linear-gradient(90deg,#6366f1,#818cf8);"
+                  :style="'width:' + (p.task_count>0 ? Math.round(p.completed_count/p.task_count*100) : 0) + '%;background:linear-gradient(90deg,#6366f1,#818cf8)'"></div>
               </div>
-              <div class="flex items-center justify-between text-xs text-gray-400">
-                <span x-text="p.completed_count + '/' + p.task_count + ' tasks'"></span>
-                <span x-show="p.due_date" x-text="'Due: ' + p.due_date"></span>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;">
+                <span x-text="p.completed_count+'/'+p.task_count+' tasks'"></span>
+                <span x-show="p.due_date" x-text="'Due '+p.due_date"></span>
               </div>
             </div>
           </template>
         </div>
       </div>
 
-      <!-- MILESTONES -->
-      <div x-show="view === 'milestones'" x-cloak>
-        <div class="flex justify-end mb-4">
+      <!-- ══ MILESTONES ══ -->
+      <div x-show="view==='milestones'" x-cloak>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
           <button @click="openMilestoneModal()" class="btn-primary">+ New Milestone</button>
         </div>
         <div class="card">
-          <div x-show="milestones.length === 0" class="text-sm text-gray-400 py-8 text-center">No milestones yet</div>
-          <div class="space-y-3">
+          <div x-show="!milestones.length" style="text-align:center;padding:48px;color:#94a3b8;">No milestones yet</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
             <template x-for="m in milestones" :key="m.milestone_id">
-              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 group">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                     :class="m.status === 'completed' ? 'bg-emerald-100' : m.is_overdue ? 'bg-red-100' : 'bg-indigo-100'">
-                  <span x-text="m.status === 'completed' ? '✅' : m.is_overdue ? '⚠️' : '🏁'" class="text-base"></span>
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:#fafafa;transition:background .15s;"
+                onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#fafafa'" class="group-row">
+                <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;"
+                  :style="'background:' + (m.status==='completed'?'#ecfdf5':m.is_overdue?'#fff1f2':'#eff6ff')">
+                  <span x-text="m.status==='completed'?'✅':m.is_overdue?'⚠️':'🏁'"></span>
                 </div>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium text-gray-800" x-text="m.title"></span>
-                    <span x-show="m.is_overdue" class="badge-red">Overdue</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:14px;font-weight:600;color:#1e293b;" x-text="m.title"></span>
+                    <span x-show="m.is_overdue" class="chip chip-red">Overdue</span>
                   </div>
-                  <div class="text-xs text-gray-400 mt-0.5" x-text="(m.due_date ? 'Due: ' + m.due_date : '') + (m.project_id ? ' · ' + projectName(m.project_id) : '')"></div>
+                  <div style="font-size:12px;color:#94a3b8;margin-top:3px;"
+                    x-text="(m.due_date?'Due: '+m.due_date:'')+(m.project_id?' · '+projectName(m.project_id):'')"></div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span :class="m.status === 'completed' ? 'badge-green' : m.status === 'delayed' ? 'badge-red' : 'badge-blue'" x-text="m.status"></span>
-                  <div class="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                    <button @click="openMilestoneModal(m)" class="btn-ghost text-xs">Edit</button>
-                    <button @click="deleteMilestone(m.milestone_id)" class="btn-ghost text-xs text-red-500">Del</button>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span :class="'chip ' + (m.status==='completed'?'chip-green':m.status==='delayed'?'chip-red':'chip-blue')" x-text="m.status"></span>
+                  <div class="ms-actions" style="display:flex;gap:6px;opacity:0;transition:opacity .15s;">
+                    <button @click.stop="openMilestoneModal(m)" class="btn-icon">✏️</button>
+                    <button @click.stop="deleteMilestone(m.milestone_id)" class="btn-icon" style="color:#ef4444;">🗑</button>
                   </div>
                 </div>
               </div>
             </template>
           </div>
         </div>
+        <style>.group-row:hover .ms-actions{opacity:1!important;}</style>
       </div>
 
-      <!-- COMMITMENTS -->
-      <div x-show="view === 'commitments'" x-cloak>
-        <div class="flex justify-end mb-4">
+      <!-- ══ COMMITMENTS ══ -->
+      <div x-show="view==='commitments'" x-cloak>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
           <button @click="openCommitmentModal()" class="btn-primary">+ New Commitment</button>
         </div>
         <div class="card">
-          <div x-show="commitments.length === 0" class="text-sm text-gray-400 py-8 text-center">No commitments tracked</div>
-          <div class="space-y-3">
+          <div x-show="!commitments.length" style="text-align:center;padding:48px;color:#94a3b8;">No commitments tracked</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
             <template x-for="c in commitments" :key="c.commitment_id">
-              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 group">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium text-gray-800" x-text="c.title"></span>
-                    <span x-show="c.is_overdue" class="badge-red">Overdue</span>
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:#fafafa;" class="cm-row"
+                onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#fafafa'">
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:14px;font-weight:600;color:#1e293b;" x-text="c.title"></span>
+                    <span x-show="c.is_overdue" class="chip chip-red">Overdue</span>
                   </div>
-                  <div class="text-xs text-gray-400 mt-0.5" x-text="c.due_date ? 'Due: ' + c.due_date : 'No due date'"></div>
+                  <div style="font-size:12px;color:#94a3b8;margin-top:3px;" x-text="c.due_date?'Due: '+c.due_date:'No due date'"></div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span :class="commitmentBadge(c.status)" x-text="c.status"></span>
-                  <button x-show="c.status === 'pending'" @click="fulfillCommitment(c.commitment_id)" class="btn-ghost text-xs text-emerald-600">Mark Done</button>
-                  <button @click="deleteCommitment(c.commitment_id)" class="btn-ghost text-xs text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">Del</button>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span :class="'chip ' + commitmentChip(c.status)" x-text="c.status"></span>
+                  <button x-show="c.status==='pending'" @click="fulfillCommitment(c.commitment_id)"
+                    style="padding:6px 12px;border-radius:10px;background:#f0fdf4;color:#16a34a;font-size:12px;font-weight:600;border:none;cursor:pointer;">
+                    ✓ Done
+                  </button>
+                  <div class="cm-del" style="opacity:0;transition:opacity .15s;">
+                    <button @click="deleteCommitment(c.commitment_id)" class="btn-icon" style="color:#ef4444;">🗑</button>
+                  </div>
                 </div>
               </div>
             </template>
           </div>
         </div>
+        <style>.cm-row:hover .cm-del{opacity:1!important;}</style>
       </div>
 
-      <!-- ALERTS -->
-      <div x-show="view === 'alerts'" x-cloak>
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-sm text-gray-500" x-text="unreadAlerts + ' unread'"></span>
-          <button @click="openAlertModal()" class="btn-primary">+ New Alert</button>
+      <!-- ══ ALERTS ══ -->
+      <div x-show="view==='alerts'" x-cloak>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <span class="chip chip-red" x-show="unreadAlerts>0" x-text="unreadAlerts+' unread'"></span>
+          <button @click="openAlertModal()" class="btn-primary" style="margin-left:auto;">+ New Alert</button>
         </div>
         <div class="card">
-          <div x-show="alerts.length === 0" class="text-sm text-gray-400 py-8 text-center">No alerts</div>
-          <div class="space-y-2">
+          <div x-show="!alerts.length" style="text-align:center;padding:48px;color:#94a3b8;">No alerts</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
             <template x-for="a in alerts" :key="a.alert_id">
-              <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 group"
-                   :class="a.is_read ? 'opacity-60' : ''">
-                <div class="w-2 h-2 rounded-full mt-2 flex-shrink-0"
-                     :class="a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-yellow-400' : 'bg-blue-400'"></div>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium text-gray-800 text-sm" x-text="a.title"></span>
-                    <span :class="severityBadge(a.severity)" x-text="a.severity"></span>
+              <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:16px;transition:background .15s;"
+                :style="a.is_read ? 'background:#fafafa;opacity:.65' : 'background:#fff;border:1.5px solid #f1f5f9;'"
+                onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background='' " class="al-row">
+                <div style="width:10px;height:10px;border-radius:50%;margin-top:5px;flex-shrink:0;"
+                  :style="'background:'+(a.severity==='critical'?'#ef4444':a.severity==='warning'?'#f59e0b':'#6366f1')"></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+                    <span style="font-size:14px;font-weight:600;color:#1e293b;" x-text="a.title"></span>
+                    <span :class="'chip ' + severityChip(a.severity)" x-text="a.severity"></span>
                   </div>
-                  <div class="text-xs text-gray-400 mt-0.5" x-text="a.message"></div>
-                  <div class="text-xs text-gray-300 mt-1" x-text="a.created_at?.slice(0,16)?.replace('T',' ')"></div>
+                  <div style="font-size:12.5px;color:#64748b;" x-text="a.message"></div>
+                  <div style="font-size:11.5px;color:#cbd5e1;margin-top:4px;" x-text="a.created_at?.slice(0,16)?.replace('T',' ')"></div>
                 </div>
-                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button x-show="!a.is_read" @click="markAlertRead(a.alert_id)" class="btn-ghost text-xs">Read</button>
-                  <button @click="deleteAlert(a.alert_id)" class="btn-ghost text-xs text-red-500">Del</button>
+                <div class="al-actions" style="display:flex;gap:6px;opacity:0;transition:opacity .15s;">
+                  <button x-show="!a.is_read" @click="markAlertRead(a.alert_id)"
+                    style="padding:5px 10px;border-radius:9px;background:#eff6ff;color:#2563eb;font-size:12px;font-weight:600;border:none;cursor:pointer;">
+                    Read
+                  </button>
+                  <button @click="deleteAlert(a.alert_id)" class="btn-icon" style="color:#ef4444;">🗑</button>
                 </div>
               </div>
             </template>
           </div>
         </div>
+        <style>.al-row:hover .al-actions{opacity:1!important;}</style>
       </div>
 
-      <!-- SOD/EOD SUMMARIES -->
-      <div x-show="view === 'summaries'" x-cloak>
-        <div class="grid grid-cols-2 gap-6">
+      <!-- ══ SUMMARIES ══ -->
+      <div x-show="view==='summaries'" x-cloak>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
           <div class="card">
-            <div class="flex items-center gap-2 mb-4">
-              <span class="text-xl">🌅</span>
-              <h3 class="font-semibold text-gray-700">Start of Day</h3>
-              <span class="text-xs text-gray-400" x-text="sod?.date"></span>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+              <div style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#f59e0b,#fcd34d);display:flex;align-items:center;justify-content:center;font-size:20px;">🌅</div>
+              <div>
+                <div style="font-size:15px;font-weight:700;color:#1e293b;">Start of Day</div>
+                <div style="font-size:12px;color:#94a3b8;" x-text="sod?.date"></div>
+              </div>
             </div>
-            <div class="grid grid-cols-3 gap-3 mb-4" x-show="sod">
-              <div class="text-center">
-                <div class="text-2xl font-bold text-red-500" x-text="sod?.overdue_count"></div>
-                <div class="text-xs text-gray-400">Overdue</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" x-show="sod">
+              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#fff1f2,#ffe4e6);">
+                <div style="font-size:26px;font-weight:800;color:#e11d48;" x-text="sod?.overdue_count"></div>
+                <div style="font-size:11px;color:#94a3b8;font-weight:600;">Overdue</div>
               </div>
-              <div class="text-center">
-                <div class="text-2xl font-bold text-indigo-600" x-text="sod?.due_today_count"></div>
-                <div class="text-xs text-gray-400">Due Today</div>
+              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+                <div style="font-size:26px;font-weight:800;color:#2563eb;" x-text="sod?.due_today_count"></div>
+                <div style="font-size:11px;color:#94a3b8;font-weight:600;">Due Today</div>
               </div>
-              <div class="text-center">
-                <div class="text-2xl font-bold text-yellow-500" x-text="sod?.carry_forward_count"></div>
-                <div class="text-xs text-gray-400">Carry-Forward</div>
+              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#fefce8,#fef9c3);">
+                <div style="font-size:26px;font-weight:800;color:#ca8a04;" x-text="sod?.carry_forward_count"></div>
+                <div style="font-size:11px;color:#94a3b8;font-weight:600;">In Progress</div>
               </div>
             </div>
             <div x-show="sod?.due_today?.length">
-              <div class="text-xs font-semibold text-gray-400 uppercase mb-2">Today's Tasks</div>
-              <div class="space-y-1">
+              <div class="section-title">Today's Tasks</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
                 <template x-for="t in sod?.due_today" :key="t.task_id">
-                  <div class="text-sm text-gray-600 flex items-center gap-2 p-1.5 rounded hover:bg-gray-50">
-                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
-                    <span x-text="t.title"></span>
-                    <span :class="priorityBadge(t.priority)" class="ml-auto" x-text="t.priority"></span>
+                  <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#fafafa;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:#6366f1;flex-shrink:0;"></div>
+                    <span style="flex:1;font-size:13px;color:#334155;" x-text="t.title"></span>
+                    <span :class="'chip ' + priorityChip(t.priority)" x-text="t.priority"></span>
                   </div>
                 </template>
               </div>
@@ -460,28 +694,30 @@
           </div>
 
           <div class="card">
-            <div class="flex items-center gap-2 mb-4">
-              <span class="text-xl">🌇</span>
-              <h3 class="font-semibold text-gray-700">End of Day</h3>
-              <span class="text-xs text-gray-400" x-text="eod?.date"></span>
-            </div>
-            <div class="grid grid-cols-2 gap-3 mb-4" x-show="eod">
-              <div class="text-center">
-                <div class="text-2xl font-bold text-emerald-600" x-text="eod?.completed_today"></div>
-                <div class="text-xs text-gray-400">Completed</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+              <div style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:20px;">🌇</div>
+              <div>
+                <div style="font-size:15px;font-weight:700;color:#1e293b;">End of Day</div>
+                <div style="font-size:12px;color:#94a3b8;" x-text="eod?.date"></div>
               </div>
-              <div class="text-center">
-                <div class="text-2xl font-bold text-yellow-500" x-text="eod?.still_pending"></div>
-                <div class="text-xs text-gray-400">Still Pending</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;" x-show="eod">
+              <div style="text-align:center;padding:14px;border-radius:14px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+                <div style="font-size:26px;font-weight:800;color:#16a34a;" x-text="eod?.completed_today"></div>
+                <div style="font-size:11px;color:#94a3b8;font-weight:600;">Completed</div>
+              </div>
+              <div style="text-align:center;padding:14px;border-radius:14px;background:linear-gradient(135deg,#fefce8,#fef9c3);">
+                <div style="font-size:26px;font-weight:800;color:#ca8a04;" x-text="eod?.still_pending"></div>
+                <div style="font-size:11px;color:#94a3b8;font-weight:600;">Still Pending</div>
               </div>
             </div>
             <div x-show="eod?.completed?.length">
-              <div class="text-xs font-semibold text-gray-400 uppercase mb-2">Completed Today</div>
-              <div class="space-y-1">
+              <div class="section-title">Completed Today</div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
                 <template x-for="t in eod?.completed" :key="t.task_id">
-                  <div class="text-sm text-gray-600 flex items-center gap-2 p-1.5 rounded">
-                    <span class="text-emerald-500">✓</span>
-                    <span x-text="t.title"></span>
+                  <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#f0fdf4;">
+                    <span style="color:#16a34a;font-size:14px;">✓</span>
+                    <span style="flex:1;font-size:13px;color:#334155;" x-text="t.title"></span>
                   </div>
                 </template>
               </div>
@@ -490,246 +726,221 @@
         </div>
       </div>
 
-      <!-- ESTIMATE -->
-      <div x-show="view === 'estimate'" x-cloak>
-        <div class="grid grid-cols-5 gap-6">
-
-          <!-- Left: input form -->
-          <div class="col-span-2 space-y-4">
+      <!-- ══ ESTIMATOR ══ -->
+      <div x-show="view==='estimate'" x-cloak>
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;">
+          <!-- Inputs -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
             <div class="card">
-              <h3 class="font-semibold text-gray-700 mb-4">Story Parameters</h3>
-              <div class="space-y-3">
+              <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:16px;">Story Parameters</div>
 
+              <div style="margin-bottom:16px;">
+                <div class="section-title">Story Points</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                  <template x-for="pt in [1,2,3,5,8,13,21]" :key="pt">
+                    <button @click="estForm.story_points=pt;calcEstimate()"
+                      :class="['fib-btn', estForm.story_points==pt ? 'active' : '']"
+                      x-text="pt"></button>
+                  </template>
+                </div>
+              </div>
+
+              <div style="margin-bottom:14px;">
+                <div class="section-title">Complexity</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <template x-for="c in [{v:'low',l:'Low'},{v:'medium',l:'Medium'},{v:'high',l:'High'},{v:'very_high',l:'Very High'}]" :key="c.v">
+                    <button @click="estForm.complexity=c.v;calcEstimate()"
+                      :class="['toggle-btn', estForm.complexity===c.v ? 'active' : '']"
+                      x-text="c.l"></button>
+                  </template>
+                </div>
+              </div>
+
+              <div style="margin-bottom:14px;">
+                <div class="section-title">Testing Effort</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <template x-for="t in [{v:'none',l:'None'},{v:'light',l:'Light'},{v:'moderate',l:'Moderate'},{v:'thorough',l:'Thorough'}]" :key="t.v">
+                    <button @click="estForm.testing_effort=t.v;calcEstimate()"
+                      :class="['toggle-btn', estForm.testing_effort===t.v ? 'active' : '']"
+                      x-text="t.l"></button>
+                  </template>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:#f5f3ff;margin-bottom:14px;cursor:pointer;"
+                @click="estForm.has_release_paperwork=!estForm.has_release_paperwork;calcEstimate()">
+                <div style="width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s;"
+                  :style="estForm.has_release_paperwork ? 'background:#6366f1;color:#fff' : 'background:#e2e8f0;color:transparent'">✓</div>
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Story Points
-                    <span class="text-gray-400 font-normal ml-1">(Fibonacci: 1 2 3 5 8 13 21)</span>
-                  </label>
-                  <div class="flex gap-2 flex-wrap">
-                    <template x-for="pt in [1,2,3,5,8,13,21]" :key="pt">
-                      <button @click="estForm.story_points = pt; calcEstimate()"
-                              :class="estForm.story_points == pt
-                                ? 'w-10 h-10 rounded-lg bg-indigo-600 text-white text-sm font-bold shadow'
-                                : 'w-10 h-10 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-indigo-50'"
-                              x-text="pt"></button>
-                    </template>
-                  </div>
+                  <div style="font-size:13px;font-weight:600;color:#4f46e5;">Release Paperwork</div>
+                  <div style="font-size:11px;color:#94a3b8;">Adds 2 working days</div>
                 </div>
+              </div>
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Complexity</label>
-                  <div class="grid grid-cols-4 gap-1.5">
-                    <template x-for="c in ['low','medium','high','very_high']" :key="c">
-                      <button @click="estForm.complexity = c; calcEstimate()"
-                              :class="estForm.complexity === c
-                                ? 'py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white'
-                                : 'py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-indigo-50'"
-                              x-text="complexityLabel(c)"></button>
-                    </template>
-                  </div>
-                </div>
+              <div style="margin-bottom:14px;">
+                <div class="section-title">Velocity <span style="font-weight:400;text-transform:none;letter-spacing:0;">(pts/day)</span></div>
+                <input type="number" min="1" x-model="estForm.velocity" @change="calcEstimate()" class="input" style="width:100px;" />
+              </div>
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Testing Effort</label>
-                  <div class="grid grid-cols-4 gap-1.5">
-                    <template x-for="t in ['none','light','moderate','thorough']" :key="t">
-                      <button @click="estForm.testing_effort = t; calcEstimate()"
-                              :class="estForm.testing_effort === t
-                                ? 'py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white'
-                                : 'py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-indigo-50'"
-                              x-text="testingLabel(t)"></button>
-                    </template>
-                  </div>
-                </div>
+              <div style="margin-bottom:14px;">
+                <div class="section-title">Start Date</div>
+                <input type="date" x-model="estForm.start_date" @change="calcEstimate()" class="input" />
+              </div>
 
-                <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                  <input type="checkbox" id="paperwork" x-model="estForm.has_release_paperwork"
-                         @change="calcEstimate()" class="w-4 h-4 text-indigo-600 rounded" />
-                  <label for="paperwork" class="text-sm text-gray-700 cursor-pointer">
-                    Release paperwork
-                    <span class="text-xs text-gray-400 ml-1">(adds 2 working days)</span>
-                  </label>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Team Velocity
-                    <span class="text-gray-400 font-normal ml-1">(story points / working day)</span>
-                  </label>
-                  <input type="number" min="1" x-model="estForm.velocity" @change="calcEstimate()"
-                         class="input w-28" />
-                </div>
-
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
-                  <input type="date" x-model="estForm.start_date" @change="calcEstimate()" class="input" />
-                </div>
-
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1">Holidays
-                    <span class="text-gray-400 font-normal ml-1">(YYYY-MM-DD, one per line or comma-separated)</span>
-                  </label>
-                  <textarea x-model="estForm.holidays" @input="calcEstimate()"
-                            class="input h-20 resize-none font-mono text-xs"
-                            placeholder="2026-05-01&#10;2026-05-25"></textarea>
-                </div>
+              <div>
+                <div class="section-title">Holidays <span style="font-weight:400;text-transform:none;letter-spacing:0;">(YYYY-MM-DD)</span></div>
+                <textarea x-model="estForm.holidays" @input="calcEstimate()" class="input" style="height:80px;font-size:12px;font-family:monospace;"
+                  placeholder="2026-05-01&#10;2026-05-25"></textarea>
               </div>
             </div>
           </div>
 
-          <!-- Right: result + save + history -->
-          <div class="col-span-3 space-y-4">
-
-            <!-- Live result card -->
-            <div class="card" x-show="estResult">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold text-gray-700">Estimate Breakdown</h3>
-                <div x-show="estCalculating" class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <!-- Results -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <!-- Hero result -->
+            <div x-show="estResult" class="card" style="padding:0;overflow:hidden;">
+              <div style="background:linear-gradient(135deg,#312e81,#6366f1);padding:22px 24px;color:#fff;">
+                <div style="font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:6px;">Estimated End Date</div>
+                <div style="font-size:34px;font-weight:800;letter-spacing:-1px;" x-text="estResult?.estimated_end_date || '—'"></div>
+                <div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px;" x-text="estResult ? estResult.total_calendar_days + ' calendar days · ' + estResult.total_working_days + ' working days' : ''"></div>
               </div>
-
-              <!-- End date hero -->
-              <div class="bg-indigo-50 rounded-xl p-4 mb-4 flex items-center justify-between">
-                <div>
-                  <div class="text-xs text-indigo-400 uppercase tracking-wide mb-1">Estimated End Date</div>
-                  <div class="text-2xl font-bold text-indigo-700" x-text="estResult?.estimated_end_date"></div>
-                  <div class="text-xs text-indigo-400 mt-1"
-                       x-text="estResult?.total_calendar_days + ' calendar days from start'"></div>
-                </div>
-                <div class="text-5xl opacity-20">📅</div>
-              </div>
-
-              <!-- Breakdown bars -->
-              <div class="space-y-3 mb-4">
-                <div>
-                  <div class="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Development</span>
-                    <span x-text="estResult?.dev_days + ' days'"></span>
+              <div style="padding:20px 24px;">
+                <!-- Breakdown bars -->
+                <div class="section-title">Breakdown</div>
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:500;color:#475569;margin-bottom:5px;">
+                      <span>Development</span><span x-text="(estResult?.dev_days||0) + ' days'"></span>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill" style="background:linear-gradient(90deg,#6366f1,#818cf8);"
+                        :style="'width:' + (estResult?.total_working_days ? Math.min(estResult.dev_days/estResult.total_working_days*100,100) : 0) + '%'"></div>
+                    </div>
                   </div>
-                  <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="h-2 rounded-full bg-indigo-400 transition-all"
-                         :style="'width:' + (estResult ? Math.min(estResult.dev_days / estResult.total_working_days * 100, 100) : 0) + '%'"></div>
+                  <div x-show="estResult?.testing_days>0">
+                    <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:500;color:#475569;margin-bottom:5px;">
+                      <span>Testing</span><span x-text="(estResult?.testing_days||0) + ' days'"></span>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill" style="background:linear-gradient(90deg,#f59e0b,#fcd34d);"
+                        :style="'width:' + (estResult?.total_working_days ? Math.min(estResult.testing_days/estResult.total_working_days*100,100) : 0) + '%'"></div>
+                    </div>
                   </div>
-                </div>
-                <div x-show="estResult?.testing_days > 0">
-                  <div class="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Testing</span>
-                    <span x-text="estResult?.testing_days + ' days'"></span>
+                  <div x-show="estResult?.paperwork_days>0">
+                    <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:500;color:#475569;margin-bottom:5px;">
+                      <span>Release Paperwork</span><span x-text="(estResult?.paperwork_days||0) + ' days'"></span>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill" style="background:linear-gradient(90deg,#ef4444,#fb7185);"
+                        :style="'width:' + (estResult?.total_working_days ? Math.min(estResult.paperwork_days/estResult.total_working_days*100,100) : 0) + '%'"></div>
+                    </div>
                   </div>
-                  <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="h-2 rounded-full bg-amber-400 transition-all"
-                         :style="'width:' + (estResult ? Math.min(estResult.testing_days / estResult.total_working_days * 100, 100) : 0) + '%'"></div>
-                  </div>
-                </div>
-                <div x-show="estResult?.paperwork_days > 0">
-                  <div class="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Release Paperwork</span>
-                    <span x-text="estResult?.paperwork_days + ' days'"></span>
-                  </div>
-                  <div class="w-full bg-gray-100 rounded-full h-2">
-                    <div class="h-2 rounded-full bg-rose-400 transition-all"
-                         :style="'width:' + (estResult ? Math.min(estResult.paperwork_days / estResult.total_working_days * 100, 100) : 0) + '%'"></div>
+                  <div x-show="estResult?.holiday_buffer_days>0">
+                    <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:500;color:#16a34a;margin-bottom:5px;">
+                      <span>Holidays skipped</span><span x-text="(estResult?.holiday_buffer_days||0) + ' days'"></span>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill" style="background:linear-gradient(90deg,#10b981,#34d399);width:100%;"></div>
+                    </div>
                   </div>
                 </div>
-                <div x-show="estResult?.holiday_buffer_days > 0">
-                  <div class="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Holidays skipped</span>
-                    <span class="text-emerald-600" x-text="estResult?.holiday_buffer_days + ' days'"></span>
-                  </div>
-                  <div class="w-full bg-emerald-50 rounded-full h-2">
-                    <div class="h-2 rounded-full bg-emerald-300"></div>
-                  </div>
+                <!-- Summary chips -->
+                <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                  <span class="chip chip-purple" x-text="estForm.story_points + ' story pts'"></span>
+                  <span :class="'chip ' + complexityColor(estForm.complexity)" x-text="complexityLabel(estForm.complexity) + ' complexity'"></span>
+                  <span class="chip chip-teal" x-text="testingLabel(estForm.testing_effort) + ' testing'"></span>
+                  <span x-show="estForm.has_release_paperwork" class="chip chip-orange">+ paperwork</span>
+                  <span x-show="estResult?.holiday_buffer_days>0" class="chip chip-green" x-text="estResult?.holiday_buffer_days + ' holidays'"></span>
                 </div>
-              </div>
-
-              <!-- Summary pills -->
-              <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-                <span class="badge-blue" x-text="estForm.story_points + ' pts'"></span>
-                <span :class="complexityColor(estForm.complexity)" x-text="complexityLabel(estForm.complexity)"></span>
-                <span class="badge-gray" x-text="testingLabel(estForm.testing_effort) + ' testing'"></span>
-                <span x-show="estForm.has_release_paperwork" class="badge-yellow">+ paperwork</span>
-                <span class="ml-auto font-semibold text-gray-700 text-sm"
-                      x-text="estResult?.total_working_days + ' working days total'"></span>
               </div>
             </div>
 
-            <!-- Empty state -->
-            <div x-show="!estResult" class="card flex flex-col items-center justify-center py-16 text-center">
-              <div class="text-5xl mb-4">📐</div>
-              <div class="text-gray-500 text-sm">Adjust any parameter on the left to see the estimate</div>
+            <!-- Empty -->
+            <div x-show="!estResult" class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px;text-align:center;">
+              <div style="font-size:48px;margin-bottom:12px;">📐</div>
+              <div style="color:#94a3b8;font-size:14px;">Click any parameter to see the estimate</div>
             </div>
 
-            <!-- Save form -->
+            <!-- Save -->
             <div class="card" x-show="estResult">
-              <h3 class="font-semibold text-gray-700 mb-3">Save Estimation</h3>
-              <div class="flex gap-3">
-                <input x-model="estForm.title" class="input flex-1" placeholder="Estimation title (e.g. Auth Service v2)" />
-                <select x-model="estForm.project_id" class="select w-44">
+              <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px;">Save Estimation</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <input x-model="estForm.title" class="input" style="flex:1;min-width:180px;" placeholder="Label (e.g. Auth Service v2)" />
+                <select x-model="estForm.project_id" class="input" style="width:180px;">
                   <option value="">No project</option>
                   <template x-for="p in projects" :key="p.project_id">
                     <option :value="p.project_id" x-text="p.name"></option>
                   </template>
                 </select>
-                <button @click="saveEstimation()" class="btn-primary whitespace-nowrap">Save</button>
+                <button @click="saveEstimation()" class="btn-primary">Save</button>
               </div>
             </div>
 
             <!-- History -->
-            <div class="card" x-show="estimations.length > 0">
-              <h3 class="font-semibold text-gray-700 mb-3">Saved Estimations</h3>
-              <div class="space-y-2">
+            <div class="card" x-show="estimations.length>0">
+              <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:14px;">Saved Estimations</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
                 <template x-for="e in estimations" :key="e.estimation_id">
-                  <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 group">
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium text-gray-800 text-sm" x-text="e.title"></span>
-                        <span :class="complexityColor(e.complexity)" x-text="complexityLabel(e.complexity)"></span>
-                        <span class="badge-gray" x-text="e.story_points + 'pt'"></span>
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:#fafafa;transition:background .15s;" class="est-row"
+                    onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='#fafafa'">
+                    <div style="flex:1;min-width:0;">
+                      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:4px;">
+                        <span style="font-size:13.5px;font-weight:600;color:#1e293b;" x-text="e.title"></span>
+                        <span :class="'chip ' + complexityColor(e.complexity)" x-text="complexityLabel(e.complexity)"></span>
+                        <span class="chip chip-purple" x-text="e.story_points+'pt'"></span>
                       </div>
-                      <div class="text-xs text-gray-400 mt-0.5 flex gap-3">
-                        <span x-text="'Dev: ' + e.dev_days + 'd'"></span>
-                        <span x-show="e.testing_days" x-text="'Test: ' + e.testing_days + 'd'"></span>
-                        <span x-show="e.paperwork_days" x-text="'Paperwork: ' + e.paperwork_days + 'd'"></span>
-                        <span x-show="e.holiday_buffer_days" class="text-emerald-500"
-                              x-text="e.holiday_buffer_days + ' holidays'"></span>
+                      <div style="display:flex;gap:12px;font-size:11.5px;color:#94a3b8;">
+                        <span x-text="'Dev: '+e.dev_days+'d'"></span>
+                        <span x-show="e.testing_days" x-text="'Test: '+e.testing_days+'d'"></span>
+                        <span x-show="e.paperwork_days" x-text="'Paper: '+e.paperwork_days+'d'"></span>
+                        <span x-show="e.holiday_buffer_days" style="color:#10b981;" x-text="e.holiday_buffer_days+' holidays'"></span>
                       </div>
                     </div>
-                    <div class="text-right flex-shrink-0">
-                      <div class="text-sm font-bold text-indigo-600" x-text="e.estimated_end_date"></div>
-                      <div class="text-xs text-gray-400" x-text="e.total_working_days + ' working days'"></div>
+                    <div style="text-align:right;flex-shrink:0;">
+                      <div style="font-size:13.5px;font-weight:700;color:#6366f1;" x-text="e.estimated_end_date"></div>
+                      <div style="font-size:11.5px;color:#94a3b8;" x-text="e.total_working_days+' days'"></div>
                     </div>
-                    <button @click="deleteEstimation(e.estimation_id)"
-                            class="opacity-0 group-hover:opacity-100 btn-ghost text-xs text-red-500 transition-opacity">Del</button>
+                    <div class="est-del" style="opacity:0;transition:opacity .15s;">
+                      <button @click="deleteEstimation(e.estimation_id)" class="btn-icon" style="color:#ef4444;">🗑</button>
+                    </div>
                   </div>
                 </template>
               </div>
             </div>
-
           </div>
         </div>
+        <style>.est-row:hover .est-del{opacity:1!important;}</style>
       </div>
 
-    </div>
+    </div><!-- /content -->
   </main>
-</div>
+</div><!-- /layout -->
 
-<!-- TASK MODAL -->
-<div x-show="taskModal.open" x-cloak class="modal-overlay" @click.self="taskModal.open = false">
-  <div class="modal">
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-gray-800" x-text="taskModal.editing ? 'Edit Task' : 'New Task'"></h2>
-      <button @click="taskModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
-        <input x-model="taskModal.data.title" class="input" placeholder="Task title" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-        <textarea x-model="taskModal.data.description" class="input h-20 resize-none" placeholder="Optional description"></textarea>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
+<!-- ══ TASK MODAL ══ -->
+<div x-show="taskModal.open" x-cloak class="modal-backdrop" @click.self="taskModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Priority</label>
-          <select x-model="taskModal.data.priority" class="select">
+          <div style="font-size:18px;font-weight:800;" x-text="taskModal.editing ? 'Edit Task' : 'New Task'"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px;">Fill in the task details below</div>
+        </div>
+        <button @click="taskModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Title *</label>
+        <input x-model="taskModal.data.title" class="input" placeholder="What needs to be done?" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Description</label>
+        <textarea x-model="taskModal.data.description" class="input" style="height:80px;" placeholder="Optional details…"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Priority</label>
+          <select x-model="taskModal.data.priority" class="input">
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
@@ -737,8 +948,8 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
-          <select x-model="taskModal.data.status" class="select">
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Status</label>
+          <select x-model="taskModal.data.status" class="input">
             <option value="todo">To Do</option>
             <option value="in_progress">In Progress</option>
             <option value="done">Done</option>
@@ -746,14 +957,14 @@
           </select>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Due Date</label>
           <input type="date" x-model="taskModal.data.due_date" class="input" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
-          <select x-model="taskModal.data.project_id" class="select">
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Project</label>
+          <select x-model="taskModal.data.project_id" class="input">
             <option value="">No project</option>
             <template x-for="p in projects" :key="p.project_id">
               <option :value="p.project_id" x-text="p.name"></option>
@@ -762,33 +973,38 @@
         </div>
       </div>
     </div>
-    <div class="flex justify-end gap-3 mt-6">
-      <button @click="taskModal.open = false" class="btn-ghost">Cancel</button>
-      <button @click="saveTask()" class="btn-primary" x-text="taskModal.editing ? 'Update' : 'Create'"></button>
+    <div class="modal-footer">
+      <button @click="taskModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveTask()" class="btn-primary" x-text="taskModal.editing ? 'Update Task' : 'Create Task'"></button>
     </div>
   </div>
 </div>
 
-<!-- PROJECT MODAL -->
-<div x-show="projectModal.open" x-cloak class="modal-overlay" @click.self="projectModal.open = false">
-  <div class="modal">
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-gray-800" x-text="projectModal.editing ? 'Edit Project' : 'New Project'"></h2>
-      <button @click="projectModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Name *</label>
-        <input x-model="projectModal.data.name" class="input" placeholder="Project name" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-        <textarea x-model="projectModal.data.description" class="input h-20 resize-none" placeholder="Optional description"></textarea>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
+<!-- ══ PROJECT MODAL ══ -->
+<div x-show="projectModal.open" x-cloak class="modal-backdrop" @click.self="projectModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
-          <select x-model="projectModal.data.status" class="select">
+          <div style="font-size:18px;font-weight:800;" x-text="projectModal.editing ? 'Edit Project' : 'New Project'"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px;">Define project scope and ownership</div>
+        </div>
+        <button @click="projectModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Project Name *</label>
+        <input x-model="projectModal.data.name" class="input" placeholder="What are you building?" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Description</label>
+        <textarea x-model="projectModal.data.description" class="input" style="height:70px;" placeholder="Brief overview…"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Status</label>
+          <select x-model="projectModal.data.status" class="input">
             <option value="active">Active</option>
             <option value="on_hold">On Hold</option>
             <option value="completed">Completed</option>
@@ -796,46 +1012,51 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Owner</label>
-          <input x-model="projectModal.data.owner" class="input" placeholder="Owner name" />
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Owner</label>
+          <input x-model="projectModal.data.owner" class="input" placeholder="Team or person" />
         </div>
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Due Date</label>
         <input type="date" x-model="projectModal.data.due_date" class="input" />
       </div>
     </div>
-    <div class="flex justify-end gap-3 mt-6">
-      <button @click="projectModal.open = false" class="btn-ghost">Cancel</button>
-      <button @click="saveProject()" class="btn-primary" x-text="projectModal.editing ? 'Update' : 'Create'"></button>
+    <div class="modal-footer">
+      <button @click="projectModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveProject()" class="btn-primary" x-text="projectModal.editing ? 'Update Project' : 'Create Project'"></button>
     </div>
   </div>
 </div>
 
-<!-- MILESTONE MODAL -->
-<div x-show="milestoneModal.open" x-cloak class="modal-overlay" @click.self="milestoneModal.open = false">
-  <div class="modal">
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-gray-800" x-text="milestoneModal.editing ? 'Edit Milestone' : 'New Milestone'"></h2>
-      <button @click="milestoneModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
-        <input x-model="milestoneModal.data.title" class="input" placeholder="Milestone title" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-        <textarea x-model="milestoneModal.data.description" class="input h-16 resize-none"></textarea>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
+<!-- ══ MILESTONE MODAL ══ -->
+<div x-show="milestoneModal.open" x-cloak class="modal-backdrop" @click.self="milestoneModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header" style="background:linear-gradient(135deg,#0d9488,#2dd4bf);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+          <div style="font-size:18px;font-weight:800;" x-text="milestoneModal.editing ? 'Edit Milestone' : 'New Milestone'"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px;">Track a key delivery checkpoint</div>
+        </div>
+        <button @click="milestoneModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Title *</label>
+        <input x-model="milestoneModal.data.title" class="input" placeholder="Milestone name" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Description</label>
+        <textarea x-model="milestoneModal.data.description" class="input" style="height:60px;"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Due Date</label>
           <input type="date" x-model="milestoneModal.data.due_date" class="input" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
-          <select x-model="milestoneModal.data.status" class="select">
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Status</label>
+          <select x-model="milestoneModal.data.status" class="input">
             <option value="pending">Pending</option>
             <option value="completed">Completed</option>
             <option value="delayed">Delayed</option>
@@ -843,8 +1064,8 @@
         </div>
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
-        <select x-model="milestoneModal.data.project_id" class="select">
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Project</label>
+        <select x-model="milestoneModal.data.project_id" class="input">
           <option value="">No project</option>
           <template x-for="p in projects" :key="p.project_id">
             <option :value="p.project_id" x-text="p.name"></option>
@@ -852,458 +1073,343 @@
         </select>
       </div>
     </div>
-    <div class="flex justify-end gap-3 mt-6">
-      <button @click="milestoneModal.open = false" class="btn-ghost">Cancel</button>
-      <button @click="saveMilestone()" class="btn-primary" x-text="milestoneModal.editing ? 'Update' : 'Create'"></button>
+    <div class="modal-footer">
+      <button @click="milestoneModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveMilestone()" class="btn-primary" x-text="milestoneModal.editing ? 'Update' : 'Create Milestone'"></button>
     </div>
   </div>
 </div>
 
-<!-- COMMITMENT MODAL -->
-<div x-show="commitmentModal.open" x-cloak class="modal-overlay" @click.self="commitmentModal.open = false">
-  <div class="modal">
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-gray-800">New Commitment</h2>
-      <button @click="commitmentModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+<!-- ══ COMMITMENT MODAL ══ -->
+<div x-show="commitmentModal.open" x-cloak class="modal-backdrop" @click.self="commitmentModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#fcd34d);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:18px;font-weight:800;">New Commitment</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;">Track a promise or deliverable</div>
+        </div>
+        <button @click="commitmentModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
     </div>
-    <div class="space-y-4">
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
-        <input x-model="commitmentModal.data.title" class="input" placeholder="What did you commit to?" />
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">What did you commit to? *</label>
+        <input x-model="commitmentModal.data.title" class="input" placeholder="e.g. Deliver auth API to frontend team" />
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
-        <textarea x-model="commitmentModal.data.description" class="input h-16 resize-none"></textarea>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Details</label>
+        <textarea x-model="commitmentModal.data.description" class="input" style="height:60px;"></textarea>
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Due Date</label>
         <input type="date" x-model="commitmentModal.data.due_date" class="input" />
       </div>
     </div>
-    <div class="flex justify-end gap-3 mt-6">
-      <button @click="commitmentModal.open = false" class="btn-ghost">Cancel</button>
-      <button @click="saveCommitment()" class="btn-primary">Create</button>
+    <div class="modal-footer">
+      <button @click="commitmentModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveCommitment()" class="btn-primary">Create Commitment</button>
     </div>
   </div>
 </div>
 
-<!-- ALERT MODAL -->
-<div x-show="alertModal.open" x-cloak class="modal-overlay" @click.self="alertModal.open = false">
-  <div class="modal">
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-gray-800">New Alert</h2>
-      <button @click="alertModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+<!-- ══ ALERT MODAL ══ -->
+<div x-show="alertModal.open" x-cloak class="modal-backdrop" @click.self="alertModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header" style="background:linear-gradient(135deg,#ef4444,#fb7185);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:18px;font-weight:800;">New Alert</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;">Create a system or execution alert</div>
+        </div>
+        <button @click="alertModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
     </div>
-    <div class="space-y-4">
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Title *</label>
         <input x-model="alertModal.data.title" class="input" placeholder="Alert title" />
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Message</label>
-        <textarea x-model="alertModal.data.message" class="input h-16 resize-none"></textarea>
+        <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Message</label>
+        <textarea x-model="alertModal.data.message" class="input" style="height:70px;" placeholder="Describe the alert…"></textarea>
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Severity</label>
-          <select x-model="alertModal.data.severity" class="select">
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Severity</label>
+          <select x-model="alertModal.data.severity" class="input">
             <option value="info">Info</option>
             <option value="warning">Warning</option>
             <option value="critical">Critical</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Source</label>
-          <input x-model="alertModal.data.source" class="input" placeholder="system" />
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Source</label>
+          <input x-model="alertModal.data.source" class="input" placeholder="e.g. github, system" />
         </div>
       </div>
     </div>
-    <div class="flex justify-end gap-3 mt-6">
-      <button @click="alertModal.open = false" class="btn-ghost">Cancel</button>
-      <button @click="saveAlert()" class="btn-primary">Create</button>
+    <div class="modal-footer">
+      <button @click="alertModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveAlert()" class="btn-primary">Create Alert</button>
     </div>
   </div>
 </div>
 
+<!-- ══ APP SCRIPT ══ -->
 <script>
 function app() {
   return {
     view: 'dashboard',
     loading: false,
-    today: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+    today: new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),
+    todayStr: new Date().toISOString().slice(0,10),
 
     navItems: [
-      { id: 'dashboard',   icon: '📊', label: 'Dashboard' },
-      { id: 'executive',   icon: '🎯', label: 'Executive' },
-      { id: 'tasks',       icon: '✅', label: 'Tasks' },
-      { id: 'projects',    icon: '📁', label: 'Projects' },
-      { id: 'milestones',  icon: '🏁', label: 'Milestones' },
-      { id: 'commitments', icon: '🤝', label: 'Commitments' },
-      { id: 'alerts',      icon: '🔔', label: 'Alerts' },
-      { id: 'summaries',   icon: '📋', label: 'Summaries' },
-      { id: 'estimate',    icon: '📐', label: 'Estimate' },
+      { id:'dashboard',   icon:'📊', label:'Dashboard' },
+      { id:'executive',   icon:'🎯', label:'Executive' },
+      { id:'tasks',       icon:'✅', label:'Tasks' },
+      { id:'projects',    icon:'📁', label:'Projects' },
+      { id:'milestones',  icon:'🏁', label:'Milestones' },
+      { id:'commitments', icon:'🤝', label:'Commitments' },
+      { id:'alerts',      icon:'🔔', label:'Alerts' },
+      { id:'summaries',   icon:'📋', label:'Summaries' },
+      { id:'estimate',    icon:'📐', label:'Estimate' },
     ],
 
-    opDash: null,
-    exDash: null,
-    sod: null,
-    eod: null,
-
-    tasks: [],
-    filteredTasks: [],
-    taskSearch: '',
-    taskStatusFilter: '',
-    taskPriorityFilter: '',
-
-    projects: [],
-    milestones: [],
-    commitments: [],
-    alerts: [],
+    opDash: null, exDash: null, sod: null, eod: null,
+    tasks: [], filteredTasks: [],
+    taskSearch: '', taskStatusFilter: '', taskPriorityFilter: '',
+    projects: [], milestones: [], commitments: [], alerts: [],
     unreadAlerts: 0,
-
-    taskModal:       { open: false, editing: false, data: {} },
-    projectModal:    { open: false, editing: false, data: {} },
-    milestoneModal:  { open: false, editing: false, data: {} },
-    commitmentModal: { open: false, data: {} },
-    alertModal:      { open: false, data: {} },
-
     estimations: [],
     estForm: {
-      title: '', story_points: 3, complexity: 'medium', testing_effort: 'moderate',
-      has_release_paperwork: false, velocity: 2,
+      title:'', story_points:3, complexity:'medium', testing_effort:'moderate',
+      has_release_paperwork:false, velocity:2,
       start_date: new Date().toISOString().slice(0,10),
-      holidays: '', project_id: '',
+      holidays:'', project_id:'',
     },
-    estResult: null,
-    estCalculating: false,
+    estResult: null, estCalculating: false,
+
+    taskModal:       { open:false, editing:false, data:{} },
+    projectModal:    { open:false, editing:false, data:{} },
+    milestoneModal:  { open:false, editing:false, data:{} },
+    commitmentModal: { open:false, data:{} },
+    alertModal:      { open:false, data:{} },
 
     get pageTitle() {
-      const map = { dashboard: 'Operational Dashboard', executive: 'Executive Dashboard',
-        tasks: 'Tasks', projects: 'Projects', milestones: 'Milestones',
-        commitments: 'Commitments', alerts: 'Alerts', summaries: 'Daily Summaries',
-        estimate: 'Story Estimator' };
-      return map[this.view] || 'ExecOS';
+      return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
+        tasks:'Tasks', projects:'Projects', milestones:'Milestones',
+        commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
+        estimate:'Story Estimator' }[this.view] || 'ExecOS';
     },
     get pageSubtitle() {
-      const map = { dashboard: 'Today\'s execution pulse', executive: 'Portfolio health & risk',
-        tasks: 'All tasks across projects', projects: 'Project tracking & health',
-        milestones: 'Key milestones & deadlines', commitments: 'Tracked promises',
-        alerts: 'System & execution alerts', summaries: 'Start & end of day briefings',
-        estimate: 'Complexity · Testing · Holidays · Release paperwork' };
-      return map[this.view] || '';
+      return { dashboard:"Today's execution pulse", executive:'Portfolio health & risk',
+        tasks:'All tasks across projects', projects:'Project tracking & health',
+        milestones:'Key milestones & deadlines', commitments:'Tracked promises',
+        alerts:'System & execution alerts', summaries:'Start & end of day briefings',
+        estimate:'Complexity · Testing · Holidays · Release paperwork' }[this.view] || '';
     },
 
-    async init() {
-      await this.loadAll();
-    },
+    async init() { await this.loadAll(); },
 
     async loadAll() {
       this.loading = true;
       await Promise.all([
-        this.loadDashboard(),
-        this.loadTasks(),
-        this.loadProjects(),
-        this.loadMilestones(),
-        this.loadCommitments(),
-        this.loadAlerts(),
-        this.loadSummaries(),
-        this.loadEstimations(),
+        this.loadDashboard(), this.loadTasks(), this.loadProjects(),
+        this.loadMilestones(), this.loadCommitments(), this.loadAlerts(),
+        this.loadSummaries(), this.loadEstimations(),
       ]);
       this.loading = false;
     },
-
-    async refreshData() {
-      this.loading = true;
-      await this.loadAll();
-      this.loading = false;
-    },
-
-    nav(id) {
-      this.view = id;
-    },
+    async refreshData() { this.loading=true; await this.loadAll(); this.loading=false; },
+    nav(id) { this.view=id; },
 
     async loadDashboard() {
       try {
-        const [op, ex] = await Promise.all([
-          fetch('/api/dashboard/operational').then(r => r.json()),
-          fetch('/api/dashboard/executive').then(r => r.json()),
+        const [op,ex] = await Promise.all([
+          fetch('/api/dashboard/operational').then(r=>r.json()),
+          fetch('/api/dashboard/executive').then(r=>r.json()),
         ]);
-        this.opDash = op;
-        this.exDash = ex;
-      } catch(e) { console.warn('dashboard load failed', e); }
+        this.opDash=op; this.exDash=ex;
+      } catch(e) {}
     },
-
     async loadSummaries() {
       try {
-        const [s, e] = await Promise.all([
-          fetch('/api/dashboard/sod').then(r => r.json()),
-          fetch('/api/dashboard/eod').then(r => r.json()),
+        const [s,e] = await Promise.all([
+          fetch('/api/dashboard/sod').then(r=>r.json()),
+          fetch('/api/dashboard/eod').then(r=>r.json()),
         ]);
-        this.sod = s;
-        this.eod = e;
-      } catch(e) { console.warn('summaries load failed', e); }
+        this.sod=s; this.eod=e;
+      } catch(e) {}
     },
-
     async loadTasks() {
-      try {
-        this.tasks = await fetch('/api/tasks').then(r => r.json());
-        this.filterTasks();
-      } catch(e) { console.warn('tasks load failed', e); }
+      try { this.tasks=await fetch('/api/tasks').then(r=>r.json()); this.filterTasks(); } catch(e) {}
     },
-
     async loadProjects() {
-      try {
-        this.projects = await fetch('/api/projects').then(r => r.json());
-      } catch(e) { console.warn('projects load failed', e); }
+      try { this.projects=await fetch('/api/projects').then(r=>r.json()); } catch(e) {}
     },
-
     async loadMilestones() {
-      try {
-        this.milestones = await fetch('/api/milestones').then(r => r.json());
-      } catch(e) { console.warn('milestones load failed', e); }
+      try { this.milestones=await fetch('/api/milestones').then(r=>r.json()); } catch(e) {}
     },
-
     async loadCommitments() {
-      try {
-        this.commitments = await fetch('/api/commitments').then(r => r.json());
-      } catch(e) { console.warn('commitments load failed', e); }
+      try { this.commitments=await fetch('/api/commitments').then(r=>r.json()); } catch(e) {}
     },
-
     async loadAlerts() {
-      try {
-        this.alerts = await fetch('/api/alerts').then(r => r.json());
-        this.unreadAlerts = this.alerts.filter(a => !a.is_read).length;
-      } catch(e) { console.warn('alerts load failed', e); }
+      try { this.alerts=await fetch('/api/alerts').then(r=>r.json()); this.unreadAlerts=this.alerts.filter(a=>!a.is_read).length; } catch(e) {}
+    },
+    async loadEstimations() {
+      try { this.estimations=await fetch('/api/estimations').then(r=>r.json()); } catch(e) {}
     },
 
     filterTasks() {
-      let ts = this.tasks;
-      if (this.taskSearch) ts = ts.filter(t => t.title.toLowerCase().includes(this.taskSearch.toLowerCase()));
-      if (this.taskStatusFilter) ts = ts.filter(t => t.status === this.taskStatusFilter);
-      if (this.taskPriorityFilter) ts = ts.filter(t => t.priority === this.taskPriorityFilter);
-      this.filteredTasks = ts;
+      let ts=this.tasks;
+      if(this.taskSearch) ts=ts.filter(t=>t.title.toLowerCase().includes(this.taskSearch.toLowerCase()));
+      if(this.taskStatusFilter) ts=ts.filter(t=>t.status===this.taskStatusFilter);
+      if(this.taskPriorityFilter) ts=ts.filter(t=>t.priority===this.taskPriorityFilter);
+      this.filteredTasks=ts;
     },
-
-    projectName(id) {
-      const p = this.projects.find(p => p.project_id === id);
-      return p ? p.name : '';
-    },
+    projectName(id) { const p=this.projects.find(p=>p.project_id===id); return p?p.name:''; },
 
     openTaskModal(task) {
-      if (task) {
-        this.taskModal = { open: true, editing: true, data: { ...task, due_date: task.due_date || '', project_id: task.project_id || '' } };
+      if(task) {
+        this.taskModal={open:true,editing:true,data:{...task,due_date:task.due_date||'',project_id:task.project_id||''}};
       } else {
-        this.taskModal = { open: true, editing: false, data: { title: '', description: '', priority: 'medium', status: 'todo', due_date: '', project_id: '' } };
+        this.taskModal={open:true,editing:false,data:{title:'',description:'',priority:'medium',status:'todo',due_date:'',project_id:''}};
       }
     },
-
     async saveTask() {
-      const d = this.taskModal.data;
-      if (!d.title?.trim()) return;
-      const payload = { ...d, due_date: d.due_date || null, project_id: d.project_id || null };
-      try {
-        if (this.taskModal.editing) {
-          await fetch(`/api/tasks/${d.task_id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        } else {
-          await fetch('/api/tasks', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        }
-        this.taskModal.open = false;
-        await this.loadTasks();
-        await this.loadDashboard();
-      } catch(e) { alert('Failed to save task'); }
+      const d=this.taskModal.data;
+      if(!d.title?.trim()) return;
+      const payload={...d,due_date:d.due_date||null,project_id:d.project_id||null};
+      if(this.taskModal.editing) {
+        await fetch(`/api/tasks/${d.task_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      } else {
+        await fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      }
+      this.taskModal.open=false; await this.loadTasks(); await this.loadDashboard();
     },
-
     async deleteTask(id) {
-      if (!confirm('Delete this task?')) return;
-      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-      await this.loadTasks();
-      await this.loadDashboard();
-    },
-
-    async openTaskDetail(id) {
-      this.view = 'tasks';
-      const t = this.tasks.find(t => t.task_id === id);
-      if (t) this.openTaskModal(t);
+      if(!confirm('Delete this task?')) return;
+      await fetch(`/api/tasks/${id}`,{method:'DELETE'}); await this.loadTasks(); await this.loadDashboard();
     },
 
     openProjectModal(project) {
-      if (project) {
-        this.projectModal = { open: true, editing: true, data: { ...project, due_date: project.due_date || '', owner: project.owner || '' } };
+      if(project) {
+        this.projectModal={open:true,editing:true,data:{...project,due_date:project.due_date||'',owner:project.owner||''}};
       } else {
-        this.projectModal = { open: true, editing: false, data: { name: '', description: '', status: 'active', owner: '', due_date: '' } };
+        this.projectModal={open:true,editing:false,data:{name:'',description:'',status:'active',owner:'',due_date:''}};
       }
     },
-
     async saveProject() {
-      const d = this.projectModal.data;
-      if (!d.name?.trim()) return;
-      const payload = { ...d, due_date: d.due_date || null, owner: d.owner || null };
-      try {
-        if (this.projectModal.editing) {
-          await fetch(`/api/projects/${d.project_id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        } else {
-          await fetch('/api/projects', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        }
-        this.projectModal.open = false;
-        await this.loadProjects();
-        await this.loadDashboard();
-      } catch(e) { alert('Failed to save project'); }
+      const d=this.projectModal.data;
+      if(!d.name?.trim()) return;
+      const payload={...d,due_date:d.due_date||null,owner:d.owner||null};
+      if(this.projectModal.editing) {
+        await fetch(`/api/projects/${d.project_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      } else {
+        await fetch('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      }
+      this.projectModal.open=false; await this.loadProjects(); await this.loadDashboard();
     },
 
     openMilestoneModal(m) {
-      if (m) {
-        this.milestoneModal = { open: true, editing: true, data: { ...m, due_date: m.due_date || '', project_id: m.project_id || '' } };
+      if(m) {
+        this.milestoneModal={open:true,editing:true,data:{...m,due_date:m.due_date||'',project_id:m.project_id||''}};
       } else {
-        this.milestoneModal = { open: true, editing: false, data: { title: '', description: '', status: 'pending', due_date: '', project_id: '' } };
+        this.milestoneModal={open:true,editing:false,data:{title:'',description:'',status:'pending',due_date:'',project_id:''}};
       }
     },
-
     async saveMilestone() {
-      const d = this.milestoneModal.data;
-      if (!d.title?.trim()) return;
-      const payload = { ...d, due_date: d.due_date || null, project_id: d.project_id || null };
-      try {
-        if (this.milestoneModal.editing) {
-          await fetch(`/api/milestones/${d.milestone_id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        } else {
-          await fetch('/api/milestones', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        }
-        this.milestoneModal.open = false;
-        await this.loadMilestones();
-      } catch(e) { alert('Failed to save milestone'); }
+      const d=this.milestoneModal.data;
+      if(!d.title?.trim()) return;
+      const payload={...d,due_date:d.due_date||null,project_id:d.project_id||null};
+      if(this.milestoneModal.editing) {
+        await fetch(`/api/milestones/${d.milestone_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      } else {
+        await fetch('/api/milestones',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      }
+      this.milestoneModal.open=false; await this.loadMilestones();
     },
-
     async deleteMilestone(id) {
-      if (!confirm('Delete this milestone?')) return;
-      await fetch(`/api/milestones/${id}`, { method: 'DELETE' });
-      await this.loadMilestones();
+      if(!confirm('Delete this milestone?')) return;
+      await fetch(`/api/milestones/${id}`,{method:'DELETE'}); await this.loadMilestones();
     },
 
-    openCommitmentModal() {
-      this.commitmentModal = { open: true, data: { title: '', description: '', due_date: '' } };
-    },
-
+    openCommitmentModal() { this.commitmentModal={open:true,data:{title:'',description:'',due_date:''}}; },
     async saveCommitment() {
-      const d = this.commitmentModal.data;
-      if (!d.title?.trim()) return;
-      await fetch('/api/commitments', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ...d, due_date: d.due_date || null }) });
-      this.commitmentModal.open = false;
-      await this.loadCommitments();
+      const d=this.commitmentModal.data;
+      if(!d.title?.trim()) return;
+      await fetch('/api/commitments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,due_date:d.due_date||null})});
+      this.commitmentModal.open=false; await this.loadCommitments();
     },
-
     async fulfillCommitment(id) {
-      await fetch(`/api/commitments/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: 'fulfilled' }) });
+      await fetch(`/api/commitments/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'fulfilled'})});
       await this.loadCommitments();
     },
-
     async deleteCommitment(id) {
-      if (!confirm('Delete this commitment?')) return;
-      await fetch(`/api/commitments/${id}`, { method: 'DELETE' });
-      await this.loadCommitments();
+      if(!confirm('Delete?')) return;
+      await fetch(`/api/commitments/${id}`,{method:'DELETE'}); await this.loadCommitments();
     },
 
-    openAlertModal() {
-      this.alertModal = { open: true, data: { title: '', message: '', severity: 'info', source: 'system' } };
-    },
-
+    openAlertModal() { this.alertModal={open:true,data:{title:'',message:'',severity:'info',source:'system'}}; },
     async saveAlert() {
-      const d = this.alertModal.data;
-      if (!d.title?.trim()) return;
-      await fetch('/api/alerts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
-      this.alertModal.open = false;
-      await this.loadAlerts();
+      const d=this.alertModal.data;
+      if(!d.title?.trim()) return;
+      await fetch('/api/alerts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+      this.alertModal.open=false; await this.loadAlerts();
     },
-
     async markAlertRead(id) {
-      await fetch(`/api/alerts/${id}/read`, { method: 'PATCH' });
-      await this.loadAlerts();
+      await fetch(`/api/alerts/${id}/read`,{method:'PATCH'}); await this.loadAlerts();
     },
-
     async deleteAlert(id) {
-      await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
-      await this.loadAlerts();
+      await fetch(`/api/alerts/${id}`,{method:'DELETE'}); await this.loadAlerts();
     },
 
-    priorityBadge(p) {
-      return { critical: 'badge-red', high: 'badge-yellow', medium: 'badge-blue', low: 'badge-gray' }[p] || 'badge-gray';
-    },
-    statusBadge(s) {
-      return { todo: 'badge-gray', in_progress: 'badge-blue', done: 'badge-green', cancelled: 'badge-gray' }[s] || 'badge-gray';
-    },
-    healthBadge(h) {
-      return { green: 'badge-green', yellow: 'badge-yellow', red: 'badge-red', grey: 'badge-gray' }[h] || 'badge-gray';
-    },
-    projectStatusBadge(s) {
-      return { active: 'badge-green', on_hold: 'badge-yellow', completed: 'badge-blue', archived: 'badge-gray' }[s] || 'badge-gray';
-    },
-    commitmentBadge(s) {
-      return { pending: 'badge-blue', fulfilled: 'badge-green', missed: 'badge-red' }[s] || 'badge-gray';
-    },
-    severityBadge(s) {
-      return { critical: 'badge-red', warning: 'badge-yellow', info: 'badge-blue' }[s] || 'badge-gray';
-    },
-
-    // ── Estimations ──────────────────────────────────────────────────────────
-    async loadEstimations() {
-      try { this.estimations = await fetch('/api/estimations').then(r => r.json()); }
-      catch(e) { console.warn('estimations load failed', e); }
-    },
-
+    // ── Estimation ──────────────────────────────────────────────────────────
     _estPayload() {
-      const holidays = this.estForm.holidays
-        .split(/[\n,]+/).map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+      const holidays=this.estForm.holidays.split(/[\n,]+/).map(s=>s.trim()).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s));
       return {
         story_points: Number(this.estForm.story_points),
         complexity: this.estForm.complexity,
         testing_effort: this.estForm.testing_effort,
         has_release_paperwork: this.estForm.has_release_paperwork,
         velocity: Number(this.estForm.velocity),
-        start_date: this.estForm.start_date || new Date().toISOString().slice(0,10),
+        start_date: this.estForm.start_date||new Date().toISOString().slice(0,10),
         holidays,
       };
     },
-
     async calcEstimate() {
-      this.estCalculating = true;
+      this.estCalculating=true;
       try {
-        this.estResult = await fetch('/api/estimations/calculate', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(this._estPayload()),
-        }).then(r => r.json());
-      } catch(e) { alert('Calculation failed'); }
-      this.estCalculating = false;
+        this.estResult=await fetch('/api/estimations/calculate',{
+          method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this._estPayload()),
+        }).then(r=>r.json());
+      } catch(e) {}
+      this.estCalculating=false;
     },
-
     async saveEstimation() {
-      if (!this.estForm.title.trim()) { alert('Title is required'); return; }
-      const payload = {
-        title: this.estForm.title,
-        project_id: this.estForm.project_id || null,
-        ...this._estPayload(),
-      };
-      await fetch('/api/estimations', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload),
+      if(!this.estForm.title.trim()) { alert('Enter a title'); return; }
+      await fetch('/api/estimations',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({title:this.estForm.title,project_id:this.estForm.project_id||null,...this._estPayload()}),
       });
-      await this.loadEstimations();
-      this.estResult = null;
-      this.estForm.title = '';
+      await this.loadEstimations(); this.estResult=null; this.estForm.title='';
     },
-
     async deleteEstimation(id) {
-      await fetch(`/api/estimations/${id}`, { method: 'DELETE' });
-      await this.loadEstimations();
+      await fetch(`/api/estimations/${id}`,{method:'DELETE'}); await this.loadEstimations();
     },
 
-    complexityLabel(c) {
-      return { low:'Low', medium:'Medium', high:'High', very_high:'Very High' }[c] || c;
-    },
-    testingLabel(t) {
-      return { none:'None', light:'Light', moderate:'Moderate', thorough:'Thorough' }[t] || t;
-    },
-    complexityColor(c) {
-      return { low:'badge-green', medium:'badge-blue', high:'badge-yellow', very_high:'badge-red' }[c] || 'badge-gray';
-    },
+    // ── Badge helpers ────────────────────────────────────────────────────────
+    priorityChip(p)       { return {critical:'chip-red',high:'chip-orange',medium:'chip-blue',low:'chip-gray'}[p]||'chip-gray'; },
+    statusChip(s)         { return {todo:'chip-gray',in_progress:'chip-blue',done:'chip-green',cancelled:'chip-gray'}[s]||'chip-gray'; },
+    healthChip(h)         { return {green:'chip-green',yellow:'chip-yellow',red:'chip-red',grey:'chip-gray'}[h]||'chip-gray'; },
+    projectStatusChip(s)  { return {active:'chip-green',on_hold:'chip-yellow',completed:'chip-blue',archived:'chip-gray'}[s]||'chip-gray'; },
+    commitmentChip(s)     { return {pending:'chip-blue',fulfilled:'chip-green',missed:'chip-red'}[s]||'chip-gray'; },
+    severityChip(s)       { return {critical:'chip-red',warning:'chip-yellow',info:'chip-purple'}[s]||'chip-gray'; },
+    complexityColor(c)    { return {low:'chip-green',medium:'chip-blue',high:'chip-yellow',very_high:'chip-red'}[c]||'chip-gray'; },
+    complexityLabel(c)    { return {low:'Low',medium:'Medium',high:'High',very_high:'Very High'}[c]||c; },
+    testingLabel(t)       { return {none:'None',light:'Light',moderate:'Moderate',thorough:'Thorough'}[t]||t; },
   };
 }
 </script>
