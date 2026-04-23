@@ -653,6 +653,111 @@
         </div>
       </div>
 
+      <!-- ══ PROJECT TRACKER ══ -->
+      <div x-show="view==='project-tracker'" x-cloak>
+
+        <!-- Summary stats -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+          <div class="card" style="text-align:center;padding:22px 12px;">
+            <div style="font-size:32px;font-weight:800;color:#6366f1;" x-text="projects.filter(p=>p.status==='active').length"></div>
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-top:5px;">Active Projects</div>
+          </div>
+          <div class="card" style="text-align:center;padding:22px 12px;">
+            <div style="font-size:32px;font-weight:800;color:#0891b2;" x-text="tasks.filter(t=>t.status!=='done'&&t.status!=='cancelled').length"></div>
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-top:5px;">Open Tasks</div>
+          </div>
+          <div class="card" style="text-align:center;padding:22px 12px;">
+            <div style="font-size:32px;font-weight:800;color:#e11d48;" x-text="tasks.filter(t=>t.due_date&&t.due_date<todayStr&&t.status!=='done'&&t.status!=='cancelled').length"></div>
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-top:5px;">Overdue Tasks</div>
+          </div>
+          <div class="card" style="text-align:center;padding:22px 12px;">
+            <div style="font-size:32px;font-weight:800;color:#f59e0b;"
+              x-text="milestones.filter(m=>m.status!=='completed'&&m.due_date&&m.due_date>=todayStr&&m.due_date<=(new Date(Date.now()+14*864e5)).toISOString().slice(0,10)).length">
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-top:5px;">Milestones (14d)</div>
+          </div>
+        </div>
+
+        <!-- Filter bar + legend -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+          <span style="font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-right:4px;">Show</span>
+          <template x-for="f in [{v:'active',l:'Active'},{v:'all',l:'All'},{v:'on_hold',l:'On Hold'},{v:'completed',l:'Completed'}]" :key="f.v">
+            <button @click="trackerFilter=f.v"
+              :style="trackerFilter===f.v?'background:#6366f1;color:#fff;border-color:#6366f1;':''"
+              style="padding:5px 14px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;background:#fff;cursor:pointer;transition:all .15s;"
+              x-text="f.l"></button>
+          </template>
+          <div style="margin-left:auto;display:flex;gap:12px;align-items:center;font-size:11.5px;color:#64748b;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:16px;height:7px;border-radius:3px;background:#94A3B8;"></span>Todo</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:16px;height:7px;border-radius:3px;background:#6366F1;"></span>In Progress</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:16px;height:7px;border-radius:3px;background:#10B981;"></span>Done</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="color:#F59E0B;font-size:12px;">◆</span>Milestone</span>
+            <span style="display:flex;align-items:center;gap:5px;color:#ef4444;"><span style="font-size:14px;letter-spacing:-3px;">╌╌</span>Today</span>
+          </div>
+        </div>
+
+        <!-- Per-project Gantt cards -->
+        <template x-for="p in projects.filter(proj=>trackerFilter==='all'||proj.status===trackerFilter)" :key="p.project_id">
+          <div class="card" style="margin-bottom:18px;">
+
+            <!-- Project header -->
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+              <div :class="'dot-'+(p.health||'grey')" style="margin-top:4px;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:5px;" x-text="p.name"></div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span :class="'chip '+projectStatusChip(p.status)" x-text="p.status.replace('_',' ')"></span>
+                  <span x-show="p.owner" style="font-size:12px;color:#64748b;" x-text="'👤 '+p.owner"></span>
+                  <span x-show="p.due_date" style="font-size:12px;color:#64748b;" x-text="'📅 Due '+p.due_date"></span>
+                </div>
+              </div>
+              <!-- Per-project counters -->
+              <div style="display:flex;gap:16px;align-items:center;flex-shrink:0;">
+                <div style="text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:#6366f1;"
+                    x-text="tasks.filter(t=>t.project_id===p.project_id&&t.status!=='cancelled').length"></div>
+                  <div style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Tasks</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:#10b981;"
+                    x-text="tasks.filter(t=>t.project_id===p.project_id&&t.status==='done').length"></div>
+                  <div style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Done</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:20px;font-weight:800;color:#e11d48;"
+                    x-text="tasks.filter(t=>t.project_id===p.project_id&&t.due_date&&t.due_date<todayStr&&t.status!=='done'&&t.status!=='cancelled').length"></div>
+                  <div style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Overdue</div>
+                </div>
+                <button @click="exportGanttPng(p.project_id, p.name)"
+                  style="padding:7px 16px;border-radius:9px;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);border:1.5px solid #cbd5e1;font-size:12px;font-weight:700;color:#475569;cursor:pointer;white-space:nowrap;">
+                  ⬇ Export PNG
+                </button>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress-track" style="margin-bottom:14px;">
+              <div class="progress-fill"
+                :style="'width:'+( tasks.filter(t=>t.project_id===p.project_id&&t.status!=='cancelled').length > 0 ? Math.round( tasks.filter(t=>t.project_id===p.project_id&&t.status==='done').length / tasks.filter(t=>t.project_id===p.project_id&&t.status!=='cancelled').length * 100 ) : 0 )+'%;background:linear-gradient(90deg,#6366f1,#818cf8)'">
+              </div>
+            </div>
+
+            <!-- Gantt chart -->
+            <div style="overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0;"
+                 x-html="buildGanttSvg(p)">
+            </div>
+
+          </div>
+        </template>
+
+        <!-- Empty state -->
+        <div x-show="projects.filter(proj=>trackerFilter==='all'||proj.status===trackerFilter).length===0"
+          style="text-align:center;padding:80px 20px;color:#94a3b8;">
+          No projects found for this filter.
+        </div>
+
+      </div>
+
       <!-- ══ MILESTONES ══ -->
       <div x-show="view==='milestones'" x-cloak>
         <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
@@ -1569,6 +1674,7 @@ function app() {
       { id:'executive',   icon:'🎯', label:'Executive' },
       { id:'tasks',       icon:'✅', label:'Tasks' },
       { id:'projects',    icon:'📁', label:'Projects' },
+      { id:'project-tracker', icon:'📅', label:'Project Tracker' },
       { id:'milestones',  icon:'🏁', label:'Milestones' },
       { id:'commitments', icon:'🤝', label:'Commitments' },
       { id:'alerts',      icon:'🔔', label:'Alerts' },
@@ -1590,6 +1696,8 @@ function app() {
     estPlanProjectId: '',
     _estIdCounter: 0,
 
+    trackerFilter: 'active',
+
     emailCfg: { recipient_email:'', smtp_host:'smtp.gmail.com', smtp_port:587, smtp_user:'', smtp_password:'', smtp_mode:'starttls', sod_time:'08:00', eod_time:'18:00', sod_enabled:true, eod_enabled:true },
     emailMsg: '', emailMsgOk: true, emailSending: false,
 
@@ -1603,14 +1711,15 @@ function app() {
       return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
         tasks:'Tasks', projects:'Projects', milestones:'Milestones',
         commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
-        estimate:'Story Estimator' }[this.view] || 'ExecOS';
+        estimate:'Story Estimator', 'project-tracker':'Project Tracker' }[this.view] || 'ExecOS';
     },
     get pageSubtitle() {
       return { dashboard:"Today's execution pulse", executive:'Portfolio health & risk',
         tasks:'All tasks across projects', projects:'Project tracking & health',
         milestones:'Key milestones & deadlines', commitments:'Tracked promises',
         alerts:'System & execution alerts', summaries:'Start & end of day briefings',
-        estimate:'Multi-item · Weighted · Holidays · Release paperwork' }[this.view] || '';
+        estimate:'Multi-item · Weighted · Holidays · Release paperwork',
+        'project-tracker':'Gantt timeline · Current status · Export to PNG' }[this.view] || '';
     },
 
     async init() { await this.loadAll(); },
@@ -1918,6 +2027,142 @@ function app() {
     },
     async deleteEstimation(id) {
       await fetch(`/api/estimations/${id}`,{method:'DELETE'}); await this.loadEstimations();
+    },
+
+    // ── Project Tracker / Gantt ──────────────────────────────────────────────
+    buildGanttSvg(project) {
+      const LW=190, CW=640, W=LW+CW, PAD=8, RH=30, HH=46;
+      const pTasks = this.tasks.filter(t=>t.project_id===project.project_id&&t.status!=='cancelled');
+      const pMs    = this.milestones.filter(m=>m.project_id===project.project_id);
+      const today  = new Date(); today.setHours(12,0,0,0);
+      const todayIso = today.toISOString().slice(0,10);
+
+      // Build range
+      let rs = new Date(project.created_at||todayIso); rs.setHours(0,0,0,0); rs.setDate(rs.getDate()-3);
+      let re = new Date(today); re.setDate(re.getDate()+14);
+      const ext = (iso)=>{ if(!iso) return; const d=new Date(iso.slice(0,10)+'T12:00:00'); if(d>re){re=new Date(d);re.setDate(re.getDate()+5);} };
+      ext(project.due_date); pTasks.forEach(t=>ext(t.due_date)); pMs.forEach(m=>ext(m.due_date));
+      const rms = re - rs;
+
+      const cx  = (iso)=>{ if(!iso) return -999; return LW+PAD+((new Date(iso.slice(0,10)+'T12:00:00')-rs)/rms)*(CW-PAD*2); };
+      const clamp = (x)=>Math.max(LW+PAD, Math.min(W-PAD, x));
+      const todayX = cx(todayIso);
+      const e = (s)=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      const tr = (s,n)=>s&&s.length>n?s.slice(0,n-1)+'…':(s||'');
+      const sColor = {todo:'#94A3B8',in_progress:'#6366F1',done:'#10B981',cancelled:'#CBD5E1'};
+
+      const nRows = 1+pTasks.length+pMs.length;
+      const H = HH+nRows*RH+10;
+
+      let o = `<svg id="gantt-${project.project_id}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;">`;
+      o += `<rect width="${W}" height="${H}" fill="#FAFAFA"/>`;
+      o += `<rect x="0" y="0" width="${W}" height="${HH}" fill="#F1F5F9"/>`;
+      o += `<line x1="${LW}" y1="0" x2="${LW}" y2="${H}" stroke="#E2E8F0" stroke-width="1"/>`;
+      o += `<line x1="0" y1="${HH}" x2="${W}" y2="${HH}" stroke="#E2E8F0" stroke-width="1.5"/>`;
+
+      // Month grid + labels
+      const mc=new Date(rs); mc.setDate(1);
+      while(mc<=re){
+        const x=cx(mc.toISOString().slice(0,10));
+        if(x>LW&&x<W){
+          o+=`<line x1="${x.toFixed(1)}" y1="${HH}" x2="${x.toFixed(1)}" y2="${H}" stroke="#E2E8F0" stroke-width="1" opacity="0.8"/>`;
+          o+=`<text x="${(x+3).toFixed(1)}" y="18" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="600" fill="#94A3B8">${mc.toLocaleDateString('en-US',{month:'short'})}</text>`;
+          o+=`<text x="${(x+3).toFixed(1)}" y="33" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="#CBD5E1">${mc.getFullYear()}</text>`;
+        }
+        mc.setMonth(mc.getMonth()+1);
+      }
+      o+=`<text x="10" y="18" font-family="Arial,Helvetica,sans-serif" font-size="9.5" font-weight="700" fill="#94A3B8" letter-spacing="0.07em">WORK ITEM</text>`;
+      o+=`<text x="10" y="33" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="#CBD5E1">Status · Due Date</text>`;
+
+      // Today dashed line (behind rows)
+      if(todayX>LW&&todayX<W)
+        o+=`<line x1="${todayX.toFixed(1)}" y1="${HH}" x2="${todayX.toFixed(1)}" y2="${H}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.55"/>`;
+
+      let y=HH;
+
+      // ── Project bar ──
+      const psx = clamp(cx((project.created_at||todayIso).slice(0,10)));
+      const pex = project.due_date ? cx(project.due_date) : todayX;
+      const pw  = Math.max(pex-psx, 8);
+      o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#EEF2FF"/>`;
+      o+=`<text x="10" y="${(y+RH/2+4.5).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="#3730A3">${e(tr(project.name,25))}</text>`;
+      o+=`<rect x="${psx.toFixed(1)}" y="${(y+7).toFixed(1)}" width="${pw.toFixed(1)}" height="${RH-14}" rx="5" fill="#6366F1" opacity="0.85"/>`;
+      if(project.due_date){
+        const dx=cx(project.due_date);
+        o+=`<text x="${(Math.min(dx,W-52)+4).toFixed(1)}" y="${(y+RH/2+4).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="#6366F1" font-weight="600">${project.due_date}</text>`;
+      }
+      y+=RH;
+
+      // ── Task rows ──
+      pTasks.forEach((t,i)=>{
+        o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="${i%2===0?'#FFFFFF':'#F8FAFC'}"/>`;
+        const color = sColor[t.status]||'#94A3B8';
+        // status dot
+        o+=`<circle cx="12" cy="${(y+RH/2).toFixed(1)}" r="4" fill="${color}"/>`;
+        o+=`<text x="22" y="${(y+RH/2+4).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="11" fill="#334155">${e(tr(t.title,30))}</text>`;
+        if(t.due_date){
+          const tx1=clamp(cx((t.created_at||project.created_at||todayIso).slice(0,10)));
+          const tx2=cx(t.due_date);
+          const tw=Math.max(tx2-tx1,6);
+          o+=`<rect x="${tx1.toFixed(1)}" y="${(y+9).toFixed(1)}" width="${tw.toFixed(1)}" height="${RH-18}" rx="3.5" fill="${color}" opacity="0.82"/>`;
+          // due date label to the right if room
+          if(tx2+40<W)
+            o+=`<text x="${(tx2+4).toFixed(1)}" y="${(y+RH/2+3.5).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="#94A3B8">${t.due_date}</text>`;
+          // overdue dot
+          if(t.due_date<todayIso&&t.status!=='done')
+            o+=`<circle cx="${cx(t.due_date).toFixed(1)}" cy="${(y+RH/2).toFixed(1)}" r="4.5" fill="#EF4444" opacity="0.75"/>`;
+        } else {
+          o+=`<rect x="${(LW+PAD).toFixed(1)}" y="${(y+10).toFixed(1)}" width="20" height="${RH-20}" rx="3" fill="${color}" opacity="0.3"/>`;
+          o+=`<text x="${(LW+PAD+24).toFixed(1)}" y="${(y+RH/2+3.5).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="#CBD5E1" font-style="italic">no due date</text>`;
+        }
+        y+=RH;
+      });
+
+      // ── Milestone rows ──
+      pMs.forEach(m=>{
+        o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#FFFBEB"/>`;
+        o+=`<text x="22" y="${(y+RH/2+4).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="11" fill="#92400E">◆ ${e(tr(m.title,30))}</text>`;
+        if(m.due_date){
+          const mx=cx(m.due_date), my=y+RH/2;
+          const overdue=m.due_date<todayIso&&m.status!=='completed';
+          o+=`<polygon points="${mx},${my-8} ${mx+7},${my} ${mx},${my+8} ${mx-7},${my}" fill="${overdue?'#EF4444':'#F59E0B'}"/>`;
+          o+=`<text x="${(mx+11).toFixed(1)}" y="${(my+3.5).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="${overdue?'#EF4444':'#92400E'}" font-weight="600">${m.due_date}</text>`;
+        }
+        y+=RH;
+      });
+
+      // Today badge (on top of everything)
+      if(todayX>LW&&todayX<W){
+        o+=`<rect x="${(todayX-18).toFixed(1)}" y="2" width="36" height="18" rx="4" fill="#EF4444"/>`;
+        o+=`<text x="${todayX.toFixed(1)}" y="14" font-family="Arial,Helvetica,sans-serif" font-size="8.5" fill="white" text-anchor="middle" font-weight="700">TODAY</text>`;
+      }
+      o+=`<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#E2E8F0" stroke-width="1"/>`;
+      o+='</svg>';
+      return o;
+    },
+
+    exportGanttPng(projectId, projectName) {
+      const svgEl = document.getElementById(`gantt-${projectId}`);
+      if (!svgEl) { alert('Chart not rendered yet.'); return; }
+      const vb = svgEl.viewBox.baseVal;
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width  = vb.width  * scale;
+      canvas.height = vb.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, vb.width, vb.height);
+      const svgStr = new XMLSerializer().serializeToString(svgEl);
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        const a = document.createElement('a');
+        a.download = `gantt-${projectName.replace(/[^a-z0-9]/gi,'-').toLowerCase()}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      };
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
     },
 
     // ── Email ────────────────────────────────────────────────────────────────
