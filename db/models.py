@@ -105,3 +105,32 @@ class AuditLogORM(Base):
     action = Column(String(50), nullable=False)
     detail = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EstimationORM(Base):
+    __tablename__ = "estimations"
+
+    estimation_id = Column(String, primary_key=True, default=_uuid)
+    title = Column(String(500), nullable=False)
+    task_id = Column(String, nullable=True)
+    project_id = Column(String, ForeignKey("projects.project_id", ondelete="SET NULL"), nullable=True)
+
+    # Inputs
+    story_points = Column(Integer, default=1)
+    complexity = Column(String(20), default="medium")       # low / medium / high / very_high
+    testing_effort = Column(String(20), default="moderate") # none / light / moderate / thorough
+    has_release_paperwork = Column(Boolean, default=False)
+    velocity = Column(Integer, default=2)                   # story points per working day
+    start_date = Column(Date, nullable=True)
+    holidays = Column(Text, default="[]")                   # JSON list of "YYYY-MM-DD" strings
+
+    # Computed outputs (stored for history)
+    dev_days = Column(Integer, default=0)
+    testing_days = Column(Integer, default=0)
+    paperwork_days = Column(Integer, default=0)
+    holiday_buffer_days = Column(Integer, default=0)
+    total_working_days = Column(Integer, default=0)
+    estimated_end_date = Column(Date, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

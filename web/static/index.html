@@ -490,6 +490,222 @@
         </div>
       </div>
 
+      <!-- ESTIMATE -->
+      <div x-show="view === 'estimate'" x-cloak>
+        <div class="grid grid-cols-5 gap-6">
+
+          <!-- Left: input form -->
+          <div class="col-span-2 space-y-4">
+            <div class="card">
+              <h3 class="font-semibold text-gray-700 mb-4">Story Parameters</h3>
+              <div class="space-y-3">
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1">Story Points
+                    <span class="text-gray-400 font-normal ml-1">(Fibonacci: 1 2 3 5 8 13 21)</span>
+                  </label>
+                  <div class="flex gap-2 flex-wrap">
+                    <template x-for="pt in [1,2,3,5,8,13,21]" :key="pt">
+                      <button @click="estForm.story_points = pt; calcEstimate()"
+                              :class="estForm.story_points == pt
+                                ? 'w-10 h-10 rounded-lg bg-indigo-600 text-white text-sm font-bold shadow'
+                                : 'w-10 h-10 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-indigo-50'"
+                              x-text="pt"></button>
+                    </template>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1">Complexity</label>
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <template x-for="c in ['low','medium','high','very_high']" :key="c">
+                      <button @click="estForm.complexity = c; calcEstimate()"
+                              :class="estForm.complexity === c
+                                ? 'py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white'
+                                : 'py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-indigo-50'"
+                              x-text="complexityLabel(c)"></button>
+                    </template>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1">Testing Effort</label>
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <template x-for="t in ['none','light','moderate','thorough']" :key="t">
+                      <button @click="estForm.testing_effort = t; calcEstimate()"
+                              :class="estForm.testing_effort === t
+                                ? 'py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white'
+                                : 'py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-indigo-50'"
+                              x-text="testingLabel(t)"></button>
+                    </template>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                  <input type="checkbox" id="paperwork" x-model="estForm.has_release_paperwork"
+                         @change="calcEstimate()" class="w-4 h-4 text-indigo-600 rounded" />
+                  <label for="paperwork" class="text-sm text-gray-700 cursor-pointer">
+                    Release paperwork
+                    <span class="text-xs text-gray-400 ml-1">(adds 2 working days)</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1">Team Velocity
+                    <span class="text-gray-400 font-normal ml-1">(story points / working day)</span>
+                  </label>
+                  <input type="number" min="1" x-model="estForm.velocity" @change="calcEstimate()"
+                         class="input w-28" />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+                  <input type="date" x-model="estForm.start_date" @change="calcEstimate()" class="input" />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1">Holidays
+                    <span class="text-gray-400 font-normal ml-1">(YYYY-MM-DD, one per line or comma-separated)</span>
+                  </label>
+                  <textarea x-model="estForm.holidays" @input="calcEstimate()"
+                            class="input h-20 resize-none font-mono text-xs"
+                            placeholder="2026-05-01&#10;2026-05-25"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: result + save + history -->
+          <div class="col-span-3 space-y-4">
+
+            <!-- Live result card -->
+            <div class="card" x-show="estResult">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Estimate Breakdown</h3>
+                <div x-show="estCalculating" class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+
+              <!-- End date hero -->
+              <div class="bg-indigo-50 rounded-xl p-4 mb-4 flex items-center justify-between">
+                <div>
+                  <div class="text-xs text-indigo-400 uppercase tracking-wide mb-1">Estimated End Date</div>
+                  <div class="text-2xl font-bold text-indigo-700" x-text="estResult?.estimated_end_date"></div>
+                  <div class="text-xs text-indigo-400 mt-1"
+                       x-text="estResult?.total_calendar_days + ' calendar days from start'"></div>
+                </div>
+                <div class="text-5xl opacity-20">📅</div>
+              </div>
+
+              <!-- Breakdown bars -->
+              <div class="space-y-3 mb-4">
+                <div>
+                  <div class="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Development</span>
+                    <span x-text="estResult?.dev_days + ' days'"></span>
+                  </div>
+                  <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="h-2 rounded-full bg-indigo-400 transition-all"
+                         :style="'width:' + (estResult ? Math.min(estResult.dev_days / estResult.total_working_days * 100, 100) : 0) + '%'"></div>
+                  </div>
+                </div>
+                <div x-show="estResult?.testing_days > 0">
+                  <div class="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Testing</span>
+                    <span x-text="estResult?.testing_days + ' days'"></span>
+                  </div>
+                  <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="h-2 rounded-full bg-amber-400 transition-all"
+                         :style="'width:' + (estResult ? Math.min(estResult.testing_days / estResult.total_working_days * 100, 100) : 0) + '%'"></div>
+                  </div>
+                </div>
+                <div x-show="estResult?.paperwork_days > 0">
+                  <div class="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Release Paperwork</span>
+                    <span x-text="estResult?.paperwork_days + ' days'"></span>
+                  </div>
+                  <div class="w-full bg-gray-100 rounded-full h-2">
+                    <div class="h-2 rounded-full bg-rose-400 transition-all"
+                         :style="'width:' + (estResult ? Math.min(estResult.paperwork_days / estResult.total_working_days * 100, 100) : 0) + '%'"></div>
+                  </div>
+                </div>
+                <div x-show="estResult?.holiday_buffer_days > 0">
+                  <div class="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Holidays skipped</span>
+                    <span class="text-emerald-600" x-text="estResult?.holiday_buffer_days + ' days'"></span>
+                  </div>
+                  <div class="w-full bg-emerald-50 rounded-full h-2">
+                    <div class="h-2 rounded-full bg-emerald-300"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Summary pills -->
+              <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                <span class="badge-blue" x-text="estForm.story_points + ' pts'"></span>
+                <span :class="complexityColor(estForm.complexity)" x-text="complexityLabel(estForm.complexity)"></span>
+                <span class="badge-gray" x-text="testingLabel(estForm.testing_effort) + ' testing'"></span>
+                <span x-show="estForm.has_release_paperwork" class="badge-yellow">+ paperwork</span>
+                <span class="ml-auto font-semibold text-gray-700 text-sm"
+                      x-text="estResult?.total_working_days + ' working days total'"></span>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div x-show="!estResult" class="card flex flex-col items-center justify-center py-16 text-center">
+              <div class="text-5xl mb-4">📐</div>
+              <div class="text-gray-500 text-sm">Adjust any parameter on the left to see the estimate</div>
+            </div>
+
+            <!-- Save form -->
+            <div class="card" x-show="estResult">
+              <h3 class="font-semibold text-gray-700 mb-3">Save Estimation</h3>
+              <div class="flex gap-3">
+                <input x-model="estForm.title" class="input flex-1" placeholder="Estimation title (e.g. Auth Service v2)" />
+                <select x-model="estForm.project_id" class="select w-44">
+                  <option value="">No project</option>
+                  <template x-for="p in projects" :key="p.project_id">
+                    <option :value="p.project_id" x-text="p.name"></option>
+                  </template>
+                </select>
+                <button @click="saveEstimation()" class="btn-primary whitespace-nowrap">Save</button>
+              </div>
+            </div>
+
+            <!-- History -->
+            <div class="card" x-show="estimations.length > 0">
+              <h3 class="font-semibold text-gray-700 mb-3">Saved Estimations</h3>
+              <div class="space-y-2">
+                <template x-for="e in estimations" :key="e.estimation_id">
+                  <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 group">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-800 text-sm" x-text="e.title"></span>
+                        <span :class="complexityColor(e.complexity)" x-text="complexityLabel(e.complexity)"></span>
+                        <span class="badge-gray" x-text="e.story_points + 'pt'"></span>
+                      </div>
+                      <div class="text-xs text-gray-400 mt-0.5 flex gap-3">
+                        <span x-text="'Dev: ' + e.dev_days + 'd'"></span>
+                        <span x-show="e.testing_days" x-text="'Test: ' + e.testing_days + 'd'"></span>
+                        <span x-show="e.paperwork_days" x-text="'Paperwork: ' + e.paperwork_days + 'd'"></span>
+                        <span x-show="e.holiday_buffer_days" class="text-emerald-500"
+                              x-text="e.holiday_buffer_days + ' holidays'"></span>
+                      </div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <div class="text-sm font-bold text-indigo-600" x-text="e.estimated_end_date"></div>
+                      <div class="text-xs text-gray-400" x-text="e.total_working_days + ' working days'"></div>
+                    </div>
+                    <button @click="deleteEstimation(e.estimation_id)"
+                            class="opacity-0 group-hover:opacity-100 btn-ghost text-xs text-red-500 transition-opacity">Del</button>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -725,6 +941,7 @@ function app() {
       { id: 'commitments', icon: '🤝', label: 'Commitments' },
       { id: 'alerts',      icon: '🔔', label: 'Alerts' },
       { id: 'summaries',   icon: '📋', label: 'Summaries' },
+      { id: 'estimate',    icon: '📐', label: 'Estimate' },
     ],
 
     opDash: null,
@@ -750,17 +967,29 @@ function app() {
     commitmentModal: { open: false, data: {} },
     alertModal:      { open: false, data: {} },
 
+    estimations: [],
+    estForm: {
+      title: '', story_points: 3, complexity: 'medium', testing_effort: 'moderate',
+      has_release_paperwork: false, velocity: 2,
+      start_date: new Date().toISOString().slice(0,10),
+      holidays: '', project_id: '',
+    },
+    estResult: null,
+    estCalculating: false,
+
     get pageTitle() {
       const map = { dashboard: 'Operational Dashboard', executive: 'Executive Dashboard',
         tasks: 'Tasks', projects: 'Projects', milestones: 'Milestones',
-        commitments: 'Commitments', alerts: 'Alerts', summaries: 'Daily Summaries' };
+        commitments: 'Commitments', alerts: 'Alerts', summaries: 'Daily Summaries',
+        estimate: 'Story Estimator' };
       return map[this.view] || 'ExecOS';
     },
     get pageSubtitle() {
       const map = { dashboard: 'Today\'s execution pulse', executive: 'Portfolio health & risk',
         tasks: 'All tasks across projects', projects: 'Project tracking & health',
         milestones: 'Key milestones & deadlines', commitments: 'Tracked promises',
-        alerts: 'System & execution alerts', summaries: 'Start & end of day briefings' };
+        alerts: 'System & execution alerts', summaries: 'Start & end of day briefings',
+        estimate: 'Complexity · Testing · Holidays · Release paperwork' };
       return map[this.view] || '';
     },
 
@@ -778,6 +1007,7 @@ function app() {
         this.loadCommitments(),
         this.loadAlerts(),
         this.loadSummaries(),
+        this.loadEstimations(),
       ]);
       this.loading = false;
     },
@@ -1011,6 +1241,68 @@ function app() {
     },
     severityBadge(s) {
       return { critical: 'badge-red', warning: 'badge-yellow', info: 'badge-blue' }[s] || 'badge-gray';
+    },
+
+    // ── Estimations ──────────────────────────────────────────────────────────
+    async loadEstimations() {
+      try { this.estimations = await fetch('/api/estimations').then(r => r.json()); }
+      catch(e) { console.warn('estimations load failed', e); }
+    },
+
+    _estPayload() {
+      const holidays = this.estForm.holidays
+        .split(/[\n,]+/).map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+      return {
+        story_points: Number(this.estForm.story_points),
+        complexity: this.estForm.complexity,
+        testing_effort: this.estForm.testing_effort,
+        has_release_paperwork: this.estForm.has_release_paperwork,
+        velocity: Number(this.estForm.velocity),
+        start_date: this.estForm.start_date || new Date().toISOString().slice(0,10),
+        holidays,
+      };
+    },
+
+    async calcEstimate() {
+      this.estCalculating = true;
+      try {
+        this.estResult = await fetch('/api/estimations/calculate', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(this._estPayload()),
+        }).then(r => r.json());
+      } catch(e) { alert('Calculation failed'); }
+      this.estCalculating = false;
+    },
+
+    async saveEstimation() {
+      if (!this.estForm.title.trim()) { alert('Title is required'); return; }
+      const payload = {
+        title: this.estForm.title,
+        project_id: this.estForm.project_id || null,
+        ...this._estPayload(),
+      };
+      await fetch('/api/estimations', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload),
+      });
+      await this.loadEstimations();
+      this.estResult = null;
+      this.estForm.title = '';
+    },
+
+    async deleteEstimation(id) {
+      await fetch(`/api/estimations/${id}`, { method: 'DELETE' });
+      await this.loadEstimations();
+    },
+
+    complexityLabel(c) {
+      return { low:'Low', medium:'Medium', high:'High', very_high:'Very High' }[c] || c;
+    },
+    testingLabel(t) {
+      return { none:'None', light:'Light', moderate:'Moderate', thorough:'Thorough' }[t] || t;
+    },
+    complexityColor(c) {
+      return { low:'badge-green', medium:'badge-blue', high:'badge-yellow', very_high:'badge-red' }[c] || 'badge-gray';
     },
   };
 }

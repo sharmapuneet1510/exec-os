@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 import pathlib
 
 from db.init_db import create_all
-from web.routers import tasks, projects, milestones, commitments, alerts, dashboard
+from web.routers import tasks, projects, milestones, commitments, alerts, dashboard, estimation
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
@@ -14,6 +14,7 @@ app.include_router(milestones.router)
 app.include_router(commitments.router)
 app.include_router(alerts.router)
 app.include_router(dashboard.router)
+app.include_router(estimation.router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
