@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en" x-data="app()" x-init="init()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ExecOS — Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .sidebar-item { @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer; }
+    .sidebar-item:hover { @apply bg-white/10; }
+    .sidebar-item.active { @apply bg-white/20 text-white; }
+    .card { @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5; }
+    .badge-red { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700; }
+    .badge-yellow { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700; }
+    .badge-green { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700; }
+    .badge-blue { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700; }
+    .badge-gray { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600; }
+    .btn-primary { @apply px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors; }
+    .btn-ghost { @apply px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors; }
+    .input { @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+    .select { @apply w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white; }
+    .health-dot-green { @apply w-2.5 h-2.5 rounded-full bg-emerald-400; }
+    .health-dot-yellow { @apply w-2.5 h-2.5 rounded-full bg-yellow-400; }
+    .health-dot-red { @apply w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse; }
+    .health-dot-grey { @apply w-2.5 h-2.5 rounded-full bg-gray-300; }
+    .modal-overlay { @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center; }
+    .modal { @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6; }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans antialiased">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-60 flex-shrink-0 bg-gradient-to-b from-indigo-700 to-indigo-900 text-white/80 flex flex-col">
+    <div class="px-5 py-6 border-b border-white/10">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-white font-bold text-base leading-tight">ExecOS</div>
+          <div class="text-white/50 text-xs">Command Center</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <template x-for="item in navItems" :key="item.id">
+        <div @click="nav(item.id)"
+             :class="['sidebar-item', view === item.id ? 'active text-white' : 'text-white/70']">
+          <span class="text-lg" x-text="item.icon"></span>
+          <span x-text="item.label"></span>
+          <span x-show="item.id === 'alerts' && unreadAlerts > 0"
+                class="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+                x-text="unreadAlerts"></span>
+        </div>
+      </template>
+    </nav>
+
+    <div class="px-4 py-4 border-t border-white/10 text-xs text-white/40">
+      <div x-text="today"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Topbar -->
+    <header class="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h1 class="text-base font-semibold text-gray-800" x-text="pageTitle"></h1>
+        <p class="text-xs text-gray-400 mt-0.5" x-text="pageSubtitle"></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button @click="refreshData()" class="btn-ghost" title="Refresh">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </button>
+        <div x-show="loading" class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-6">
+
+      <!-- DASHBOARD -->
+      <div x-show="view === 'dashboard'" x-cloak>
+        <div class="grid grid-cols-4 gap-4 mb-6" x-show="opDash">
+          <div class="card">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Total Tasks</div>
+            <div class="text-3xl font-bold text-gray-800" x-text="opDash?.total_tasks ?? '—'"></div>
+          </div>
+          <div class="card">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Done Today</div>
+            <div class="text-3xl font-bold text-emerald-600" x-text="opDash?.done_today ?? '—'"></div>
+          </div>
+          <div class="card border-l-4 border-red-400">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Overdue</div>
+            <div class="text-3xl font-bold text-red-600" x-text="opDash?.overdue_count ?? '—'"></div>
+          </div>
+          <div class="card">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">In Progress</div>
+            <div class="text-3xl font-bold text-indigo-600" x-text="opDash?.in_progress_count ?? '—'"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <!-- Overdue tasks -->
+          <div class="card col-span-2">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-gray-700">Overdue Tasks</h3>
+              <span class="badge-red" x-text="opDash?.overdue_count + ' overdue'"></span>
+            </div>
+            <div x-show="opDash?.overdue_tasks?.length === 0" class="text-sm text-gray-400 py-4 text-center">No overdue tasks 🎉</div>
+            <div class="space-y-2">
+              <template x-for="t in opDash?.overdue_tasks" :key="t.task_id">
+                <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer" @click="openTaskDetail(t.task_id)">
+                  <div class="w-1.5 h-8 rounded-full"
+                       :class="t.priority === 'critical' ? 'bg-red-500' : t.priority === 'high' ? 'bg-orange-400' : t.priority === 'medium' ? 'bg-yellow-400' : 'bg-gray-300'"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-800 truncate" x-text="t.title"></div>
+                    <div class="text-xs text-red-500" x-text="'Due: ' + t.due_date"></div>
+                  </div>
+                  <span :class="priorityBadge(t.priority)" x-text="t.priority"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Right panel -->
+          <div class="space-y-4">
+            <div class="card">
+              <h3 class="font-semibold text-gray-700 mb-3">Upcoming (7d)</h3>
+              <div x-show="!opDash?.upcoming_tasks?.length" class="text-sm text-gray-400">Nothing scheduled</div>
+              <div class="space-y-1.5">
+                <template x-for="t in opDash?.upcoming_tasks?.slice(0,5)" :key="t.task_id">
+                  <div class="text-sm text-gray-600 flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
+                    <span class="truncate" x-text="t.title"></span>
+                    <span class="ml-auto text-xs text-gray-400 flex-shrink-0" x-text="t.due_date"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card">
+              <h3 class="font-semibold text-gray-700 mb-3">Milestones</h3>
+              <div x-show="!opDash?.upcoming_milestones?.length" class="text-sm text-gray-400">None upcoming</div>
+              <div class="space-y-1.5">
+                <template x-for="m in opDash?.upcoming_milestones" :key="m.milestone_id">
+                  <div class="text-sm text-gray-600 flex items-center gap-2">
+                    <span class="text-base">🏁</span>
+                    <span class="truncate" x-text="m.title"></span>
+                    <span class="ml-auto text-xs text-gray-400 flex-shrink-0" x-text="m.due_date"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXECUTIVE DASHBOARD -->
+      <div x-show="view === 'executive'" x-cloak>
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="card border-l-4 border-indigo-400">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Projects Active</div>
+            <div class="text-3xl font-bold text-gray-800" x-text="exDash?.projects_total ?? '—'"></div>
+          </div>
+          <div class="card border-l-4 border-red-400">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">At Risk</div>
+            <div class="text-3xl font-bold text-red-600" x-text="exDash?.projects_at_risk ?? '—'"></div>
+          </div>
+          <div class="card border-l-4 border-emerald-400">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">On Track</div>
+            <div class="text-3xl font-bold text-emerald-600" x-text="exDash?.projects_on_track ?? '—'"></div>
+          </div>
+          <div class="card border-l-4 border-yellow-400">
+            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Commitment Risk</div>
+            <div class="text-3xl font-bold text-yellow-600" x-text="exDash ? (exDash.commitment_risk_score * 100).toFixed(0) + '%' : '—'"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="font-semibold text-gray-700 mb-4">Project Health</h3>
+          <div x-show="!exDash?.project_health?.length" class="text-sm text-gray-400 py-6 text-center">No active projects</div>
+          <div class="space-y-3">
+            <template x-for="p in exDash?.project_health" :key="p.project_id">
+              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50">
+                <div :class="'health-dot-' + p.health"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-medium text-gray-800" x-text="p.name"></span>
+                    <span :class="healthBadge(p.health)" x-text="p.health"></span>
+                  </div>
+                  <div class="w-full bg-gray-100 rounded-full h-1.5">
+                    <div class="h-1.5 rounded-full transition-all"
+                         :class="p.health === 'green' ? 'bg-emerald-400' : p.health === 'yellow' ? 'bg-yellow-400' : 'bg-red-400'"
+                         :style="'width: ' + p.completion_pct + '%'"></div>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="text-sm font-bold text-gray-700" x-text="p.completion_pct + '%'"></div>
+                  <div class="text-xs text-gray-400" x-text="p.task_count + ' tasks'"></div>
+                </div>
+                <div x-show="p.overdue_count > 0" class="badge-red" x-text="p.overdue_count + ' overdue'"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- TASKS -->
+      <div x-show="view === 'tasks'" x-cloak>
+        <div class="flex items-center gap-3 mb-4">
+          <input x-model="taskSearch" @input="filterTasks()" class="input max-w-xs" placeholder="Search tasks…" />
+          <select x-model="taskStatusFilter" @change="filterTasks()" class="select w-36">
+            <option value="">All status</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select x-model="taskPriorityFilter" @change="filterTasks()" class="select w-36">
+            <option value="">All priority</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <div class="ml-auto">
+            <button @click="openTaskModal()" class="btn-primary">+ New Task</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div x-show="filteredTasks.length === 0" class="text-sm text-gray-400 py-8 text-center">No tasks found</div>
+          <table class="w-full text-sm" x-show="filteredTasks.length > 0">
+            <thead>
+              <tr class="border-b border-gray-100 text-left">
+                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</th>
+                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
+                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Priority</th>
+                <th class="pb-3 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Due Date</th>
+                <th class="pb-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Project</th>
+                <th class="pb-3"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <template x-for="t in filteredTasks" :key="t.task_id">
+                <tr class="hover:bg-gray-50/70 group">
+                  <td class="py-3 pr-4">
+                    <div class="font-medium text-gray-800 truncate max-w-xs" x-text="t.title"></div>
+                    <div class="text-xs text-gray-400 truncate" x-text="t.description" x-show="t.description"></div>
+                  </td>
+                  <td class="py-3 pr-4">
+                    <span :class="statusBadge(t.status)" x-text="t.status.replace('_', ' ')"></span>
+                  </td>
+                  <td class="py-3 pr-4">
+                    <span :class="priorityBadge(t.priority)" x-text="t.priority"></span>
+                  </td>
+                  <td class="py-3 pr-4">
+                    <span :class="t.due_date && t.due_date < today && t.status !== 'done' ? 'text-red-500 font-medium' : 'text-gray-500'"
+                          x-text="t.due_date || '—'"></span>
+                  </td>
+                  <td class="py-3 pr-4">
+                    <span class="text-gray-500 text-xs" x-text="projectName(t.project_id)"></span>
+                  </td>
+                  <td class="py-3">
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button @click="openTaskModal(t)" class="btn-ghost text-xs">Edit</button>
+                      <button @click="deleteTask(t.task_id)" class="btn-ghost text-xs text-red-500 hover:text-red-700">Del</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PROJECTS -->
+      <div x-show="view === 'projects'" x-cloak>
+        <div class="flex justify-end mb-4">
+          <button @click="openProjectModal()" class="btn-primary">+ New Project</button>
+        </div>
+        <div x-show="projects.length === 0" class="text-sm text-gray-400 text-center py-12">No projects yet. Create your first project.</div>
+        <div class="grid grid-cols-3 gap-4">
+          <template x-for="p in projects" :key="p.project_id">
+            <div class="card hover:shadow-md transition-shadow cursor-pointer" @click="openProjectModal(p)">
+              <div class="flex items-start justify-between mb-3">
+                <div>
+                  <h3 class="font-semibold text-gray-800 mb-1" x-text="p.name"></h3>
+                  <p class="text-xs text-gray-400 line-clamp-2" x-text="p.description || 'No description'"></p>
+                </div>
+                <div :class="'health-dot-' + p.health + ' mt-1 flex-shrink-0'"></div>
+              </div>
+              <div class="flex items-center gap-3 mb-3">
+                <span :class="projectStatusBadge(p.status)" x-text="p.status"></span>
+                <span class="text-xs text-gray-400" x-text="p.owner ? '👤 ' + p.owner : ''"></span>
+              </div>
+              <div class="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+                <div class="h-1.5 rounded-full bg-indigo-500 transition-all"
+                     :style="'width: ' + (p.task_count > 0 ? Math.round(p.completed_count / p.task_count * 100) : 0) + '%'"></div>
+              </div>
+              <div class="flex items-center justify-between text-xs text-gray-400">
+                <span x-text="p.completed_count + '/' + p.task_count + ' tasks'"></span>
+                <span x-show="p.due_date" x-text="'Due: ' + p.due_date"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- MILESTONES -->
+      <div x-show="view === 'milestones'" x-cloak>
+        <div class="flex justify-end mb-4">
+          <button @click="openMilestoneModal()" class="btn-primary">+ New Milestone</button>
+        </div>
+        <div class="card">
+          <div x-show="milestones.length === 0" class="text-sm text-gray-400 py-8 text-center">No milestones yet</div>
+          <div class="space-y-3">
+            <template x-for="m in milestones" :key="m.milestone_id">
+              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 group">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                     :class="m.status === 'completed' ? 'bg-emerald-100' : m.is_overdue ? 'bg-red-100' : 'bg-indigo-100'">
+                  <span x-text="m.status === 'completed' ? '✅' : m.is_overdue ? '⚠️' : '🏁'" class="text-base"></span>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-800" x-text="m.title"></span>
+                    <span x-show="m.is_overdue" class="badge-red">Overdue</span>
+                  </div>
+                  <div class="text-xs text-gray-400 mt-0.5" x-text="(m.due_date ? 'Due: ' + m.due_date : '') + (m.project_id ? ' · ' + projectName(m.project_id) : '')"></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span :class="m.status === 'completed' ? 'badge-green' : m.status === 'delayed' ? 'badge-red' : 'badge-blue'" x-text="m.status"></span>
+                  <div class="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                    <button @click="openMilestoneModal(m)" class="btn-ghost text-xs">Edit</button>
+                    <button @click="deleteMilestone(m.milestone_id)" class="btn-ghost text-xs text-red-500">Del</button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMITMENTS -->
+      <div x-show="view === 'commitments'" x-cloak>
+        <div class="flex justify-end mb-4">
+          <button @click="openCommitmentModal()" class="btn-primary">+ New Commitment</button>
+        </div>
+        <div class="card">
+          <div x-show="commitments.length === 0" class="text-sm text-gray-400 py-8 text-center">No commitments tracked</div>
+          <div class="space-y-3">
+            <template x-for="c in commitments" :key="c.commitment_id">
+              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 group">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-800" x-text="c.title"></span>
+                    <span x-show="c.is_overdue" class="badge-red">Overdue</span>
+                  </div>
+                  <div class="text-xs text-gray-400 mt-0.5" x-text="c.due_date ? 'Due: ' + c.due_date : 'No due date'"></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span :class="commitmentBadge(c.status)" x-text="c.status"></span>
+                  <button x-show="c.status === 'pending'" @click="fulfillCommitment(c.commitment_id)" class="btn-ghost text-xs text-emerald-600">Mark Done</button>
+                  <button @click="deleteCommitment(c.commitment_id)" class="btn-ghost text-xs text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">Del</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERTS -->
+      <div x-show="view === 'alerts'" x-cloak>
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-sm text-gray-500" x-text="unreadAlerts + ' unread'"></span>
+          <button @click="openAlertModal()" class="btn-primary">+ New Alert</button>
+        </div>
+        <div class="card">
+          <div x-show="alerts.length === 0" class="text-sm text-gray-400 py-8 text-center">No alerts</div>
+          <div class="space-y-2">
+            <template x-for="a in alerts" :key="a.alert_id">
+              <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 group"
+                   :class="a.is_read ? 'opacity-60' : ''">
+                <div class="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+                     :class="a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-yellow-400' : 'bg-blue-400'"></div>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-800 text-sm" x-text="a.title"></span>
+                    <span :class="severityBadge(a.severity)" x-text="a.severity"></span>
+                  </div>
+                  <div class="text-xs text-gray-400 mt-0.5" x-text="a.message"></div>
+                  <div class="text-xs text-gray-300 mt-1" x-text="a.created_at?.slice(0,16)?.replace('T',' ')"></div>
+                </div>
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button x-show="!a.is_read" @click="markAlertRead(a.alert_id)" class="btn-ghost text-xs">Read</button>
+                  <button @click="deleteAlert(a.alert_id)" class="btn-ghost text-xs text-red-500">Del</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOD/EOD SUMMARIES -->
+      <div x-show="view === 'summaries'" x-cloak>
+        <div class="grid grid-cols-2 gap-6">
+          <div class="card">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="text-xl">🌅</span>
+              <h3 class="font-semibold text-gray-700">Start of Day</h3>
+              <span class="text-xs text-gray-400" x-text="sod?.date"></span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mb-4" x-show="sod">
+              <div class="text-center">
+                <div class="text-2xl font-bold text-red-500" x-text="sod?.overdue_count"></div>
+                <div class="text-xs text-gray-400">Overdue</div>
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-indigo-600" x-text="sod?.due_today_count"></div>
+                <div class="text-xs text-gray-400">Due Today</div>
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-yellow-500" x-text="sod?.carry_forward_count"></div>
+                <div class="text-xs text-gray-400">Carry-Forward</div>
+              </div>
+            </div>
+            <div x-show="sod?.due_today?.length">
+              <div class="text-xs font-semibold text-gray-400 uppercase mb-2">Today's Tasks</div>
+              <div class="space-y-1">
+                <template x-for="t in sod?.due_today" :key="t.task_id">
+                  <div class="text-sm text-gray-600 flex items-center gap-2 p-1.5 rounded hover:bg-gray-50">
+                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
+                    <span x-text="t.title"></span>
+                    <span :class="priorityBadge(t.priority)" class="ml-auto" x-text="t.priority"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="text-xl">🌇</span>
+              <h3 class="font-semibold text-gray-700">End of Day</h3>
+              <span class="text-xs text-gray-400" x-text="eod?.date"></span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4" x-show="eod">
+              <div class="text-center">
+                <div class="text-2xl font-bold text-emerald-600" x-text="eod?.completed_today"></div>
+                <div class="text-xs text-gray-400">Completed</div>
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-yellow-500" x-text="eod?.still_pending"></div>
+                <div class="text-xs text-gray-400">Still Pending</div>
+              </div>
+            </div>
+            <div x-show="eod?.completed?.length">
+              <div class="text-xs font-semibold text-gray-400 uppercase mb-2">Completed Today</div>
+              <div class="space-y-1">
+                <template x-for="t in eod?.completed" :key="t.task_id">
+                  <div class="text-sm text-gray-600 flex items-center gap-2 p-1.5 rounded">
+                    <span class="text-emerald-500">✓</span>
+                    <span x-text="t.title"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- TASK MODAL -->
+<div x-show="taskModal.open" x-cloak class="modal-overlay" @click.self="taskModal.open = false">
+  <div class="modal">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-gray-800" x-text="taskModal.editing ? 'Edit Task' : 'New Task'"></h2>
+      <button @click="taskModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+        <input x-model="taskModal.data.title" class="input" placeholder="Task title" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+        <textarea x-model="taskModal.data.description" class="input h-20 resize-none" placeholder="Optional description"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Priority</label>
+          <select x-model="taskModal.data.priority" class="select">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select x-model="taskModal.data.status" class="select">
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+          <input type="date" x-model="taskModal.data.due_date" class="input" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
+          <select x-model="taskModal.data.project_id" class="select">
+            <option value="">No project</option>
+            <template x-for="p in projects" :key="p.project_id">
+              <option :value="p.project_id" x-text="p.name"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button @click="taskModal.open = false" class="btn-ghost">Cancel</button>
+      <button @click="saveTask()" class="btn-primary" x-text="taskModal.editing ? 'Update' : 'Create'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div x-show="projectModal.open" x-cloak class="modal-overlay" @click.self="projectModal.open = false">
+  <div class="modal">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-gray-800" x-text="projectModal.editing ? 'Edit Project' : 'New Project'"></h2>
+      <button @click="projectModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Name *</label>
+        <input x-model="projectModal.data.name" class="input" placeholder="Project name" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+        <textarea x-model="projectModal.data.description" class="input h-20 resize-none" placeholder="Optional description"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select x-model="projectModal.data.status" class="select">
+            <option value="active">Active</option>
+            <option value="on_hold">On Hold</option>
+            <option value="completed">Completed</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Owner</label>
+          <input x-model="projectModal.data.owner" class="input" placeholder="Owner name" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+        <input type="date" x-model="projectModal.data.due_date" class="input" />
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button @click="projectModal.open = false" class="btn-ghost">Cancel</button>
+      <button @click="saveProject()" class="btn-primary" x-text="projectModal.editing ? 'Update' : 'Create'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- MILESTONE MODAL -->
+<div x-show="milestoneModal.open" x-cloak class="modal-overlay" @click.self="milestoneModal.open = false">
+  <div class="modal">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-gray-800" x-text="milestoneModal.editing ? 'Edit Milestone' : 'New Milestone'"></h2>
+      <button @click="milestoneModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+        <input x-model="milestoneModal.data.title" class="input" placeholder="Milestone title" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+        <textarea x-model="milestoneModal.data.description" class="input h-16 resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+          <input type="date" x-model="milestoneModal.data.due_date" class="input" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select x-model="milestoneModal.data.status" class="select">
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="delayed">Delayed</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Project</label>
+        <select x-model="milestoneModal.data.project_id" class="select">
+          <option value="">No project</option>
+          <template x-for="p in projects" :key="p.project_id">
+            <option :value="p.project_id" x-text="p.name"></option>
+          </template>
+        </select>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button @click="milestoneModal.open = false" class="btn-ghost">Cancel</button>
+      <button @click="saveMilestone()" class="btn-primary" x-text="milestoneModal.editing ? 'Update' : 'Create'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- COMMITMENT MODAL -->
+<div x-show="commitmentModal.open" x-cloak class="modal-overlay" @click.self="commitmentModal.open = false">
+  <div class="modal">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-gray-800">New Commitment</h2>
+      <button @click="commitmentModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+        <input x-model="commitmentModal.data.title" class="input" placeholder="What did you commit to?" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+        <textarea x-model="commitmentModal.data.description" class="input h-16 resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+        <input type="date" x-model="commitmentModal.data.due_date" class="input" />
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button @click="commitmentModal.open = false" class="btn-ghost">Cancel</button>
+      <button @click="saveCommitment()" class="btn-primary">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALERT MODAL -->
+<div x-show="alertModal.open" x-cloak class="modal-overlay" @click.self="alertModal.open = false">
+  <div class="modal">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-gray-800">New Alert</h2>
+      <button @click="alertModal.open = false" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+        <input x-model="alertModal.data.title" class="input" placeholder="Alert title" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Message</label>
+        <textarea x-model="alertModal.data.message" class="input h-16 resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Severity</label>
+          <select x-model="alertModal.data.severity" class="select">
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Source</label>
+          <input x-model="alertModal.data.source" class="input" placeholder="system" />
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6">
+      <button @click="alertModal.open = false" class="btn-ghost">Cancel</button>
+      <button @click="saveAlert()" class="btn-primary">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function app() {
+  return {
+    view: 'dashboard',
+    loading: false,
+    today: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+
+    navItems: [
+      { id: 'dashboard',   icon: '📊', label: 'Dashboard' },
+      { id: 'executive',   icon: '🎯', label: 'Executive' },
+      { id: 'tasks',       icon: '✅', label: 'Tasks' },
+      { id: 'projects',    icon: '📁', label: 'Projects' },
+      { id: 'milestones',  icon: '🏁', label: 'Milestones' },
+      { id: 'commitments', icon: '🤝', label: 'Commitments' },
+      { id: 'alerts',      icon: '🔔', label: 'Alerts' },
+      { id: 'summaries',   icon: '📋', label: 'Summaries' },
+    ],
+
+    opDash: null,
+    exDash: null,
+    sod: null,
+    eod: null,
+
+    tasks: [],
+    filteredTasks: [],
+    taskSearch: '',
+    taskStatusFilter: '',
+    taskPriorityFilter: '',
+
+    projects: [],
+    milestones: [],
+    commitments: [],
+    alerts: [],
+    unreadAlerts: 0,
+
+    taskModal:       { open: false, editing: false, data: {} },
+    projectModal:    { open: false, editing: false, data: {} },
+    milestoneModal:  { open: false, editing: false, data: {} },
+    commitmentModal: { open: false, data: {} },
+    alertModal:      { open: false, data: {} },
+
+    get pageTitle() {
+      const map = { dashboard: 'Operational Dashboard', executive: 'Executive Dashboard',
+        tasks: 'Tasks', projects: 'Projects', milestones: 'Milestones',
+        commitments: 'Commitments', alerts: 'Alerts', summaries: 'Daily Summaries' };
+      return map[this.view] || 'ExecOS';
+    },
+    get pageSubtitle() {
+      const map = { dashboard: 'Today\'s execution pulse', executive: 'Portfolio health & risk',
+        tasks: 'All tasks across projects', projects: 'Project tracking & health',
+        milestones: 'Key milestones & deadlines', commitments: 'Tracked promises',
+        alerts: 'System & execution alerts', summaries: 'Start & end of day briefings' };
+      return map[this.view] || '';
+    },
+
+    async init() {
+      await this.loadAll();
+    },
+
+    async loadAll() {
+      this.loading = true;
+      await Promise.all([
+        this.loadDashboard(),
+        this.loadTasks(),
+        this.loadProjects(),
+        this.loadMilestones(),
+        this.loadCommitments(),
+        this.loadAlerts(),
+        this.loadSummaries(),
+      ]);
+      this.loading = false;
+    },
+
+    async refreshData() {
+      this.loading = true;
+      await this.loadAll();
+      this.loading = false;
+    },
+
+    nav(id) {
+      this.view = id;
+    },
+
+    async loadDashboard() {
+      try {
+        const [op, ex] = await Promise.all([
+          fetch('/api/dashboard/operational').then(r => r.json()),
+          fetch('/api/dashboard/executive').then(r => r.json()),
+        ]);
+        this.opDash = op;
+        this.exDash = ex;
+      } catch(e) { console.warn('dashboard load failed', e); }
+    },
+
+    async loadSummaries() {
+      try {
+        const [s, e] = await Promise.all([
+          fetch('/api/dashboard/sod').then(r => r.json()),
+          fetch('/api/dashboard/eod').then(r => r.json()),
+        ]);
+        this.sod = s;
+        this.eod = e;
+      } catch(e) { console.warn('summaries load failed', e); }
+    },
+
+    async loadTasks() {
+      try {
+        this.tasks = await fetch('/api/tasks').then(r => r.json());
+        this.filterTasks();
+      } catch(e) { console.warn('tasks load failed', e); }
+    },
+
+    async loadProjects() {
+      try {
+        this.projects = await fetch('/api/projects').then(r => r.json());
+      } catch(e) { console.warn('projects load failed', e); }
+    },
+
+    async loadMilestones() {
+      try {
+        this.milestones = await fetch('/api/milestones').then(r => r.json());
+      } catch(e) { console.warn('milestones load failed', e); }
+    },
+
+    async loadCommitments() {
+      try {
+        this.commitments = await fetch('/api/commitments').then(r => r.json());
+      } catch(e) { console.warn('commitments load failed', e); }
+    },
+
+    async loadAlerts() {
+      try {
+        this.alerts = await fetch('/api/alerts').then(r => r.json());
+        this.unreadAlerts = this.alerts.filter(a => !a.is_read).length;
+      } catch(e) { console.warn('alerts load failed', e); }
+    },
+
+    filterTasks() {
+      let ts = this.tasks;
+      if (this.taskSearch) ts = ts.filter(t => t.title.toLowerCase().includes(this.taskSearch.toLowerCase()));
+      if (this.taskStatusFilter) ts = ts.filter(t => t.status === this.taskStatusFilter);
+      if (this.taskPriorityFilter) ts = ts.filter(t => t.priority === this.taskPriorityFilter);
+      this.filteredTasks = ts;
+    },
+
+    projectName(id) {
+      const p = this.projects.find(p => p.project_id === id);
+      return p ? p.name : '';
+    },
+
+    openTaskModal(task) {
+      if (task) {
+        this.taskModal = { open: true, editing: true, data: { ...task, due_date: task.due_date || '', project_id: task.project_id || '' } };
+      } else {
+        this.taskModal = { open: true, editing: false, data: { title: '', description: '', priority: 'medium', status: 'todo', due_date: '', project_id: '' } };
+      }
+    },
+
+    async saveTask() {
+      const d = this.taskModal.data;
+      if (!d.title?.trim()) return;
+      const payload = { ...d, due_date: d.due_date || null, project_id: d.project_id || null };
+      try {
+        if (this.taskModal.editing) {
+          await fetch(`/api/tasks/${d.task_id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        } else {
+          await fetch('/api/tasks', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        }
+        this.taskModal.open = false;
+        await this.loadTasks();
+        await this.loadDashboard();
+      } catch(e) { alert('Failed to save task'); }
+    },
+
+    async deleteTask(id) {
+      if (!confirm('Delete this task?')) return;
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      await this.loadTasks();
+      await this.loadDashboard();
+    },
+
+    async openTaskDetail(id) {
+      this.view = 'tasks';
+      const t = this.tasks.find(t => t.task_id === id);
+      if (t) this.openTaskModal(t);
+    },
+
+    openProjectModal(project) {
+      if (project) {
+        this.projectModal = { open: true, editing: true, data: { ...project, due_date: project.due_date || '', owner: project.owner || '' } };
+      } else {
+        this.projectModal = { open: true, editing: false, data: { name: '', description: '', status: 'active', owner: '', due_date: '' } };
+      }
+    },
+
+    async saveProject() {
+      const d = this.projectModal.data;
+      if (!d.name?.trim()) return;
+      const payload = { ...d, due_date: d.due_date || null, owner: d.owner || null };
+      try {
+        if (this.projectModal.editing) {
+          await fetch(`/api/projects/${d.project_id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        } else {
+          await fetch('/api/projects', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        }
+        this.projectModal.open = false;
+        await this.loadProjects();
+        await this.loadDashboard();
+      } catch(e) { alert('Failed to save project'); }
+    },
+
+    openMilestoneModal(m) {
+      if (m) {
+        this.milestoneModal = { open: true, editing: true, data: { ...m, due_date: m.due_date || '', project_id: m.project_id || '' } };
+      } else {
+        this.milestoneModal = { open: true, editing: false, data: { title: '', description: '', status: 'pending', due_date: '', project_id: '' } };
+      }
+    },
+
+    async saveMilestone() {
+      const d = this.milestoneModal.data;
+      if (!d.title?.trim()) return;
+      const payload = { ...d, due_date: d.due_date || null, project_id: d.project_id || null };
+      try {
+        if (this.milestoneModal.editing) {
+          await fetch(`/api/milestones/${d.milestone_id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        } else {
+          await fetch('/api/milestones', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        }
+        this.milestoneModal.open = false;
+        await this.loadMilestones();
+      } catch(e) { alert('Failed to save milestone'); }
+    },
+
+    async deleteMilestone(id) {
+      if (!confirm('Delete this milestone?')) return;
+      await fetch(`/api/milestones/${id}`, { method: 'DELETE' });
+      await this.loadMilestones();
+    },
+
+    openCommitmentModal() {
+      this.commitmentModal = { open: true, data: { title: '', description: '', due_date: '' } };
+    },
+
+    async saveCommitment() {
+      const d = this.commitmentModal.data;
+      if (!d.title?.trim()) return;
+      await fetch('/api/commitments', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ...d, due_date: d.due_date || null }) });
+      this.commitmentModal.open = false;
+      await this.loadCommitments();
+    },
+
+    async fulfillCommitment(id) {
+      await fetch(`/api/commitments/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: 'fulfilled' }) });
+      await this.loadCommitments();
+    },
+
+    async deleteCommitment(id) {
+      if (!confirm('Delete this commitment?')) return;
+      await fetch(`/api/commitments/${id}`, { method: 'DELETE' });
+      await this.loadCommitments();
+    },
+
+    openAlertModal() {
+      this.alertModal = { open: true, data: { title: '', message: '', severity: 'info', source: 'system' } };
+    },
+
+    async saveAlert() {
+      const d = this.alertModal.data;
+      if (!d.title?.trim()) return;
+      await fetch('/api/alerts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) });
+      this.alertModal.open = false;
+      await this.loadAlerts();
+    },
+
+    async markAlertRead(id) {
+      await fetch(`/api/alerts/${id}/read`, { method: 'PATCH' });
+      await this.loadAlerts();
+    },
+
+    async deleteAlert(id) {
+      await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+      await this.loadAlerts();
+    },
+
+    priorityBadge(p) {
+      return { critical: 'badge-red', high: 'badge-yellow', medium: 'badge-blue', low: 'badge-gray' }[p] || 'badge-gray';
+    },
+    statusBadge(s) {
+      return { todo: 'badge-gray', in_progress: 'badge-blue', done: 'badge-green', cancelled: 'badge-gray' }[s] || 'badge-gray';
+    },
+    healthBadge(h) {
+      return { green: 'badge-green', yellow: 'badge-yellow', red: 'badge-red', grey: 'badge-gray' }[h] || 'badge-gray';
+    },
+    projectStatusBadge(s) {
+      return { active: 'badge-green', on_hold: 'badge-yellow', completed: 'badge-blue', archived: 'badge-gray' }[s] || 'badge-gray';
+    },
+    commitmentBadge(s) {
+      return { pending: 'badge-blue', fulfilled: 'badge-green', missed: 'badge-red' }[s] || 'badge-gray';
+    },
+    severityBadge(s) {
+      return { critical: 'badge-red', warning: 'badge-yellow', info: 'badge-blue' }[s] || 'badge-gray';
+    },
+  };
+}
+</script>
+</body>
+</html>

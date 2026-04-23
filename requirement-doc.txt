@@ -1,0 +1,154 @@
+# ExecOS – Complete Requirements Document (All-in-One)
+
+## 1. Executive Summary
+ExecOS is a desktop-based personal execution system designed for leadership roles. It captures, structures, tracks, and drives execution of work using tasks, projects, releases, and alerts.
+
+## 2. Core Objectives
+- Reduce missed commitments
+- Improve execution discipline
+- Provide structured visibility
+- Automate work capture
+- Enable daily and weekly planning
+- Surface risks early
+
+## 3. Core Hierarchy
+Project → Release → Milestone → Task  
+Commitments → linked to tasks/projects/releases
+
+## 4. Functional Modules
+
+### 4.1 Task Management
+- Create, edit, delete tasks
+- Track status, priority, due date
+- Link to project/release/milestone
+- Track completion timestamp
+- Handle overdue tasks
+- Track postponed count
+
+### 4.2 Project Management
+- Create projects
+- Link tasks and releases
+- Calculate progress
+- Show project health
+
+### 4.3 Release Management
+- Create releases under projects
+- Track release progress
+- Manage versions and deadlines
+- Show release readiness
+
+### 4.4 Milestone Management
+- Create milestones under releases
+- Track milestone progress
+- Notify delays
+
+### 4.5 Outlook Integration
+- Connect Outlook
+- Fetch emails
+- Convert emails to tasks
+- Prevent duplicates
+
+### 4.6 Rule Engine
+- Define rules for email processing
+- Auto-create tasks
+- Assign project/release
+- Enable/disable rules
+
+### 4.7 Commitment Tracking
+- Track promises
+- Link to tasks/projects
+- Mark fulfilled or missed
+
+### 4.8 Follow-Up Tracking
+- Set follow-up dates
+- Send reminders
+- Track interactions
+
+### 4.9 Alert Engine
+- Event-based alerts
+- Severity levels
+- Configurable rules
+- Snooze and quiet mode
+
+### 4.10 Notifications
+- Desktop alerts
+- Action buttons
+- Priority filtering
+
+### 4.11 SOD Summary
+- Show daily plan
+- Include overdue and carry-forward tasks
+
+### 4.12 EOD Summary
+- Show completed and pending work
+- Allow notes
+
+### 4.13 Weekly Summary
+- Show weekly performance
+- Include missed commitments
+
+### 4.14 Dashboard
+Operational:
+- Tasks, overdue, milestones
+
+Executive:
+- Project health
+- Release readiness
+- Commitment risk
+
+### 4.15 Risk Detection
+- Detect overdue tasks
+- Detect milestone delays
+- Update project health
+
+### 4.16 Carry Forward Logic
+- Move incomplete tasks
+- Track delays
+
+### 4.17 Focus Mode
+- Pause notifications
+- Resume automatically
+
+### 4.18 Backup & Restore
+- Manual backup
+- Scheduled backup
+- Restore system
+
+### 4.19 Audit Logs
+- Log system activity
+- Filter and export logs
+
+## 5. Epics
+E1 Foundation  
+E2 Task Management  
+E3 Project Management  
+E4 Release & Milestone  
+E5 Email & Rules  
+E6 Commitments  
+E7 Alert Engine  
+E8 Summaries  
+E9 Dashboard  
+E10 Risk Control  
+E11 Data Management  
+
+## 6. Non-Functional Requirements
+Performance: Dashboard < 3 sec  
+Reliability: No data loss  
+Security: Secure tokens  
+Usability: Minimal clicks  
+
+## 7. MVP Scope
+Phase 1: Tasks, Projects, Milestones  
+Phase 2: Email, Commitments, Summaries  
+Phase 3: Releases, Alerts, Executive Dashboard  
+
+## 8. Success Criteria
+- Tasks tracked
+- Emails converted
+- No missed commitments
+- Alerts active
+- Summaries used
+
+## Final Statement
+ExecOS is a Personal Execution System enabling clarity, discipline, and control.
+
