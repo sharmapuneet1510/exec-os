@@ -125,6 +125,33 @@ class AuditLogORM(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class JiraConfigORM(Base):
+    __tablename__ = "jira_config"
+
+    id           = Column(Integer, primary_key=True, default=1)
+    base_url     = Column(String(500), default="")   # https://company.atlassian.net
+    email        = Column(String(255), default="")
+    api_token    = Column(Text,        default="")   # Jira API token (masked in GET)
+    project_keys = Column(Text,        default="[]") # JSON list e.g. ["ENG","OPS"]
+    enabled      = Column(Boolean,     default=False)
+    last_synced  = Column(DateTime,    nullable=True)
+    created_at   = Column(DateTime,    default=datetime.utcnow)
+    updated_at   = Column(DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class GitLabConfigORM(Base):
+    __tablename__ = "gitlab_config"
+
+    id           = Column(Integer, primary_key=True, default=1)
+    base_url     = Column(String(500), default="https://gitlab.com")
+    access_token = Column(Text,        default="")   # Personal or project access token
+    project_ids  = Column(Text,        default="[]") # JSON list of project IDs or "namespace/path"
+    enabled      = Column(Boolean,     default=False)
+    last_synced  = Column(DateTime,    nullable=True)
+    created_at   = Column(DateTime,    default=datetime.utcnow)
+    updated_at   = Column(DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class EstimationORM(Base):
     __tablename__ = "estimations"
 
