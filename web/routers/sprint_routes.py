@@ -1,11 +1,10 @@
 """Sprint Board — configure sprint, fetch items, correlate GitLab MRs."""
 
-import json, time, re, logging
+import json, time, logging
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
@@ -27,10 +26,6 @@ def _cache_get(key):
 
 def _cache_set(key, data):
     _cache[key] = {"data": data, "ts": time.time()}
-
-
-def _cache_bust():
-    _cache.clear()
 
 
 def _db():
@@ -92,11 +87,6 @@ def _gl_get(cfg, path: str, params: dict = None):
     if not resp.ok:
         raise HTTPException(resp.status_code, f"GitLab error: {resp.text[:200]}")
     return resp.json(), resp.headers
-
-
-def _extract_jira_keys(text: str) -> list:
-    """Extract Jira issue keys like ABC-123 from text."""
-    return list(set(re.findall(r'\b([A-Z]+-\d+)\b', text or "")))
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
