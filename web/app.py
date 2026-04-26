@@ -11,6 +11,11 @@ from web.routers import gitlab_routes
 from web.routers import planner_routes
 from web.routers import team_routes
 from web.routers import sprint_routes
+from web.routers import proj_estimate_routes
+from web.routers import delivery_routes
+from web.routers import application_routes
+from web.routers import app_integration_routes
+from web.routers import workload_routes
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
@@ -27,6 +32,11 @@ app.include_router(gitlab_routes.router)
 app.include_router(planner_routes.router)
 app.include_router(team_routes.router)
 app.include_router(sprint_routes.router)
+app.include_router(proj_estimate_routes.router)
+app.include_router(delivery_routes.router)
+app.include_router(application_routes.router)
+app.include_router(app_integration_routes.router)
+app.include_router(workload_routes.router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
