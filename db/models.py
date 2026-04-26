@@ -52,6 +52,7 @@ class TaskORM(Base):
     priority = Column(String(20), default="medium")
     status = Column(String(20), default="todo")
     project_id = Column(String, ForeignKey("projects.project_id", ondelete="SET NULL"), nullable=True)
+    assignee_id = Column(String, ForeignKey("team_members.member_id", ondelete="SET NULL"), nullable=True)
     tags = Column(Text, default="[]")
     postponed_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)

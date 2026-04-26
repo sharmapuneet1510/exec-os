@@ -40,3 +40,13 @@ def test_mock_gitlab_mr_orm():
     )
     assert mr.iid == 45
     assert mr.author_username == "achen"
+
+
+def test_task_orm_assignee():
+    from db.models import TaskORM, TeamMemberORM
+    member = TeamMemberORM(name="Alice", email="alice@company.com")
+    task = TaskORM(
+        title="Refactor auth",
+        assignee_id=member.member_id
+    )
+    assert task.assignee_id == member.member_id
