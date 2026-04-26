@@ -2801,6 +2801,17 @@
       <!-- ══ GITLAB OPEN MRS ══ -->
       <div x-show="view==='gitlab-mrs'" x-cloak>
 
+        <!-- App selector -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:700;color:var(--text-2);white-space:nowrap;">Application</label>
+          <select x-model="gitlabAppId" @change="onGitLabAppChange()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);background:var(--bg);">
+            <option value="">— select —</option>
+            <template x-for="app in applications" :key="app.application_id">
+              <option :value="app.application_id" x-text="app.name"></option>
+            </template>
+          </select>
+        </div>
+
         <div x-show="!gitlabCfg.enabled" style="text-align:center;padding:80px 20px;">
           <div style="font-size:48px;margin-bottom:16px;">🦊</div>
           <div style="font-size:18px;font-weight:800;color:var(--text-1);margin-bottom:8px;">GitLab not connected</div>
@@ -2958,6 +2969,17 @@
 
       <!-- ══ JIRA TEAM WORKLOAD ══ -->
       <div x-show="view==='jira-team'" x-cloak>
+
+        <!-- App selector -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:700;color:var(--text-2);white-space:nowrap;">Application</label>
+          <select x-model="jiraAppId" @change="onJiraAppChange()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);background:var(--bg);">
+            <option value="">— select —</option>
+            <template x-for="app in applications" :key="app.application_id">
+              <option :value="app.application_id" x-text="app.name"></option>
+            </template>
+          </select>
+        </div>
 
         <!-- Not enabled state -->
         <div x-show="!jiraCfg.enabled" style="text-align:center;padding:80px 20px;">
@@ -3290,6 +3312,17 @@
       <!-- ══ SPRINT BOARD ══ -->
       <div x-show="view==='sprint-board'" x-cloak>
 
+        <!-- App selector -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:700;color:var(--text-2);white-space:nowrap;">Application</label>
+          <select x-model="sprintAppId" @change="onSprintAppChange()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);background:var(--bg);">
+            <option value="">— select —</option>
+            <template x-for="app in applications" :key="app.application_id">
+              <option :value="app.application_id" x-text="app.name"></option>
+            </template>
+          </select>
+        </div>
+
         <!-- Sprint config panel (shown when no sprint selected) -->
         <div x-show="!sprintCfg.sprint_id || !sprintData" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;">
 
@@ -3339,7 +3372,7 @@
               </select>
             </div>
 
-            <button @click="saveSprintConfig()" class="btn-primary" style="width:100%;font-size:13px;padding:9px;">
+            <button @click="saveSprintAppConfig()" class="btn-primary" style="width:100%;font-size:13px;padding:9px;">
               Save & Load Sprint Board
             </button>
           </div>
