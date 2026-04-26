@@ -3629,156 +3629,167 @@
             </div>
           </div>
 
-          <!-- GitLab Integration -->
+          <!-- Integrations — per-application -->
           <div class="card" style="margin-bottom:20px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#fff3ee;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
+              <div style="width:36px;height:36px;border-radius:10px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🔌</div>
               <div>
-                <div style="font-size:15px;font-weight:800;color:var(--text-1);">GitLab — Open MRs</div>
-                <div style="font-size:12px;color:var(--text-3);">Track open merge requests and team contributions across projects</div>
-              </div>
-              <div style="margin-left:auto;">
-                <div :style="'padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;'+(gitlabCfg.enabled?'background:#fff3ee;color:#c2410c;border:1.5px solid #fed7aa;':'background:var(--bg);color:var(--text-3);border:1px solid var(--border);')"
-                  x-text="gitlabCfg.enabled?'Connected':'Disabled'"></div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div style="grid-column:1/-1;">
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">GitLab Base URL <span style="font-weight:400;color:var(--text-3);">(self-hosted or gitlab.com)</span></label>
-                <input x-model="gitlabCfg.base_url" placeholder="https://gitlab.com"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-              </div>
-              <div style="grid-column:1/-1;">
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Personal Access Token
-                  <a href="https://gitlab.com/-/user_settings/personal_access_tokens" target="_blank" style="color:#fc6d26;font-weight:400;margin-left:4px;">Get token ↗</a>
-                  <span style="font-weight:400;color:var(--text-3);margin-left:4px;">— requires <code>api</code> scope</span>
-                </label>
-                <input x-model="gitlabCfg.access_token" type="password" placeholder="glpat-••••••••"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-              </div>
-              <div style="grid-column:1/-1;">
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Project paths or IDs <span style="font-weight:400;color:var(--text-3);">— one per line or comma-separated (leave blank for all accessible projects)</span></label>
-                <textarea x-model="gitlabCfg.project_ids_raw" rows="3" placeholder="group/project-name&#10;group/another-project"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;resize:vertical;font-family:monospace;"></textarea>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" x-model="gitlabCfg.enabled" style="width:16px;height:16px;accent-color:#fc6d26;">
-                <span style="font-size:13px;font-weight:600;color:var(--text-1);">Enable GitLab integration</span>
-              </label>
-              <div style="flex:1;"></div>
-              <button @click="testGitLab()" :disabled="glTestLoading"
-                style="padding:8px 16px;border-radius:9px;background:#fff3ee;border:1.5px solid #fed7aa;color:#c2410c;font-size:12.5px;font-weight:700;cursor:pointer;">
-                <span x-show="!glTestLoading">⚡ Test Connection</span>
-                <span x-show="glTestLoading">Testing…</span>
-              </button>
-              <button @click="saveGitLabConfig()" class="btn-primary" style="font-size:13px;">Save GitLab Settings</button>
-            </div>
-            <div x-show="glTestMsg" style="margin-top:10px;padding:10px 14px;border-radius:9px;"
-              :style="glTestOk?'background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:12.5px;font-weight:600;':'background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:12.5px;font-weight:600;'"
-              x-text="glTestMsg"></div>
-          </div>
-
-          <!-- Jira Integration -->
-          <div class="card">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🔗</div>
-              <div>
-                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Jira Integration</div>
-                <div style="font-size:12px;color:var(--text-3);">Connect to Jira Cloud to see team workload and open issues</div>
-              </div>
-              <div style="margin-left:auto;">
-                <div :style="'padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;'+(jiraCfg.enabled?'background:#eff6ff;color:#2563eb;border:1.5px solid #bfdbfe;':'background:var(--bg);color:var(--text-3);border:1px solid var(--border);')"
-                  x-text="jiraCfg.enabled?'Connected':'Disabled'"></div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Integrations</div>
+                <div style="font-size:12px;color:var(--text-3);">Configure per-application Jira, GitLab, and Sprint settings</div>
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div style="grid-column:1/-1;">
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Base URL</label>
-                <input x-model="jiraCfg.base_url" placeholder="https://yourcompany.atlassian.net"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-              </div>
-              <div>
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Email</label>
-                <input x-model="jiraCfg.email" type="email" placeholder="you@company.com"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-              </div>
-              <div>
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">API Token
-                  <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#6366f1;font-weight:400;margin-left:4px;">Get token ↗</a>
-                </label>
-                <input x-model="jiraCfg.api_token" type="password" placeholder="••••••••"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-              </div>
-              <div style="grid-column:1/-1;">
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">— comma-separated (leave blank for all projects)</span></label>
-                <input x-model="jiraCfg.project_keys_raw" placeholder="ENG, OPS, MOBILE"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-              </div>
+            <!-- App selector -->
+            <div style="margin-bottom:20px;">
+              <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Application</label>
+              <select x-model="settingsApp" @change="loadSettingsAppConfig()" style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);background:var(--bg);box-sizing:border-box;">
+                <option value="">— select an application —</option>
+                <template x-for="app in applications" :key="app.application_id">
+                  <option :value="app.application_id" x-text="app.name"></option>
+                </template>
+              </select>
+              <div x-show="!applications.length" style="font-size:12px;color:var(--text-3);margin-top:6px;">No applications yet — create one in the Applications view first.</div>
             </div>
 
-            <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" x-model="jiraCfg.enabled" style="width:16px;height:16px;accent-color:#0052cc;">
-                <span style="font-size:13px;font-weight:600;color:var(--text-1);">Enable Jira integration</span>
-              </label>
-              <div style="flex:1;"></div>
-              <button @click="testJira()"
-                :disabled="jiraTestLoading"
-                style="padding:8px 16px;border-radius:9px;background:#eff6ff;border:1.5px solid #bfdbfe;color:#2563eb;font-size:12.5px;font-weight:700;cursor:pointer;">
-                <span x-show="!jiraTestLoading">⚡ Test Connection</span>
-                <span x-show="jiraTestLoading">Testing…</span>
-              </button>
-              <button @click="saveJiraConfig()" class="btn-primary" style="font-size:13px;">Save Jira Settings</button>
-            </div>
-            <div x-show="jiraTestMsg" style="margin-top:10px;padding:10px 14px;border-radius:9px;"
-              :style="jiraTestOk?'background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:12.5px;font-weight:600;':'background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:12.5px;font-weight:600;'"
-              x-text="jiraTestMsg"></div>
-            <div x-show="jiraCfg.last_synced" style="margin-top:10px;font-size:11.5px;color:var(--text-3);">
-              Last synced: <span x-text="jiraCfg.last_synced"></span>
-            </div>
-          </div>
+            <div x-show="settingsApp">
 
-          <!-- Sprint / My Hub Config -->
-          <div class="card" style="margin-bottom:20px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🏃</div>
-              <div>
-                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Sprint Board &amp; My Hub</div>
-                <div style="font-size:12px;color:var(--text-3);">Configure your Jira sprint and personal identifiers for Sprint Board and My Hub views</div>
+              <!-- Jira section -->
+              <div style="border-top:1px solid var(--border);padding-top:18px;margin-bottom:18px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                  <div style="width:28px;height:28px;border-radius:8px;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:14px;">🔗</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Jira</div>
+                  <div style="margin-left:auto;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;"
+                    :style="settingsAppCfg.jira.enabled?'background:#eff6ff;color:#2563eb;border:1.5px solid #bfdbfe;':'background:var(--bg);color:var(--text-3);border:1px solid var(--border);'"
+                    x-text="settingsAppCfg.jira.enabled?'Connected':'Disabled'"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Base URL</label>
+                    <input x-model="settingsAppCfg.jira.base_url" placeholder="https://yourcompany.atlassian.net"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Email</label>
+                    <input x-model="settingsAppCfg.jira.email" type="email" placeholder="you@company.com"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">API Token
+                      <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#6366f1;font-weight:400;margin-left:4px;">Get token ↗</a>
+                    </label>
+                    <input x-model="settingsAppCfg.jira.api_token" type="password" placeholder="Leave blank to keep existing"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">— one per line (leave blank for all)</span></label>
+                    <textarea x-model="settingsAppCfg.jira.project_keys_raw" rows="3" placeholder="ENG&#10;OPS&#10;MOBILE"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;resize:vertical;font-family:monospace;"></textarea>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" x-model="settingsAppCfg.jira.enabled" style="width:16px;height:16px;accent-color:#0052cc;">
+                    <span style="font-size:13px;font-weight:600;color:var(--text-1);">Enable Jira integration</span>
+                  </label>
+                  <div style="flex:1;"></div>
+                  <button @click="testSettingsJira()" :disabled="settingsJiraTestLoading"
+                    style="padding:8px 16px;border-radius:9px;background:#eff6ff;border:1.5px solid #bfdbfe;color:#2563eb;font-size:12.5px;font-weight:700;cursor:pointer;">
+                    <span x-show="!settingsJiraTestLoading">⚡ Test</span>
+                    <span x-show="settingsJiraTestLoading">Testing…</span>
+                  </button>
+                  <button @click="saveSettingsJira()" class="btn-primary" style="font-size:13px;">Save Jira</button>
+                </div>
+                <div x-show="settingsJiraMsg" style="margin-top:8px;padding:8px 12px;border-radius:9px;font-size:12.5px;font-weight:600;"
+                  :style="settingsJiraOk?'background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;':'background:#fff1f2;border:1px solid #fecdd3;color:#be123c;'"
+                  x-text="settingsJiraMsg"></div>
               </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div>
-                <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">My Jira Email</label>
-                <input x-model="sprintCfg.my_jira_email" type="email" placeholder="you@company.com"
-                  style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg);">
+
+              <!-- GitLab section -->
+              <div style="border-top:1px solid var(--border);padding-top:18px;margin-bottom:18px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                  <div style="width:28px;height:28px;border-radius:8px;background:#fff3ee;display:flex;align-items:center;justify-content:center;font-size:14px;">🦊</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">GitLab</div>
+                  <div style="margin-left:auto;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;"
+                    :style="settingsAppCfg.gitlab.enabled?'background:#fff3ee;color:#c2410c;border:1.5px solid #fed7aa;':'background:var(--bg);color:var(--text-3);border:1px solid var(--border);'"
+                    x-text="settingsAppCfg.gitlab.enabled?'Connected':'Disabled'"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">GitLab Base URL <span style="font-weight:400;color:var(--text-3);">(self-hosted or gitlab.com)</span></label>
+                    <input x-model="settingsAppCfg.gitlab.base_url" placeholder="https://gitlab.com"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Personal Access Token
+                      <a href="https://gitlab.com/-/user_settings/personal_access_tokens" target="_blank" style="color:#fc6d26;font-weight:400;margin-left:4px;">Get token ↗</a>
+                      <span style="font-weight:400;color:var(--text-3);margin-left:4px;">— requires <code>api</code> scope</span>
+                    </label>
+                    <input x-model="settingsAppCfg.gitlab.access_token" type="password" placeholder="Leave blank to keep existing"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Project paths <span style="font-weight:400;color:var(--text-3);">— one per line (leave blank for all accessible)</span></label>
+                    <textarea x-model="settingsAppCfg.gitlab.project_ids_raw" rows="3" placeholder="group/project&#10;group/another"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;resize:vertical;font-family:monospace;"></textarea>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" x-model="settingsAppCfg.gitlab.enabled" style="width:16px;height:16px;accent-color:#fc6d26;">
+                    <span style="font-size:13px;font-weight:600;color:var(--text-1);">Enable GitLab integration</span>
+                  </label>
+                  <div style="flex:1;"></div>
+                  <button @click="testSettingsGitLab()" :disabled="settingsGlTestLoading"
+                    style="padding:8px 16px;border-radius:9px;background:#fff3ee;border:1.5px solid #fed7aa;color:#c2410c;font-size:12.5px;font-weight:700;cursor:pointer;">
+                    <span x-show="!settingsGlTestLoading">⚡ Test</span>
+                    <span x-show="settingsGlTestLoading">Testing…</span>
+                  </button>
+                  <button @click="saveSettingsGitLab()" class="btn-primary" style="font-size:13px;">Save GitLab</button>
+                </div>
+                <div x-show="settingsGlMsg" style="margin-top:8px;padding:8px 12px;border-radius:9px;font-size:12.5px;font-weight:600;"
+                  :style="settingsGlOk?'background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;':'background:#fff1f2;border:1px solid #fecdd3;color:#be123c;'"
+                  x-text="settingsGlMsg"></div>
               </div>
-              <div>
-                <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">My GitLab Username</label>
-                <input x-model="sprintCfg.my_gitlab_username" type="text" placeholder="gitlab-username"
-                  style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg);">
+
+              <!-- Sprint section -->
+              <div style="border-top:1px solid var(--border);padding-top:18px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                  <div style="width:28px;height:28px;border-radius:8px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:14px;">🏃</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div>
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">My Jira Email</label>
+                    <input x-model="settingsAppCfg.sprint.my_jira_email" type="email" placeholder="you@company.com"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">My GitLab Username</label>
+                    <input x-model="settingsAppCfg.sprint.my_gitlab_username" type="text" placeholder="gitlab-username"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Board ID</label>
+                    <input x-model="settingsAppCfg.sprint.board_id" type="text" placeholder="e.g. 42"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                  <div>
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Sprint ID</label>
+                    <input x-model="settingsAppCfg.sprint.sprint_id" type="text" placeholder="e.g. 123"
+                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                  </div>
+                </div>
+                <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button @click="saveSettingsSprint()" class="btn-primary" style="font-size:13px;">Save Sprint</button>
+                  <span x-show="settingsSprintMsg" style="font-size:12px;font-weight:600;" :style="settingsSprintOk?'color:#16a34a':'color:#ef4444'" x-text="settingsSprintMsg"></span>
+                </div>
+                <div x-show="settingsAppCfg.sprint.sprint_id" style="margin-top:8px;font-size:11.5px;color:var(--text-3);">
+                  Active sprint: <span style="color:var(--accent);font-weight:600;" x-text="settingsAppCfg.sprint.sprint_name||settingsAppCfg.sprint.sprint_id"></span>
+                </div>
               </div>
-              <div>
-                <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Jira Board ID</label>
-                <input x-model="sprintCfg.board_id" type="text" placeholder="e.g. 42"
-                  style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg);">
-              </div>
-              <div>
-                <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Jira Sprint ID</label>
-                <input x-model="sprintCfg.sprint_id" type="text" placeholder="e.g. 123"
-                  style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg);">
-              </div>
-            </div>
-            <div style="margin-top:14px;display:flex;gap:8px;">
-              <button @click="saveSprintConfig(true)" class="btn-primary" style="font-size:13px;">Save Sprint Settings</button>
-            </div>
-            <div x-show="sprintCfg.sprint_id" style="margin-top:10px;font-size:11.5px;color:var(--text-3);">
-              Active sprint: <span style="color:var(--accent);font-weight:600;" x-text="sprintCfg.sprint_name||sprintCfg.sprint_id"></span>
-            </div>
-          </div>
+
+            </div><!-- /x-show settingsApp -->
+          </div><!-- /Integrations card -->
 
         </div>
       </div>
