@@ -190,6 +190,19 @@ class OutlookConfigORM(Base):
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class SprintConfigORM(Base):
+    __tablename__ = "sprint_config"
+
+    id                 = Column(Integer, primary_key=True, default=1)
+    board_id           = Column(String(100), default="")
+    sprint_id          = Column(String(100), default="")
+    sprint_name        = Column(String(255), default="")
+    my_jira_email      = Column(String(255), default="")
+    my_gitlab_username = Column(String(255), default="")
+    created_at         = Column(DateTime, default=datetime.utcnow)
+    updated_at         = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class DayPlanItemORM(Base):
     __tablename__ = "day_plan_items"
 

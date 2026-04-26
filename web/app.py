@@ -9,6 +9,8 @@ from web.routers import email_routes
 from web.routers import jira_routes
 from web.routers import gitlab_routes
 from web.routers import planner_routes
+from web.routers import team_routes
+from web.routers import sprint_routes
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
@@ -23,6 +25,8 @@ app.include_router(email_routes.router)
 app.include_router(jira_routes.router)
 app.include_router(gitlab_routes.router)
 app.include_router(planner_routes.router)
+app.include_router(team_routes.router)
+app.include_router(sprint_routes.router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")

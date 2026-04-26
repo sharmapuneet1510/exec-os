@@ -8,6 +8,13 @@ from sqlalchemy.orm import Session
 from db.base import get_db
 from db.models import ProjectORM, TaskORM
 
+
+def _bust_dash():
+    from web.deps import get_redis
+    r = get_redis()
+    r.delete("dashboard:operational")
+    r.delete("dashboard:executive")
+
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
@@ -94,6 +101,7 @@ def create_project(body: ProjectIn, db: Session = Depends(get_db)):
     db.add(p)
     db.commit()
     db.refresh(p)
+    _bust_dash()
     return _to_out(p, db)
 
 
@@ -122,6 +130,7 @@ def update_project(project_id: str, body: dict, db: Session = Depends(get_db)):
     p.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(p)
+    _bust_dash()
     return _to_out(p, db)
 
 
@@ -132,3 +141,4 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "project not found")
     db.delete(p)
     db.commit()
+    _bust_dash()
