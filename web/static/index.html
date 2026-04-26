@@ -4379,7 +4379,7 @@ function app() {
       if(id==='admin') {
         this.loadEmailConfig(); this.loadOutlookConfig();
         if (!this.settingsApp && this.applications.length) this.settingsApp = this.applications[0].application_id;
-        this.loadSettingsAppConfig();
+        if (typeof this.loadSettingsAppConfig === 'function') this.loadSettingsAppConfig();
       }
     },
 
