@@ -18,6 +18,7 @@ class TaskIn(BaseModel):
     priority: str = "medium"
     status: str = "todo"
     project_id: Optional[str] = None
+    assignee_id: Optional[str] = None
     tags: List[str] = []
 
 
@@ -30,6 +31,7 @@ class TaskOut(BaseModel):
     priority: str
     status: str
     project_id: Optional[str]
+    assignee_id: Optional[str]
     tags: List[str]
     postponed_count: int
     created_at: datetime
@@ -50,6 +52,7 @@ def _to_out(t: TaskORM) -> dict:
         "priority": t.priority,
         "status": t.status,
         "project_id": t.project_id,
+        "assignee_id": t.assignee_id,
         "tags": json.loads(t.tags or "[]"),
         "postponed_count": t.postponed_count or 0,
         "created_at": t.created_at,
@@ -94,6 +97,7 @@ def create_task(body: TaskIn, db: Session = Depends(get_db)):
         priority=body.priority,
         status=body.status,
         project_id=body.project_id,
+        assignee_id=body.assignee_id,
         tags=json.dumps(body.tags),
     )
     db.add(t)
@@ -116,7 +120,7 @@ def update_task(task_id: str, body: dict, db: Session = Depends(get_db)):
     t = db.query(TaskORM).filter(TaskORM.task_id == task_id).first()
     if not t:
         raise HTTPException(404, "task not found")
-    allowed = {"title", "description", "due_date", "reminder_date", "priority", "status", "project_id", "tags"}
+    allowed = {"title", "description", "due_date", "reminder_date", "priority", "status", "project_id", "assignee_id", "tags"}
     for k, v in body.items():
         if k not in allowed:
             continue
