@@ -385,3 +385,32 @@ class TeamMemberORM(Base):
     max_concurrent_tasks = Column(Integer, default=8)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MockJiraIssueORM(Base):
+    __tablename__ = "mock_jira_issues"
+
+    issue_id = Column(String, primary_key=True, default=_uuid)
+    key = Column(String(50), nullable=False, unique=True)
+    summary = Column(String(500), nullable=False)
+    assignee_email = Column(String(255), nullable=True)
+    status = Column(String(50), default="To Do")
+    priority = Column(String(50), default="Medium")
+    project_key = Column(String(50), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class MockGitLabMRORM(Base):
+    __tablename__ = "mock_gitlab_mrs"
+
+    mr_id = Column(String, primary_key=True, default=_uuid)
+    iid = Column(Integer, nullable=False)
+    title = Column(String(500), nullable=False)
+    author_username = Column(String(255), nullable=False)
+    project_path = Column(String(255), default="")
+    state = Column(String(50), default="opened")
+    reviewers = Column(Text, default="[]")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    merged_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
