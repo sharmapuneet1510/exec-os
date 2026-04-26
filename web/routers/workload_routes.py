@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
@@ -12,6 +13,24 @@ from db.models import (
     TeamMemberORM, TaskORM, MockJiraIssueORM, MockGitLabMRORM,
     JiraConfigORM, GitLabConfigORM, AppJiraConfigORM, AppGitLabConfigORM
 )
+
+
+class TeamMemberCreate(BaseModel):
+    name: str
+    email: Optional[str] = None
+    gitlab_username: Optional[str] = None
+    role: Optional[str] = None
+    max_concurrent_tasks: int = 8
+
+
+class TeamMemberUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    gitlab_username: Optional[str] = None
+    role: Optional[str] = None
+    max_concurrent_tasks: Optional[int] = None
+    is_active: Optional[bool] = None
+
 
 router = APIRouter(prefix="/api/workload", tags=["workload"])
 
@@ -180,14 +199,14 @@ def get_team_members(db: Session = Depends(_db)):
 
 
 @router.post("/team/members")
-def create_team_member(body: dict, db: Session = Depends(_db)):
+def create_team_member(body: TeamMemberCreate, db: Session = Depends(_db)):
     """Create new team member."""
     member = TeamMemberORM(
-        name=body.get("name"),
-        email=body.get("email"),
-        gitlab_username=body.get("gitlab_username"),
-        role=body.get("role"),
-        max_concurrent_tasks=body.get("max_concurrent_tasks", 8),
+        name=body.name,
+        email=body.email,
+        gitlab_username=body.gitlab_username,
+        role=body.role,
+        max_concurrent_tasks=body.max_concurrent_tasks,
     )
     db.add(member)
     db.commit()
@@ -203,22 +222,22 @@ def create_team_member(body: dict, db: Session = Depends(_db)):
 
 
 @router.patch("/team/members/{member_id}")
-def update_team_member(member_id: str, body: dict, db: Session = Depends(_db)):
+def update_team_member(member_id: str, body: TeamMemberUpdate, db: Session = Depends(_db)):
     """Update team member."""
     member = db.query(TeamMemberORM).filter(TeamMemberORM.member_id == member_id).first()
     if not member:
         raise HTTPException(404, "Team member not found")
 
-    if "name" in body:
-        member.name = body["name"]
-    if "email" in body:
-        member.email = body["email"]
-    if "role" in body:
-        member.role = body["role"]
-    if "max_concurrent_tasks" in body:
-        member.max_concurrent_tasks = body["max_concurrent_tasks"]
-    if "is_active" in body:
-        member.is_active = body["is_active"]
+    if body.name is not None:
+        member.name = body.name
+    if body.email is not None:
+        member.email = body.email
+    if body.role is not None:
+        member.role = body.role
+    if body.max_concurrent_tasks is not None:
+        member.max_concurrent_tasks = body.max_concurrent_tasks
+    if body.is_active is not None:
+        member.is_active = body.is_active
 
     db.commit()
     db.refresh(member)
