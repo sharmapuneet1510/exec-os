@@ -836,29 +836,17 @@
             await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,email:c.email,api_token:c.api_token,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
             this.cfgMsg='Jira config saved ✓'; this.cfgSaving=false;
           },
-          async activateJira() {
-            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira/activate',{method:'POST'});
-            this.cfgMsg='Jira config activated as global — Sprint Board & Team Workload will use this now ✓';
-          },
           async saveGitLab() {
             this.cfgSaving=true; this.cfgMsg='';
             const c=this.appCfg.gitlab;
             await fetch('/api/applications/'+this.selApp.application_id+'/integrations/gitlab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,access_token:c.access_token,project_ids:c.project_ids_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
             this.cfgMsg='GitLab config saved ✓'; this.cfgSaving=false;
           },
-          async activateGitLab() {
-            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/gitlab/activate',{method:'POST'});
-            this.cfgMsg='GitLab config activated as global — Open MRs & Sprint Board will use this now ✓';
-          },
           async saveSprint() {
             this.cfgSaving=true; this.cfgMsg='';
             const c=this.appCfg.sprint;
             await fetch('/api/applications/'+this.selApp.application_id+'/integrations/sprint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});
             this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
-          },
-          async activateSprint() {
-            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/sprint/activate',{method:'POST'});
-            this.cfgMsg='Sprint config activated as global — Sprint Board & My Hub will use this now ✓';
           },
         }"
         x-init="if($root.applications?.length) selectApp($root.applications[0])">
@@ -956,7 +944,7 @@
                   <div style="width:36px;height:36px;border-radius:10px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:18px;">🔵</div>
                   <div>
                     <div style="font-size:14px;font-weight:700;color:var(--text-1);">Jira Integration</div>
-                    <div style="font-size:12px;color:var(--text-3);">Per-app Jira credentials. Click Activate to push to global config.</div>
+                    <div style="font-size:12px;color:var(--text-3);">Per-app Jira credentials for this application.</div>
                   </div>
                   <div style="margin-left:auto;">
                     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
@@ -986,8 +974,6 @@
                   </div>
                   <div style="display:flex;gap:8px;padding-top:4px;">
                     <button @click="saveJira()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
-                    <button @click="activateJira()"
-                      style="padding:9px 16px;border:1px solid #6366f1;background:#f5f3ff;color:#4f46e5;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">⚡ Activate Globally</button>
                   </div>
                 </div>
               </div>
@@ -1000,7 +986,7 @@
                   <div style="width:36px;height:36px;border-radius:10px;background:#fff0e8;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
                   <div>
                     <div style="font-size:14px;font-weight:700;color:var(--text-1);">GitLab Integration</div>
-                    <div style="font-size:12px;color:var(--text-3);">Per-app GitLab credentials. Click Activate to push to global config.</div>
+                    <div style="font-size:12px;color:var(--text-3);">Per-app GitLab credentials for this application.</div>
                   </div>
                   <div style="margin-left:auto;">
                     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
@@ -1024,8 +1010,6 @@
                   </div>
                   <div style="display:flex;gap:8px;padding-top:4px;">
                     <button @click="saveGitLab()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
-                    <button @click="activateGitLab()"
-                      style="padding:9px 16px;border:1px solid #6366f1;background:#f5f3ff;color:#4f46e5;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">⚡ Activate Globally</button>
                   </div>
                 </div>
               </div>
@@ -1038,7 +1022,7 @@
                   <div style="width:36px;height:36px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🏃</div>
                   <div>
                     <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint Configuration</div>
-                    <div style="font-size:12px;color:var(--text-3);">Board, sprint and identity for this app. Click Activate to push to global config.</div>
+                    <div style="font-size:12px;color:var(--text-3);">Board, sprint and identity for this application.</div>
                   </div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:12px;">
@@ -1068,8 +1052,6 @@
                   </div>
                   <div style="display:flex;gap:8px;padding-top:4px;">
                     <button @click="saveSprint()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
-                    <button @click="activateSprint()"
-                      style="padding:9px 16px;border:1px solid #6366f1;background:#f5f3ff;color:#4f46e5;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">⚡ Activate Globally</button>
                   </div>
                 </div>
               </div>
