@@ -76,6 +76,13 @@ def list_tasks(
     return [_to_out(t) for t in tasks]
 
 
+def _bust_dash():
+    from web.deps import get_redis
+    r = get_redis()
+    r.delete("dashboard:operational")
+    r.delete("dashboard:executive")
+
+
 @router.post("", response_model=TaskOut, status_code=201)
 def create_task(body: TaskIn, db: Session = Depends(get_db)):
     if not body.title.strip():
@@ -92,6 +99,7 @@ def create_task(body: TaskIn, db: Session = Depends(get_db)):
     db.add(t)
     db.commit()
     db.refresh(t)
+    _bust_dash()
     return _to_out(t)
 
 
@@ -122,6 +130,7 @@ def update_task(task_id: str, body: dict, db: Session = Depends(get_db)):
         t.completed_at = datetime.utcnow()
     db.commit()
     db.refresh(t)
+    _bust_dash()
     return _to_out(t)
 
 
@@ -132,3 +141,4 @@ def delete_task(task_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "task not found")
     db.delete(t)
     db.commit()
+    _bust_dash()

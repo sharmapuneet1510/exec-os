@@ -80,10 +80,29 @@ def _build_jql(cfg: JiraConfigORM, extra: str = "") -> str:
     if keys:
         quoted = ", ".join(f'"{k}"' for k in keys)
         parts.append(f"project in ({quoted})")
-    parts.append('statusCategory != Done')
+    parts.append('statusCategory != "Done"')
     if extra:
         parts.append(extra)
     return " AND ".join(parts)
+
+
+def _jira_search_all(cfg: JiraConfigORM, jql: str, fields: str) -> list:
+    """Paginate through all Jira search results (max 500)."""
+    all_issues = []
+    start_at = 0
+    max_results = 100
+    while True:
+        data = _jira_get(cfg, "search", {
+            "jql": jql, "fields": fields,
+            "maxResults": max_results, "startAt": start_at,
+        })
+        issues = data.get("issues", [])
+        all_issues.extend(issues)
+        total = data.get("total", 0)
+        start_at += len(issues)
+        if start_at >= min(total, 500) or not issues:
+            break
+    return all_issues
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -176,17 +195,12 @@ def team_workload(db: Session = Depends(_db)):
 
     jql = _build_jql(cfg)
     fields = "summary,assignee,status,priority,issuetype,project,created,updated,duedate"
-    data = _jira_get(cfg, "search", {
-        "jql": jql,
-        "fields": fields,
-        "maxResults": 200,
-    })
+    issues = _jira_search_all(cfg, jql, fields)
 
     # Group by assignee
     team: dict = {}
-    unassigned_issues = []
 
-    for issue in data.get("issues", []):
+    for issue in issues:
         f = issue.get("fields", {})
         assignee = f.get("assignee")
         name  = assignee["displayName"] if assignee else "Unassigned"
@@ -222,7 +236,7 @@ def team_workload(db: Session = Depends(_db)):
         team[akey]["by_status"][st] = team[akey]["by_status"].get(st, 0) + 1
 
     result = {
-        "total_issues": data.get("total", 0),
+        "total_issues": len(issues),
         "team": sorted(team.values(), key=lambda x: -x["total"]),
         "last_fetched": datetime.utcnow().isoformat(),
     }

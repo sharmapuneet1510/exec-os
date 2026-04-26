@@ -177,5 +177,36 @@ class EstimationORM(Base):
     total_working_days = Column(Integer, default=0)
     estimated_end_date = Column(Date, nullable=True)
 
+
+class OutlookConfigORM(Base):
+    __tablename__ = "outlook_config"
+
+    id            = Column(Integer, primary_key=True, default=1)
+    ics_url       = Column(Text,    default="")       # Outlook ICS feed URL
+    enabled       = Column(Boolean, default=False)
+    working_start = Column(String(5), default="09:00")  # HH:MM
+    working_end   = Column(String(5), default="18:00")
+    created_at    = Column(DateTime, default=datetime.utcnow)
+    updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DayPlanItemORM(Base):
+    __tablename__ = "day_plan_items"
+
+    item_id      = Column(String, primary_key=True, default=_uuid)
+    plan_date    = Column(Date,   nullable=False)
+    time_start   = Column(String(5), nullable=False)   # HH:MM
+    time_end     = Column(String(5), nullable=False)   # HH:MM
+    title        = Column(String(500), nullable=False)
+    item_type    = Column(String(20), default="task")  # meeting|task|break|focus
+    task_id      = Column(String, ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
+    notes        = Column(Text, default="")
+    completed    = Column(Boolean, default=False)
+    source       = Column(String(50), default="manual")  # manual|auto|calendar
+    priority     = Column(String(20), default="medium")
+    calendar_uid = Column(String(500), nullable=True)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    updated_at   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

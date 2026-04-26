@@ -427,6 +427,7 @@
       <div @click="nav('commitments')"     :class="navCls('commitments')">     <div class="nav-icon">🤝</div><span style="flex:1">Commitments</span></div>
 
       <div class="nav-group-label">Tools</div>
+      <div @click="nav('planner')"         :class="navCls('planner')">         <div class="nav-icon">🗓️</div><span style="flex:1">Day Planner</span></div>
       <div @click="nav('alerts')"          :class="navCls('alerts')">
         <div class="nav-icon">🔔</div><span style="flex:1">Alerts</span>
         <span x-show="unreadAlerts>0" style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px;" x-text="unreadAlerts"></span>
@@ -1073,39 +1074,303 @@
 
       <!-- ══ ALERTS ══ -->
       <div x-show="view==='alerts'" x-cloak>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-          <span class="chip chip-red" x-show="unreadAlerts>0" x-text="unreadAlerts+' unread'"></span>
-          <button @click="openAlertModal()" class="btn-primary" style="margin-left:auto;">+ New Alert</button>
-        </div>
-        <div class="card">
-          <div x-show="!alerts.length" style="text-align:center;padding:48px;color:var(--text-3);">No alerts</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <template x-for="a in alerts" :key="a.alert_id">
-              <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:16px;transition:background .15s;"
-                :style="a.is_read ? 'background:var(--surface);opacity:.65' : 'background:#fff;border:1px solid var(--border);'"
-                onmouseenter="this.style.background='#f9f8f6'" onmouseleave="this.style.background='' " class="al-row">
-                <div style="width:10px;height:10px;border-radius:50%;margin-top:5px;flex-shrink:0;"
-                  :style="'background:'+(a.severity==='critical'?'#ef4444':a.severity==='warning'?'#f59e0b':'#6366f1')"></div>
-                <div style="flex:1;min-width:0;">
-                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
-                    <span style="font-size:14px;font-weight:600;color:var(--text-1);" x-text="a.title"></span>
-                    <span :class="'chip ' + severityChip(a.severity)" x-text="a.severity"></span>
-                  </div>
-                  <div style="font-size:12.5px;color:var(--text-2);" x-text="a.message"></div>
-                  <div style="font-size:11.5px;color:var(--text-3);margin-top:4px;" x-text="a.created_at?.slice(0,16)?.replace('T',' ')"></div>
-                </div>
-                <div class="al-actions" style="display:flex;gap:6px;opacity:0;transition:opacity .15s;">
-                  <button x-show="!a.is_read" @click="markAlertRead(a.alert_id)"
-                    style="padding:5px 10px;border-radius:9px;background:#eff6ff;color:#2563eb;font-size:12px;font-weight:600;border:none;cursor:pointer;">
-                    Read
-                  </button>
-                  <button @click="deleteAlert(a.alert_id)" class="btn-icon" style="color:#ef4444;">🗑</button>
-                </div>
+        <!-- Alert header + stats -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;flex:1;">
+            <div style="display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:12px;background:#fff1f2;border:1px solid #fecaca;">
+              <span style="font-size:16px;">🚨</span>
+              <div>
+                <div style="font-size:18px;font-weight:800;color:#dc2626;line-height:1;font-family:var(--font-mono);" x-text="alerts.filter(a=>a.severity==='critical'&&!a.is_read).length"></div>
+                <div style="font-size:9.5px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.06em;">Critical</div>
               </div>
-            </template>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:12px;background:#fffbeb;border:1px solid #fde68a;">
+              <span style="font-size:16px;">⚠️</span>
+              <div>
+                <div style="font-size:18px;font-weight:800;color:#d97706;line-height:1;font-family:var(--font-mono);" x-text="alerts.filter(a=>a.severity==='warning'&&!a.is_read).length"></div>
+                <div style="font-size:9.5px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.06em;">Warning</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;">
+              <span style="font-size:16px;">ℹ️</span>
+              <div>
+                <div style="font-size:18px;font-weight:800;color:#2563eb;line-height:1;font-family:var(--font-mono);" x-text="alerts.filter(a=>a.severity==='info'&&!a.is_read).length"></div>
+                <div style="font-size:9.5px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.06em;">Info</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-secondary" style="font-size:12px;"
+              x-show="alerts.some(a=>!a.is_read)"
+              @click="Promise.all(alerts.filter(a=>!a.is_read).map(a=>fetch('/api/alerts/'+a.alert_id+'/read',{method:'PATCH'}))).then(()=>loadAlerts())">
+              ✓ Mark all read
+            </button>
+            <button class="btn-secondary" style="font-size:12px;"
+              @click="fetch('/api/alerts/run-engine',{method:'POST'}).then(()=>{setTimeout(()=>{_pollNewAlerts();loadAlerts()},2000);addToast('Alert engine triggered','info')})">
+              ⚡ Scan Now
+            </button>
+            <button @click="openAlertModal()" class="btn-primary">+ New Alert</button>
           </div>
         </div>
-        <style>.al-row:hover .al-actions{opacity:1!important;}</style>
+
+        <!-- Empty state -->
+        <div x-show="!alerts.length" style="text-align:center;padding:72px 24px;">
+          <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text-1);">No alerts</div>
+          <div style="font-size:13px;color:var(--text-3);margin-top:4px;">System is all clear. Run a scan to check for issues.</div>
+        </div>
+
+        <!-- Alert groups -->
+        <template x-for="group in [
+          {sev:'critical', label:'Critical', icon:'🚨', bg:'#fff1f2', border:'#fecaca', color:'#dc2626', dotColor:'#ef4444'},
+          {sev:'warning',  label:'Warning',  icon:'⚠️', bg:'#fffbeb', border:'#fde68a', color:'#d97706', dotColor:'#f59e0b'},
+          {sev:'info',     label:'Info',     icon:'ℹ️', bg:'#eff6ff', border:'#bfdbfe', color:'#2563eb', dotColor:'#6366f1'}
+        ]" :key="group.sev">
+          <div x-show="alerts.filter(a=>a.severity===group.sev).length>0" style="margin-bottom:20px;">
+            <!-- Group header -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <span x-text="group.icon" style="font-size:14px;"></span>
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;" :style="'color:'+group.color" x-text="group.label"></span>
+              <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;" :style="'background:'+group.bg+';color:'+group.color+';border:1px solid '+group.border"
+                x-text="alerts.filter(a=>a.severity===group.sev&&!a.is_read).length+' unread'"></span>
+            </div>
+            <!-- Alert cards -->
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <template x-for="a in alerts.filter(a=>a.severity===group.sev)" :key="a.alert_id">
+                <div class="al-card" style="border-radius:16px;border:1px solid var(--border);background:var(--surface);overflow:hidden;transition:all .15s;display:flex;"
+                  :style="a.is_read ? 'opacity:0.55' : ''">
+                  <!-- Severity stripe -->
+                  <div style="width:4px;flex-shrink:0;" :style="'background:'+group.dotColor"></div>
+                  <div style="flex:1;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">
+                    <!-- Icon -->
+                    <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"
+                      :style="'background:'+group.bg">
+                      <span x-text="group.icon"></span>
+                    </div>
+                    <!-- Content -->
+                    <div style="flex:1;min-width:0;">
+                      <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                        <span style="font-size:13.5px;font-weight:700;color:var(--text-1);line-height:1.3;" x-text="a.title"></span>
+                        <span x-show="!a.is_read" style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:99px;background:#fef9c3;color:#a16207;border:1px solid #fde68a;flex-shrink:0;">NEW</span>
+                      </div>
+                      <div x-show="a.message" style="font-size:12.5px;color:var(--text-2);margin-bottom:5px;line-height:1.4;" x-text="a.message"></div>
+                      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);" x-text="a.created_at?.slice(0,16)?.replace('T',' ')"></span>
+                        <span x-show="a.source&&!a.source.startsWith('auto:')" style="font-size:10.5px;padding:1px 7px;border-radius:6px;background:var(--bg);color:var(--text-2);border:1px solid var(--border);" x-text="a.source"></span>
+                      </div>
+                    </div>
+                    <!-- Actions -->
+                    <div class="al-actions" style="display:flex;gap:6px;opacity:0;transition:opacity .15s;flex-shrink:0;">
+                      <button x-show="!a.is_read" @click="markAlertRead(a.alert_id)"
+                        style="padding:5px 12px;border-radius:9px;background:#f0f9ff;color:#0369a1;font-size:11.5px;font-weight:700;border:1px solid #bae6fd;cursor:pointer;">
+                        Mark read
+                      </button>
+                      <button @click="deleteAlert(a.alert_id)" style="width:32px;height:32px;border-radius:9px;background:var(--bg);border:1px solid var(--border);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">🗑</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+        <style>.al-card:hover .al-actions{opacity:1!important;} .al-card:hover{border-color:var(--border-hover)!important;box-shadow:0 4px 16px rgba(0,0,0,.06);}</style>
+      </div>
+
+      <!-- ══ DAY PLANNER ══ -->
+      <div x-show="view==='planner'" x-cloak
+        x-data="{
+          planDate: new Date().toISOString().slice(0,10),
+          plan: {items:[], working_start:'09:00', working_end:'18:00', calendar_enabled:false},
+          planLoading: false, planGenerating: false,
+          async loadPlan(d) {
+            this.planLoading = true;
+            try {
+              this.plan = await fetch('/api/planner/plan?target_date='+(d||this.planDate)).then(r=>r.json());
+            } catch(e){}
+            this.planLoading = false;
+          },
+          async generatePlan() {
+            this.planGenerating = true;
+            try {
+              this.plan = await fetch('/api/planner/generate?target_date='+this.planDate,{method:'POST'}).then(r=>r.json());
+            } catch(e){}
+            this.planGenerating = false;
+          },
+          async toggleComplete(item) {
+            await fetch('/api/planner/items/'+item.item_id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({completed:!item.completed})});
+            await this.loadPlan();
+          },
+          async deleteItem(id) {
+            await fetch('/api/planner/items/'+id,{method:'DELETE'});
+            await this.loadPlan();
+          },
+          pctDone() {
+            const t=this.plan.items.filter(i=>i.item_type!=='meeting').length;
+            const d=this.plan.items.filter(i=>i.item_type!=='meeting'&&i.completed).length;
+            return t>0?Math.round(d/t*100):0;
+          },
+          timePos(hhmm, wsStr, weStr) {
+            const ws=parseInt(wsStr)*60+parseInt(wsStr.split(':')[1]||0);
+            const we=parseInt(weStr)*60+parseInt(weStr.split(':')[1]||0);
+            const t=parseInt(hhmm)*60+parseInt(hhmm.split(':')[1]||0);
+            const span=we-ws; return span>0?Math.max(0,Math.min(100,(t-ws)/span*100)):0;
+          },
+          typeColor(item) {
+            if(item.item_type==='meeting') return {bg:'#eff6ff',border:'#bfdbfe',text:'#1d4ed8',dot:'#3b82f6'};
+            const p={critical:{bg:'#fff1f2',border:'#fecaca',text:'#dc2626',dot:'#ef4444'},high:{bg:'#fff7ed',border:'#fed7aa',text:'#c2410c',dot:'#f97316'},medium:{bg:'#f5f3ff',border:'#ddd6fe',text:'#6d28d9',dot:'#8b5cf6'},low:{bg:'#f0fdf4',border:'#bbf7d0',text:'#15803d',dot:'#22c55e'}};
+            return p[item.priority]||p.medium;
+          }
+        }"
+        x-init="loadPlan()">
+
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px 4px 4px 14px;">
+            <span style="font-size:13px;font-weight:600;color:var(--text-2);">Date</span>
+            <input type="date" x-model="planDate" @change="loadPlan()"
+              style="border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text-1);font-family:var(--font);outline:none;padding:5px 8px;border-radius:8px;cursor:pointer;">
+          </div>
+          <!-- Progress pill -->
+          <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:7px 14px;">
+            <div style="width:80px;height:5px;border-radius:99px;background:var(--bg);">
+              <div :style="'width:'+pctDone()+'%;height:100%;border-radius:99px;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .4s'"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:var(--text-2);font-family:var(--font-mono);" x-text="pctDone()+'% done'"></span>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button @click="generatePlan()" class="btn-primary" :disabled="planGenerating">
+              <span x-show="!planGenerating">✨ Plan My Day</span>
+              <span x-show="planGenerating">Planning…</span>
+            </button>
+            <button @click="loadPlan()" class="btn-icon">↺</button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div x-show="!plan.items.length && !planLoading && !planGenerating"
+          style="text-align:center;padding:64px 24px;background:var(--surface);border-radius:20px;border:2px dashed var(--border);">
+          <div style="font-size:44px;margin-bottom:12px;">🗓️</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text-1);margin-bottom:6px;">No plan for today yet</div>
+          <div style="font-size:13px;color:var(--text-3);margin-bottom:20px;">Click <strong>✨ Plan My Day</strong> and I'll schedule your tasks and meetings automatically.</div>
+          <button @click="generatePlan()" class="btn-primary" style="font-size:14px;padding:10px 22px;" :disabled="planGenerating">
+            <span x-show="!planGenerating">✨ Plan My Day</span>
+            <span x-show="planGenerating">Generating…</span>
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div x-show="planLoading||planGenerating" style="display:flex;align-items:center;justify-content:center;padding:48px;gap:12px;color:var(--text-3);">
+          <div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;"></div>
+          <span x-text="planGenerating?'Building your plan…':'Loading…'"></span>
+        </div>
+
+        <!-- Timeline -->
+        <div x-show="plan.items.length>0 && !planLoading" style="display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start;">
+
+          <!-- Left: timeline -->
+          <div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <template x-for="item in plan.items" :key="item.item_id">
+                <div class="plan-item-card" style="border-radius:16px;border:1px solid var(--border);background:var(--surface);overflow:hidden;display:flex;transition:all .15s;cursor:default;"
+                  :style="item.completed?'opacity:0.5':''">
+                  <!-- Color stripe -->
+                  <div style="width:4px;flex-shrink:0;" :style="'background:'+typeColor(item).dot"></div>
+                  <div style="flex:1;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;">
+                    <!-- Time block -->
+                    <div style="flex-shrink:0;text-align:center;min-width:52px;">
+                      <div style="font-size:13px;font-weight:800;color:var(--text-1);font-family:var(--font-mono);" x-text="item.time_start"></div>
+                      <div style="font-size:10px;color:var(--text-3);margin-top:1px;" x-text="item.time_end"></div>
+                      <!-- Duration -->
+                      <div style="font-size:9.5px;font-weight:600;margin-top:3px;padding:1px 5px;border-radius:6px;" :style="'background:'+typeColor(item).bg+';color:'+typeColor(item).text"
+                        x-text="(()=>{const s=parseInt(item.time_start)*60+parseInt(item.time_start.split(':')[1]||0);const e=parseInt(item.time_end)*60+parseInt(item.time_end.split(':')[1]||0);const d=e-s;return d>=60?(d/60).toFixed(d%60?1:0)+'h':d+'m'})()">
+                      </div>
+                    </div>
+                    <!-- Content -->
+                    <div style="flex:1;min-width:0;">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+                        <span style="font-size:14px;font-weight:700;color:var(--text-1);text-decoration:none;" :style="item.completed?'text-decoration:line-through;color:var(--text-3)':''" x-text="item.title"></span>
+                        <!-- Type chip -->
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em;"
+                          :style="'background:'+typeColor(item).bg+';color:'+typeColor(item).text+';border:1px solid '+typeColor(item).border"
+                          x-text="item.item_type==='meeting'?'📅 Meeting':item.priority+' priority'"></span>
+                        <span x-show="item.source==='auto'" style="font-size:9.5px;color:var(--text-3);background:var(--bg);padding:1px 6px;border-radius:6px;border:1px solid var(--border);">auto</span>
+                        <span x-show="item.source==='calendar'" style="font-size:9.5px;color:#1d4ed8;background:#eff6ff;padding:1px 6px;border-radius:6px;border:1px solid #bfdbfe;">calendar</span>
+                      </div>
+                      <div x-show="item.notes" style="font-size:12px;color:var(--text-2);margin-top:2px;" x-text="item.notes"></div>
+                    </div>
+                    <!-- Actions -->
+                    <div class="plan-item-actions" style="display:flex;gap:6px;flex-shrink:0;opacity:0;transition:opacity .15s;">
+                      <button @click="toggleComplete(item)"
+                        style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"
+                        :style="item.completed?'background:#f0fdf4;border-color:#bbf7d0':''"
+                        x-text="item.completed?'↩':'✓'">
+                      </button>
+                      <button x-show="item.item_type!=='meeting'" @click="deleteItem(item.item_id)"
+                        style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">🗑</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Right: today's summary panel -->
+          <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px;">
+            <!-- Today's stats -->
+            <div class="card" style="padding:16px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin-bottom:12px;">Today at a Glance</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Meetings</span>
+                  <span style="font-weight:700;color:#3b82f6;" x-text="plan.items.filter(i=>i.item_type==='meeting').length"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Tasks planned</span>
+                  <span style="font-weight:700;" x-text="plan.items.filter(i=>i.item_type==='task').length"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Completed</span>
+                  <span style="font-weight:700;color:#16a34a;" x-text="plan.items.filter(i=>i.completed).length"></span>
+                </div>
+                <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Working hours</span>
+                  <span style="font-weight:700;font-family:var(--font-mono);font-size:12px;" x-text="(plan.working_start||'09:00')+' – '+(plan.working_end||'18:00')"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Calendar sync</span>
+                  <span :class="plan.calendar_enabled?'chip chip-green':'chip chip-gray'" x-text="plan.calendar_enabled?'Connected':'No calendar'"></span>
+                </div>
+              </div>
+            </div>
+            <!-- Reminder note -->
+            <div style="padding:12px 14px;border-radius:14px;background:#f5f3ff;border:1px solid #ddd6fe;">
+              <div style="font-size:11px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">⏰ 2-hr Reminders</div>
+              <div style="font-size:12px;color:#7c3aed;line-height:1.5;">Scheduler checks your plan every 2 hours and sends a reminder alert for your next item.</div>
+            </div>
+            <!-- Pending tasks not yet planned -->
+            <div class="card" style="padding:16px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin-bottom:10px;">Unplanned Today</div>
+              <div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;">
+                <template x-for="t in tasks.filter(t=>t.status!=='done'&&t.status!=='cancelled'&&(t.due_date===todayStr||(t.due_date&&t.due_date<todayStr))&&!plan.items.some(i=>i.task_id===t.task_id))" :key="t.task_id">
+                  <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;background:var(--bg);border:1px solid var(--border);">
+                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;"
+                      :style="'background:'+(t.priority==='critical'?'#ef4444':t.priority==='high'?'#f97316':t.priority==='medium'?'#8b5cf6':'#22c55e')"></div>
+                    <span style="font-size:12px;font-weight:600;color:var(--text-1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></span>
+                    <span :class="'chip ' + priorityChip(t.priority)" x-text="t.priority" style="font-size:9.5px;"></span>
+                  </div>
+                </template>
+                <div x-show="!tasks.filter(t=>t.status!=='done'&&t.status!=='cancelled'&&(t.due_date===todayStr||(t.due_date&&t.due_date<todayStr))&&!plan.items.some(i=>i.task_id===t.task_id)).length"
+                  style="font-size:12px;color:var(--text-3);text-align:center;padding:12px;">All tasks planned ✓</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <style>
+          .plan-item-card:hover { border-color: var(--border-hover) !important; box-shadow: 0 4px 16px rgba(0,0,0,.05); }
+          .plan-item-card:hover .plan-item-actions { opacity: 1 !important; }
+        </style>
       </div>
 
       <!-- ══ SUMMARIES ══ -->
@@ -1973,6 +2238,47 @@
             </div>
           </div>
 
+          <!-- Outlook / Calendar config -->
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🗓️</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Day Planner · Outlook Calendar</div>
+                <div style="font-size:12px;color:var(--text-3);">Paste your Outlook ICS feed URL to pull calendar events into your day plan</div>
+              </div>
+              <div style="margin-left:auto;" :class="outlookCfg.enabled?'chip chip-green':'chip chip-gray'" x-text="outlookCfg.enabled?'Connected':'Disabled'"></div>
+            </div>
+            <!-- How to get ICS URL -->
+            <div style="padding:10px 14px;border-radius:12px;background:#f5f3ff;border:1px solid #ddd6fe;margin-bottom:16px;font-size:12px;color:#6d28d9;line-height:1.6;">
+              <strong>How to get your Outlook ICS URL:</strong> Outlook Web → Settings → Calendar → Shared calendars → Publish a calendar → select your calendar → Copy the <em>ICS</em> link.
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Outlook ICS Feed URL</label>
+                <input x-model="outlookCfg.ics_url" type="url" placeholder="https://outlook.live.com/owa/calendar/.../calendar.ics"
+                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;font-family:var(--font-mono);">
+                <div x-show="outlookCfg.ics_configured&&!outlookCfg.ics_url" style="font-size:11px;color:var(--green);margin-top:3px;">✓ URL saved (hidden for security)</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Working Day Start</label>
+                  <input x-model="outlookCfg.working_start" type="time"
+                    style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Working Day End</label>
+                  <input x-model="outlookCfg.working_end" type="time"
+                    style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" x-model="outlookCfg.enabled" style="width:16px;height:16px;accent-color:var(--accent);">
+                <label style="font-size:13px;font-weight:600;color:var(--text-1);cursor:pointer;">Enable calendar sync in Day Planner</label>
+              </div>
+              <button @click="saveOutlookConfig()" class="btn-primary" style="align-self:flex-start;">Save Calendar Settings</button>
+            </div>
+          </div>
+
           <!-- Email settings -->
           <div class="card" style="margin-bottom:20px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
@@ -2525,6 +2831,8 @@ function app() {
     taskSearch: '', taskStatusFilter: '', taskPriorityFilter: '',
     projects: [], milestones: [], commitments: [], alerts: [],
     unreadAlerts: 0,
+    _alertPollTs: null,   // ISO timestamp of last poll — tracks new alerts
+    _toastedIds: new Set(),  // alert_ids already shown as toasts this session
     estimations: [],
     estItems: [],
     estConfig: {
@@ -2547,6 +2855,7 @@ function app() {
     emailCfg: { recipient_email:'', smtp_host:'smtp.gmail.com', smtp_port:587, smtp_user:'', smtp_password:'', smtp_mode:'starttls', sod_time:'08:00', eod_time:'18:00', sod_enabled:true, eod_enabled:true },
     emailMsg: '', emailMsgOk: true, emailSending: false,
 
+    outlookCfg: { ics_url:'', ics_configured:false, enabled:false, working_start:'09:00', working_end:'18:00' },
     jiraCfg: { base_url:'', email:'', api_token:'', project_keys:'[]', project_keys_raw:'', enabled:false, last_synced:null },
     jiraData: { team:[], total_issues:0, last_fetched:null },
     jiraLoading: false, jiraError: '',
@@ -2570,7 +2879,8 @@ function app() {
         tasks:'Tasks', projects:'Projects', milestones:'Milestones',
         commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
-        'jira-team':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings' }[this.view] || 'ExecOS';
+        'jira-team':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
+        planner:'Day Planner' }[this.view] || 'ExecOS';
     },
     get pageSubtitle() {
       return { dashboard:"Today's execution pulse", executive:'Portfolio health & risk',
@@ -2581,7 +2891,8 @@ function app() {
         'project-tracker':'Gantt timeline · Current status · Export to PNG',
         'jira-team':'Live Jira data · Open issues · Who is working on what',
         'gitlab-mrs':'Open MRs · By author · By project · Draft vs Ready',
-        admin:'Email · Jira · GitLab · Integrations' }[this.view] || '';
+        admin:'Email · Jira · GitLab · Outlook · Integrations',
+        planner:'Schedule tasks · Outlook calendar · 2-hr reminders' }[this.view] || '';
     },
 
     navCls(id) { return ['nav-item', this.view === id ? 'active' : '']; },
@@ -2639,10 +2950,32 @@ function app() {
     async init() {
       await this.loadAll();
       this.checkReminders();
+      this._alertPollTs = new Date().toISOString();
       // Re-check reminders every 5 minutes
       setInterval(() => {
         this.loadTasks().then(() => this.checkReminders());
       }, 300000);
+      // Poll for new auto-generated alerts every 60 seconds
+      setInterval(() => this._pollNewAlerts(), 60000);
+    },
+
+    async _pollNewAlerts() {
+      try {
+        const ts = encodeURIComponent(this._alertPollTs);
+        const fresh = await fetch(`/api/alerts/new-since/${ts}`).then(r => r.json());
+        this._alertPollTs = new Date().toISOString();
+        if (!Array.isArray(fresh) || fresh.length === 0) return;
+        // Re-fetch full list to update badge count
+        await this.loadAlerts();
+        // Toast each new alert (skip if already shown)
+        fresh.forEach((a, i) => {
+          if (this._toastedIds.has(a.alert_id)) return;
+          this._toastedIds.add(a.alert_id);
+          const type = a.severity === 'critical' ? 'error' : a.severity === 'warning' ? 'warning' : 'info';
+          const icon = a.severity === 'critical' ? '🚨' : a.severity === 'warning' ? '⚠️' : 'ℹ️';
+          setTimeout(() => this.addToast(a.title, type, { icon, duration: 7000, sub: a.message }), i * 500);
+        });
+      } catch(e) {}
     },
 
     async loadAll() {
@@ -2650,7 +2983,7 @@ function app() {
       await Promise.all([
         this.loadDashboard(), this.loadTasks(), this.loadProjects(),
         this.loadMilestones(), this.loadCommitments(), this.loadAlerts(),
-        this.loadSummaries(), this.loadEstimations(), this.loadEmailConfig(), this.loadJiraConfig(), this.loadGitLabConfig(),
+        this.loadSummaries(), this.loadEstimations(), this.loadEmailConfig(), this.loadJiraConfig(), this.loadGitLabConfig(), this.loadOutlookConfig(),
       ]);
       this.loading = false;
     },
@@ -2659,7 +2992,7 @@ function app() {
       this.view=id;
       if(id==='jira-team' && this.jiraCfg.enabled && !this.jiraData.team.length) this.loadJiraTeam();
       if(id==='gitlab-mrs' && this.gitlabCfg.enabled && !this.glData.all_mrs.length) this.loadGitLabMRs();
-      if(id==='admin') { this.loadEmailConfig(); this.loadJiraConfig(); this.loadGitLabConfig(); }
+      if(id==='admin') { this.loadEmailConfig(); this.loadJiraConfig(); this.loadGitLabConfig(); this.loadOutlookConfig(); }
     },
 
     async loadDashboard() {
@@ -2693,7 +3026,12 @@ function app() {
       try { this.commitments=await fetch('/api/commitments').then(r=>r.json()); } catch(e) {}
     },
     async loadAlerts() {
-      try { this.alerts=await fetch('/api/alerts').then(r=>r.json()); this.unreadAlerts=this.alerts.filter(a=>!a.is_read).length; } catch(e) {}
+      try {
+        this.alerts = await fetch('/api/alerts').then(r=>r.json());
+        this.unreadAlerts = this.alerts.filter(a=>!a.is_read).length;
+        // Register all currently-known alerts so poller never re-toasts them
+        this.alerts.forEach(a => this._toastedIds.add(a.alert_id));
+      } catch(e) {}
     },
     async loadEstimations() {
       try { this.estimations=await fetch('/api/estimations').then(r=>r.json()); } catch(e) {}
@@ -3383,6 +3721,31 @@ function app() {
         this.glError = e.message;
       }
       this.glLoading = false;
+    },
+
+    // ── Outlook / Planner ────────────────────────────────────────────────────
+    async loadOutlookConfig() {
+      try {
+        const cfg = await fetch('/api/planner/config').then(r=>r.json());
+        this.outlookCfg = { ...this.outlookCfg, ...cfg, ics_url: '' };
+      } catch(e) {}
+    },
+    async saveOutlookConfig() {
+      try {
+        await fetch('/api/planner/config', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            ics_url:       this.outlookCfg.ics_url,
+            enabled:       this.outlookCfg.enabled,
+            working_start: this.outlookCfg.working_start,
+            working_end:   this.outlookCfg.working_end,
+          }),
+        });
+        this.addToast('Calendar settings saved','success');
+        await this.loadOutlookConfig();
+      } catch(e) {
+        this.addToast('Save failed: '+e.message,'error');
+      }
     },
 
     // ── Badge helpers ────────────────────────────────────────────────────────
