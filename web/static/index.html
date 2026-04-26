@@ -439,6 +439,7 @@
       <div @click="nav('jira-team')"       :class="navCls('jira-team')">
         <div class="nav-icon">👥</div><span style="flex:1">Team Workload</span>
       </div>
+      <div @click="nav('team-workload')"   :class="navCls('team-workload')">  <div class="nav-icon">👥</div><span style="flex:1">Team</span></div>
 
       <div class="nav-group-label" style="margin-top:4px;">Development</div>
       <div @click="nav('my-hub')" :class="navCls('my-hub')">
@@ -3084,6 +3085,119 @@
 
       </div>
 
+      <!-- ══ TEAM WORKLOAD VIEW ══ -->
+      <div x-show="view==='team-workload'" x-cloak>
+
+        <!-- Header -->
+        <div style="margin-bottom:24px;">
+          <h1 style="font-size:28px;font-weight:800;margin-bottom:8px;">Team Workload</h1>
+          <p style="color:var(--text-2);font-size:14px;">View workload across team members — local tasks, Jira issues, and GitLab MRs.</p>
+        </div>
+
+        <!-- Toolbar -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <button @click="loadTeamWorkload()" :disabled="workloadLoading"
+            style="padding:8px 16px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;">
+            <span x-show="!workloadLoading">↻ Refresh</span>
+            <span x-show="workloadLoading">Loading…</span>
+          </button>
+          <input x-model="workloadFilter" placeholder="Search member…"
+            style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;width:200px;color:var(--text-1);background:var(--bg);">
+        </div>
+
+        <!-- Error -->
+        <div x-show="workloadError" style="padding:12px 16px;border-radius:8px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="workloadError"></div>
+
+        <!-- Summary Cards -->
+        <div x-show="workloadData.summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;">
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#6366f1;" x-text="workloadData.summary.total_members||0"></div>
+            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Team Members</div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#ef4444;" x-text="workloadData.summary.overloaded_count||0"></div>
+            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Overloaded</div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#3b82f6;" x-text="workloadData.summary.total_local_tasks||0"></div>
+            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Local Tasks</div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#f59e0b;" x-text="workloadData.summary.total_jira_issues||0"></div>
+            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Jira Issues</div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#10b981;" x-text="workloadData.summary.total_mrs||0"></div>
+            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">GitLab MRs</div>
+          </div>
+        </div>
+
+        <!-- Team Member Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+          <template x-for="member in (workloadData.team||[]).filter(m=>!workloadFilter||m.name.toLowerCase().includes(workloadFilter.toLowerCase()))" :key="member.member_id">
+            <div class="card" style="padding:0;overflow:hidden;">
+
+              <!-- Member Header -->
+              <div style="padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;"
+                  x-text="member.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)"></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);" x-text="member.name"></div>
+                  <div style="font-size:11px;color:var(--text-2);" x-text="member.role||'—'"></div>
+                </div>
+                <div :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.workload.capacity_status==='heavy'?'background:#fff1f2;color:#be123c;':member.workload.capacity_status==='moderate'?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
+                  x-text="member.workload.capacity_status==='heavy'?'Heavy':member.workload.capacity_status==='moderate'?'Moderate':'Light'"></div>
+              </div>
+
+              <!-- Workload Breakdown -->
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;font-size:12px;color:var(--text-2);">
+                <span><strong x-text="member.workload.local_count"></strong> local</span>
+                <span><strong x-text="member.workload.jira_count"></strong> Jira</span>
+                <span><strong x-text="member.workload.mr_count"></strong> MRs</span>
+                <span style="margin-left:auto;font-weight:700;color:var(--text-1);" x-text="member.workload.total_active+' total'"></span>
+              </div>
+
+              <!-- Items List (Expandable) -->
+              <div x-data="{expanded: false}" style="padding:12px 16px;">
+                <button @click="expanded=!expanded" style="width:100%;text-align:left;background:none;border:none;padding:0;color:var(--text-2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                  <span>Details</span>
+                  <span x-text="expanded?'▼':'▶'"></span>
+                </button>
+                <div x-show="expanded" style="margin-top:8px;font-size:12px;color:var(--text-2);">
+                  <div x-show="member.workload.local_count>0" style="margin-bottom:8px;">
+                    <div style="font-weight:700;color:var(--text-1);margin-bottom:4px;">Local Tasks</div>
+                    <template x-for="task in member.workload.local_tasks" :key="task.task_id">
+                      <div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);" x-text="task.title"></div>
+                    </template>
+                  </div>
+                  <div x-show="member.workload.jira_count>0" style="margin-bottom:8px;">
+                    <div style="font-weight:700;color:var(--text-1);margin-bottom:4px;">Jira Issues</div>
+                    <template x-for="issue in member.workload.jira_issues" :key="issue.key">
+                      <div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);" x-text="issue.key+' - '+issue.summary"></div>
+                    </template>
+                  </div>
+                  <div x-show="member.workload.mr_count>0">
+                    <div style="font-weight:700;color:var(--text-1);margin-bottom:4px;">GitLab MRs</div>
+                    <template x-for="mr in member.workload.gitlab_mrs" :key="mr.iid">
+                      <div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);" x-text="'!'+mr.iid+' - '+mr.title"></div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!workloadData.team||workloadData.team.length===0" style="text-align:center;padding:60px 20px;">
+          <div style="font-size:48px;margin-bottom:16px;">👥</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text-1);">No team members</div>
+          <p style="color:var(--text-2);font-size:14px;margin-top:8px;">Add team members to see workload.</p>
+        </div>
+
+      </div>
+
       <!-- ══ MY HUB ══ -->
       <div x-show="view==='my-hub'" x-cloak>
 
@@ -4265,6 +4379,11 @@ function app() {
     sprintData: null, sprintLoading: false, sprintError: '',
     sprintFilter: '', sprintViewTab: 'all',
 
+    workloadData: {},
+    workloadLoading: false,
+    workloadError: null,
+    workloadFilter: "",
+
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
 
@@ -4279,7 +4398,7 @@ function app() {
         tasks:'Tasks', projects:'Projects', milestones:'Milestones',
         commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
-        'jira-team':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
+        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
         planner:'Day Planner', 'my-hub':'My Hub', 'sprint-board':'Sprint Board',
         'proj-planner':'Project Planner', delivery:'Release Tracker',
         applications:'Applications' }[this.view] || 'ExecOS';
@@ -4292,6 +4411,7 @@ function app() {
         estimate:'Multi-item · Weighted · Holidays · Release paperwork',
         'project-tracker':'Gantt timeline · Current status · Export to PNG',
         'jira-team':'Live Jira data · Open issues · Who is working on what',
+        'team-workload':'Team workload across local tasks, Jira issues, and GitLab MRs',
         'gitlab-mrs':'Open MRs · By author · By project · Draft vs Ready',
         admin:'Email · Jira · GitLab · Outlook · Integrations',
         planner:'Schedule tasks · Outlook calendar · 2-hr reminders',
@@ -4401,6 +4521,7 @@ function app() {
       if(id==='jira-team' && this.jiraAppId && !this.jiraData.team.length) this.onJiraAppChange();
       if(id==='gitlab-mrs' && this.gitlabAppId && !this.glData.all_mrs.length) this.onGitLabAppChange();
       if(id==='my-hub' && !this.myHubData) this.loadMyHub();
+      if(id==='team-workload' && !Object.keys(this.workloadData).length) this.loadTeamWorkload();
       if(id==='sprint-board' && this.sprintAppId && !this.sprintData) this.onSprintAppChange();
       if(id==='admin') {
         this.loadEmailConfig(); this.loadOutlookConfig();
@@ -5211,6 +5332,21 @@ function app() {
         this.myHubError = e.message;
       }
       this.myHubLoading = false;
+    },
+
+    // ── Team Workload ────────────────────────────────────────────────────────
+    async loadTeamWorkload() {
+      this.workloadLoading = true;
+      this.workloadError = null;
+      try {
+        const response = await fetch("/api/workload/team?app_id=default");
+        if (!response.ok) throw new Error("Failed to load workload");
+        this.workloadData = await response.json();
+      } catch (err) {
+        this.workloadError = err.message;
+      } finally {
+        this.workloadLoading = false;
+      }
     },
 
     // ── Sprint Board ─────────────────────────────────────────────────────────
