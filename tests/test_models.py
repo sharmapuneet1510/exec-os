@@ -5,9 +5,10 @@ def test_team_member_orm_basic():
         email="alice@company.com",
         gitlab_username="achen",
         role="Backend",
-        max_concurrent_tasks=8
+        max_concurrent_tasks=8,
+        is_active=True
     )
     assert member.name == "Alice Chen"
     assert member.email == "alice@company.com"
-    assert member.is_active == True
+    assert member.is_active is True
     assert member.max_concurrent_tasks == 8

@@ -381,20 +381,7 @@ class TeamMemberORM(Base):
     email = Column(String(255), nullable=True)
     gitlab_username = Column(String(255), nullable=True)
     role = Column(String(100), nullable=True)
-    max_concurrent_tasks = Column(Integer, default=8)
     is_active = Column(Boolean, default=True)
+    max_concurrent_tasks = Column(Integer, default=8)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __init__(self, **kwargs):
-        if 'is_active' not in kwargs:
-            kwargs['is_active'] = True
-        if 'max_concurrent_tasks' not in kwargs:
-            kwargs['max_concurrent_tasks'] = 8
-        if 'member_id' not in kwargs:
-            kwargs['member_id'] = _uuid()
-        if 'created_at' not in kwargs:
-            kwargs['created_at'] = datetime.utcnow()
-        if 'updated_at' not in kwargs:
-            kwargs['updated_at'] = datetime.utcnow()
-        super().__init__(**kwargs)
