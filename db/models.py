@@ -36,6 +36,7 @@ class ProjectORM(Base):
     owner = Column(String(255), nullable=True)
     due_date = Column(Date, nullable=True)
     tags = Column(Text, default="[]")
+    application_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -190,10 +191,160 @@ class OutlookConfigORM(Base):
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ApplicationORM(Base):
+    __tablename__ = "applications"
+
+    application_id = Column(String, primary_key=True, default=_uuid)
+    name           = Column(String(255), nullable=False)
+    code           = Column(String(50), default="")   # short identifier e.g. "MYAPP"
+    description    = Column(Text, default="")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ProjEstimateORM(Base):
+    __tablename__ = "proj_estimates"
+
+    est_id               = Column(String, primary_key=True, default=_uuid)
+    name                 = Column(String(255), nullable=False)
+    description          = Column(Text, default="")
+    start_date           = Column(Date, nullable=True)
+    end_date_constraint  = Column(Date, nullable=True)   # hard deadline
+    jira_project_key     = Column(String(50), default="")
+    application_id       = Column(String, nullable=True)
+    created_at           = Column(DateTime, default=datetime.utcnow)
+    updated_at           = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ProjEstMilestoneORM(Base):
+    __tablename__ = "proj_est_milestones"
+
+    ms_id          = Column(String, primary_key=True, default=_uuid)
+    est_id         = Column(String, ForeignKey("proj_estimates.est_id", ondelete="CASCADE"), nullable=False)
+    name           = Column(String(255), nullable=False)
+    description    = Column(Text, default="")
+    order          = Column(Integer, default=0)
+    execution_type = Column(String(20), default="sequential")  # sequential | parallel
+    created_at     = Column(DateTime, default=datetime.utcnow)
+
+
+class ProjEstTaskORM(Base):
+    __tablename__ = "proj_est_tasks"
+
+    task_id        = Column(String, primary_key=True, default=_uuid)
+    ms_id          = Column(String, ForeignKey("proj_est_milestones.ms_id", ondelete="CASCADE"), nullable=False)
+    name           = Column(String(500), nullable=False)
+    description    = Column(Text, default="")
+    duration_days  = Column(Integer, default=1)
+    execution_type = Column(String(20), default="sequential")  # sequential | parallel
+    order          = Column(Integer, default=0)
+    assignee       = Column(String(255), default="")
+    jira_key       = Column(String(50), default="")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+
+
+class DeliveryTemplateORM(Base):
+    __tablename__ = "delivery_templates"
+
+    template_id  = Column(String, primary_key=True, default=_uuid)
+    name         = Column(String(255), nullable=False)
+    description  = Column(Text, default="")
+    is_default   = Column(Boolean, default=False)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    updated_at   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DeliveryTemplateItemORM(Base):
+    __tablename__ = "delivery_template_items"
+
+    item_id          = Column(String, primary_key=True, default=_uuid)
+    template_id      = Column(String, ForeignKey("delivery_templates.template_id", ondelete="CASCADE"), nullable=False)
+    order            = Column(Integer, default=0)
+    title            = Column(String(500), nullable=False)
+    description      = Column(Text, default="")
+    category         = Column(String(30), default="pre_release")  # pre_release | release | post_release
+    responsible_role = Column(String(255), default="")
+    is_required      = Column(Boolean, default=True)
+
+
+class DeliveryReleaseORM(Base):
+    __tablename__ = "delivery_releases"
+
+    release_id       = Column(String, primary_key=True, default=_uuid)
+    name             = Column(String(255), nullable=False)
+    version          = Column(String(50), default="")
+    project_id       = Column(String, nullable=True)
+    template_id      = Column(String, nullable=True)
+    release_manager  = Column(String(255), default="")
+    target_date      = Column(Date, nullable=True)
+    status           = Column(String(30), default="planned")  # planned|in_progress|released|rollback
+    description      = Column(Text, default="")
+    created_at       = Column(DateTime, default=datetime.utcnow)
+    updated_at       = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DeliveryReleaseItemORM(Base):
+    __tablename__ = "delivery_release_items"
+
+    item_id          = Column(String, primary_key=True, default=_uuid)
+    release_id       = Column(String, ForeignKey("delivery_releases.release_id", ondelete="CASCADE"), nullable=False)
+    order            = Column(Integer, default=0)
+    title            = Column(String(500), nullable=False)
+    description      = Column(Text, default="")
+    category         = Column(String(30), default="pre_release")
+    responsible_role = Column(String(255), default="")
+    status           = Column(String(30), default="pending")  # pending|in_progress|done|skipped|blocked
+    assignee         = Column(String(255), default="")
+    notes            = Column(Text, default="")
+    is_required      = Column(Boolean, default=True)
+    completed_at     = Column(DateTime, nullable=True)
+
+
 class SprintConfigORM(Base):
     __tablename__ = "sprint_config"
 
     id                 = Column(Integer, primary_key=True, default=1)
+    board_id           = Column(String(100), default="")
+    sprint_id          = Column(String(100), default="")
+    sprint_name        = Column(String(255), default="")
+    my_jira_email      = Column(String(255), default="")
+    my_gitlab_username = Column(String(255), default="")
+    created_at         = Column(DateTime, default=datetime.utcnow)
+    updated_at         = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AppJiraConfigORM(Base):
+    __tablename__ = "app_jira_configs"
+
+    id             = Column(String, primary_key=True, default=_uuid)
+    application_id = Column(String, nullable=False, unique=True)
+    base_url       = Column(String(500), default="")
+    email          = Column(String(255), default="")
+    api_token      = Column(Text, default="")
+    project_keys   = Column(Text, default="[]")
+    enabled        = Column(Boolean, default=False)
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AppGitLabConfigORM(Base):
+    __tablename__ = "app_gitlab_configs"
+
+    id             = Column(String, primary_key=True, default=_uuid)
+    application_id = Column(String, nullable=False, unique=True)
+    base_url       = Column(String(500), default="https://gitlab.com")
+    access_token   = Column(Text, default="")
+    project_ids    = Column(Text, default="[]")
+    enabled        = Column(Boolean, default=False)
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AppSprintConfigORM(Base):
+    __tablename__ = "app_sprint_configs"
+
+    id                 = Column(String, primary_key=True, default=_uuid)
+    application_id     = Column(String, nullable=False, unique=True)
     board_id           = Column(String(100), default="")
     sprint_id          = Column(String(100), default="")
     sprint_name        = Column(String(255), default="")
@@ -221,5 +372,29 @@ class DayPlanItemORM(Base):
     created_at   = Column(DateTime, default=datetime.utcnow)
     updated_at   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
+class TeamMemberORM(Base):
+    __tablename__ = "team_members"
+
+    member_id = Column(String, primary_key=True, default=_uuid)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    gitlab_username = Column(String(255), nullable=True)
+    role = Column(String(100), nullable=True)
+    max_concurrent_tasks = Column(Integer, default=8)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __init__(self, **kwargs):
+        if 'is_active' not in kwargs:
+            kwargs['is_active'] = True
+        if 'max_concurrent_tasks' not in kwargs:
+            kwargs['max_concurrent_tasks'] = 8
+        if 'member_id' not in kwargs:
+            kwargs['member_id'] = _uuid()
+        if 'created_at' not in kwargs:
+            kwargs['created_at'] = datetime.utcnow()
+        if 'updated_at' not in kwargs:
+            kwargs['updated_at'] = datetime.utcnow()
+        super().__init__(**kwargs)
