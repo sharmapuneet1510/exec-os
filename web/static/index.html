@@ -4390,7 +4390,7 @@ function app() {
       if(id==='admin') {
         this.loadEmailConfig(); this.loadOutlookConfig();
         if (!this.settingsApp && this.applications.length) this.settingsApp = this.applications[0].application_id;
-        if (typeof this.loadSettingsAppConfig === 'function') this.loadSettingsAppConfig();
+        this.loadSettingsAppConfig();
       }
     },
 
@@ -5043,55 +5043,99 @@ function app() {
       setTimeout(() => { this.emailMsg = ''; }, 5000);
     },
 
-    // ── Jira ─────────────────────────────────────────────────────────────────
-    async loadJiraConfig() {
+    // ── Settings page — per-app integration functions ─────────────────────────
+    async loadSettingsAppConfig() {
+      if (!this.settingsApp) return;
+      const aid = this.settingsApp;
       try {
-        const cfg = await fetch('/api/jira/config').then(r=>r.json());
-        this.jiraCfg = {
-          ...this.jiraCfg, ...cfg,
-          project_keys_raw: (() => { try { return JSON.parse(cfg.project_keys||'[]').join(', '); } catch(e){ return ''; } })(),
+        const [j, g, s] = await Promise.all([
+          fetch(`/api/applications/${aid}/integrations/jira`).then(r=>r.json()).catch(()=>({})),
+          fetch(`/api/applications/${aid}/integrations/gitlab`).then(r=>r.json()).catch(()=>({})),
+          fetch(`/api/applications/${aid}/integrations/sprint`).then(r=>r.json()).catch(()=>({})),
+        ]);
+        this.settingsAppCfg = {
+          jira: {
+            base_url: j.base_url||'', email: j.email||'', api_token: '',
+            project_keys_raw: (j.project_keys||[]).join('\n'), enabled: j.enabled||false,
+          },
+          gitlab: {
+            base_url: g.base_url||'https://gitlab.com', access_token: '',
+            project_ids_raw: (g.project_ids||[]).join('\n'), enabled: g.enabled||false,
+          },
+          sprint: {
+            board_id: s.board_id||'', sprint_id: s.sprint_id||'', sprint_name: s.sprint_name||'',
+            my_jira_email: s.my_jira_email||'', my_gitlab_username: s.my_gitlab_username||'',
+          },
         };
+        this.settingsJiraMsg=''; this.settingsGlMsg=''; this.settingsSprintMsg='';
       } catch(e) {}
     },
-    async saveJiraConfig() {
-      try {
-        await fetch('/api/jira/config', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            base_url:     this.jiraCfg.base_url,
-            email:        this.jiraCfg.email,
-            api_token:    this.jiraCfg.api_token,
-            project_keys: this.jiraCfg.project_keys_raw,
-            enabled:      this.jiraCfg.enabled,
-          }),
-        });
-        this.addToast('Jira settings saved', 'success');
-        await this.loadJiraConfig();
-      } catch(e) {
-        this.addToast('Save failed: '+e.message, 'error');
-      }
+    async saveSettingsJira() {
+      if (!this.settingsApp) return;
+      const c = this.settingsAppCfg.jira;
+      await fetch(`/api/applications/${this.settingsApp}/integrations/jira`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          base_url: c.base_url, email: c.email, api_token: c.api_token,
+          project_keys: c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),
+          enabled: c.enabled,
+        }),
+      });
+      this.settingsJiraMsg='Jira config saved ✓'; this.settingsJiraOk=true;
+      await this.loadSettingsAppConfig();
     },
-    async testJira() {
-      this.jiraTestLoading = true; this.jiraTestMsg = ''; this.jiraTestOk = false;
-      // Save first so test uses latest values
-      await this.saveJiraConfig();
+    async testSettingsJira() {
+      if (!this.settingsApp) return;
+      this.settingsJiraTestLoading=true; this.settingsJiraMsg='';
       try {
-        const r = await fetch('/api/jira/test', {method:'POST'});
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.detail||'Connection failed');
-        this.jiraTestMsg = '✓ '+data.message; this.jiraTestOk = true;
-      } catch(e) {
-        this.jiraTestMsg = '✕ '+e.message; this.jiraTestOk = false;
-      }
-      this.jiraTestLoading = false;
-      setTimeout(()=>{ this.jiraTestMsg=''; }, 6000);
+        const r = await fetch(`/api/jira/test?app_id=${this.settingsApp}`, {method:'POST'});
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail||'Connection failed');
+        this.settingsJiraMsg=d.message||'Connected ✓'; this.settingsJiraOk=true;
+      } catch(e) { this.settingsJiraMsg=e.message||'Connection failed'; this.settingsJiraOk=false; }
+      finally { this.settingsJiraTestLoading=false; }
+    },
+    async saveSettingsGitLab() {
+      if (!this.settingsApp) return;
+      const c = this.settingsAppCfg.gitlab;
+      await fetch(`/api/applications/${this.settingsApp}/integrations/gitlab`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          base_url: c.base_url, access_token: c.access_token,
+          project_ids: c.project_ids_raw.split('\n').map(s=>s.trim()).filter(Boolean),
+          enabled: c.enabled,
+        }),
+      });
+      this.settingsGlMsg='GitLab config saved ✓'; this.settingsGlOk=true;
+      await this.loadSettingsAppConfig();
+    },
+    async testSettingsGitLab() {
+      if (!this.settingsApp) return;
+      this.settingsGlTestLoading=true; this.settingsGlMsg='';
+      try {
+        const r = await fetch(`/api/gitlab/test?app_id=${this.settingsApp}`, {method:'POST'});
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail||'Connection failed');
+        this.settingsGlMsg=d.message||'Connected ✓'; this.settingsGlOk=true;
+      } catch(e) { this.settingsGlMsg=e.message||'Connection failed'; this.settingsGlOk=false; }
+      finally { this.settingsGlTestLoading=false; }
+    },
+    async saveSettingsSprint() {
+      if (!this.settingsApp) return;
+      const c = this.settingsAppCfg.sprint;
+      await fetch(`/api/applications/${this.settingsApp}/integrations/sprint`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(c),
+      });
+      this.settingsSprintMsg='Sprint config saved ✓'; this.settingsSprintOk=true;
+      await this.loadSettingsAppConfig();
     },
     async loadJiraTeam(bust=false) {
-      if (!this.jiraCfg.enabled) return;
+      if (!this.jiraAppId) return;
       this.jiraLoading = true; this.jiraError = '';
       try {
-        if (bust) await fetch('/api/jira/refresh', {method:'POST'});
-        const data = await fetch('/api/jira/team').then(r=>{ if(!r.ok) return r.json().then(d=>{throw new Error(d.detail||'Error');}); return r.json(); });
+        if (bust) await fetch(`/api/jira/refresh?app_id=${this.jiraAppId}`, {method:'POST'});
+        const data = await fetch(`/api/jira/team?app_id=${this.jiraAppId}`).then(r=>{ if(!r.ok) return r.json().then(d=>{throw new Error(d.detail||'Error');}); return r.json(); });
         this.jiraData = data;
       } catch(e) {
         this.jiraError = e.message;
@@ -5100,52 +5144,12 @@ function app() {
     },
 
     // ── GitLab ───────────────────────────────────────────────────────────────
-    async loadGitLabConfig() {
-      try {
-        const cfg = await fetch('/api/gitlab/config').then(r=>r.json());
-        this.gitlabCfg = {
-          ...this.gitlabCfg, ...cfg,
-          project_ids_raw: (() => { try { return JSON.parse(cfg.project_ids||'[]').join('\n'); } catch(e){ return ''; } })(),
-        };
-      } catch(e) {}
-    },
-    async saveGitLabConfig() {
-      try {
-        await fetch('/api/gitlab/config', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            base_url:     this.gitlabCfg.base_url,
-            access_token: this.gitlabCfg.access_token,
-            project_ids:  this.gitlabCfg.project_ids_raw,
-            enabled:      this.gitlabCfg.enabled,
-          }),
-        });
-        this.addToast('GitLab settings saved', 'success');
-        await this.loadGitLabConfig();
-      } catch(e) {
-        this.addToast('Save failed: '+e.message, 'error');
-      }
-    },
-    async testGitLab() {
-      this.glTestLoading = true; this.glTestMsg = ''; this.glTestOk = false;
-      await this.saveGitLabConfig();
-      try {
-        const r = await fetch('/api/gitlab/test', {method:'POST'});
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.detail||'Connection failed');
-        this.glTestMsg = '✓ '+data.message; this.glTestOk = true;
-      } catch(e) {
-        this.glTestMsg = '✕ '+e.message; this.glTestOk = false;
-      }
-      this.glTestLoading = false;
-      setTimeout(()=>{ this.glTestMsg=''; }, 6000);
-    },
     async loadGitLabMRs(bust=false) {
-      if (!this.gitlabCfg.enabled) return;
+      if (!this.gitlabAppId) return;
       this.glLoading = true; this.glError = '';
       try {
-        if (bust) await fetch('/api/gitlab/refresh', {method:'POST'});
-        const data = await fetch('/api/gitlab/mrs').then(r=>{ if(!r.ok) return r.json().then(d=>{throw new Error(d.detail||'Error');}); return r.json(); });
+        if (bust) await fetch(`/api/gitlab/refresh?app_id=${this.gitlabAppId}`, {method:'POST'});
+        const data = await fetch(`/api/gitlab/mrs?app_id=${this.gitlabAppId}`).then(r=>{ if(!r.ok) return r.json().then(d=>{throw new Error(d.detail||'Error');}); return r.json(); });
         this.glData = data;
       } catch(e) {
         this.glError = e.message;
@@ -5195,30 +5199,53 @@ function app() {
     },
 
     // ── Sprint Board ─────────────────────────────────────────────────────────
-    async loadSprintConfig() {
+    async loadSprintAppConfig(appId) {
+      if (!appId) return;
       try {
-        const cfg = await fetch('/api/sprint/config').then(r=>r.json());
-        this.sprintCfg = { ...this.sprintCfg, ...cfg };
+        const s = await fetch(`/api/applications/${appId}/integrations/sprint`).then(r=>r.json());
+        this.sprintCfg = {
+          board_id: s.board_id||'', sprint_id: s.sprint_id||'', sprint_name: s.sprint_name||'',
+          my_jira_email: s.my_jira_email||'', my_gitlab_username: s.my_gitlab_username||'',
+        };
+        const j = await fetch(`/api/applications/${appId}/integrations/jira`).then(r=>r.json());
+        this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', email: j.email||'', enabled: j.enabled||false };
       } catch(e) {}
     },
-    async saveSprintConfig(fromAdmin=false) {
-      try {
-        await fetch('/api/sprint/config', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(this.sprintCfg),
-        });
-        this.addToast('Sprint settings saved','success');
-        if (!fromAdmin && this.sprintCfg.sprint_id) {
-          await this.loadSprintBoard(true);
-        }
-      } catch(e) {
-        this.addToast('Save failed: '+e.message,'error');
-      }
+    async saveSprintAppConfig() {
+      if (!this.sprintAppId) return;
+      await fetch(`/api/applications/${this.sprintAppId}/integrations/sprint`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(this.sprintCfg),
+      });
+      if (this.sprintCfg.sprint_id) this.loadSprintBoard();
+    },
+    async onSprintAppChange() {
+      localStorage.setItem('execos_sprint_app', this.sprintAppId);
+      this.sprintData = null;
+      await this.loadSprintAppConfig(this.sprintAppId);
+      if (this.sprintCfg.sprint_id) this.loadSprintBoard();
+    },
+    async onJiraAppChange() {
+      localStorage.setItem('execos_jira_app', this.jiraAppId);
+      this.jiraData = { team:[], last_fetched:null };
+      if (!this.jiraAppId) return;
+      const j = await fetch(`/api/applications/${this.jiraAppId}/integrations/jira`).then(r=>r.json()).catch(()=>({}));
+      this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', email: j.email||'', enabled: j.enabled||false };
+      if (this.jiraCfg.enabled) this.loadJiraTeam();
+    },
+    async onGitLabAppChange() {
+      localStorage.setItem('execos_gitlab_app', this.gitlabAppId);
+      this.glData = { all_mrs:[], authors:[], projects:[], total_mrs:0, ready_mrs:0, draft_mrs:0, last_fetched:null };
+      if (!this.gitlabAppId) return;
+      const g = await fetch(`/api/applications/${this.gitlabAppId}/integrations/gitlab`).then(r=>r.json()).catch(()=>({}));
+      this.gitlabCfg = { ...this.gitlabCfg, base_url: g.base_url||'https://gitlab.com', enabled: g.enabled||false };
+      if (this.gitlabCfg.enabled) this.loadGitLabMRs();
     },
     async loadSprintBoards() {
+      if (!this.sprintAppId) return;
       this.sprintBoardsLoading = true;
       try {
-        this.sprintBoards = await fetch('/api/sprint/boards').then(r => {
+        this.sprintBoards = await fetch(`/api/sprint/boards?app_id=${this.sprintAppId}`).then(r => {
           if(!r.ok) return r.json().then(d=>{throw new Error(d.detail||'Error');});
           return r.json();
         });
@@ -5230,15 +5257,15 @@ function app() {
     async loadSprintList() {
       if (!this.sprintCfg.board_id) return;
       try {
-        this.sprintList = await fetch(`/api/sprint/sprints?board_id=${this.sprintCfg.board_id}`).then(r=>r.json());
+        this.sprintList = await fetch(`/api/sprint/sprints?app_id=${this.sprintAppId}&board_id=${this.sprintCfg.board_id}`).then(r=>r.json());
       } catch(e) {}
     },
     async loadSprintBoard(bust=false) {
-      if (!this.sprintCfg.sprint_id) return;
+      if (!this.sprintCfg.sprint_id || !this.sprintAppId) return;
       this.sprintLoading = true; this.sprintError = '';
       try {
-        if (bust) await fetch('/api/sprint/refresh', {method:'POST'});
-        const data = await fetch('/api/sprint/board').then(r => {
+        if (bust) await fetch(`/api/sprint/refresh?app_id=${this.sprintAppId}`, {method:'POST'});
+        const data = await fetch(`/api/sprint/board?app_id=${this.sprintAppId}`).then(r => {
           if(!r.ok) return r.json().then(d=>{throw new Error(d.detail||'Error');});
           return r.json();
         });
