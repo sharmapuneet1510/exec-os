@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import SprintConfigORM, JiraConfigORM, GitLabConfigORM
+from db.models import AppSprintConfigORM, AppJiraConfigORM, AppGitLabConfigORM
 
 log = logging.getLogger("execos.sprint")
 router = APIRouter(prefix="/api/sprint", tags=["sprint"])
@@ -41,33 +41,24 @@ def _db():
         db.close()
 
 
-def _get_cfg(db: Session) -> SprintConfigORM:
-    cfg = db.query(SprintConfigORM).filter(SprintConfigORM.id == 1).first()
+def _get_cfg(app_id: str, db: Session) -> AppSprintConfigORM:
+    cfg = db.query(AppSprintConfigORM).filter(AppSprintConfigORM.application_id == app_id).first()
     if not cfg:
-        cfg = SprintConfigORM(id=1)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+        raise HTTPException(404, "Sprint config not found for this application — configure it in Settings")
     return cfg
 
 
-def _get_jira_cfg(db: Session) -> JiraConfigORM:
-    cfg = db.query(JiraConfigORM).filter(JiraConfigORM.id == 1).first()
-    if not cfg:
-        cfg = JiraConfigORM(id=1)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+def _get_jira_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
+    cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if not cfg or not cfg.enabled or not cfg.api_token:
+        raise HTTPException(400, "Jira integration is not enabled for this application")
     return cfg
 
 
-def _get_gl_cfg(db: Session) -> GitLabConfigORM:
-    cfg = db.query(GitLabConfigORM).filter(GitLabConfigORM.id == 1).first()
+def _get_gl_cfg(app_id: str, db: Session) -> AppGitLabConfigORM:
+    cfg = db.query(AppGitLabConfigORM).filter(AppGitLabConfigORM.application_id == app_id).first()
     if not cfg:
-        cfg = GitLabConfigORM(id=1)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+        raise HTTPException(404, "GitLab config not found for this application")
     return cfg
 
 
@@ -108,54 +99,13 @@ def _extract_jira_keys(text: str) -> list:
     return list(set(re.findall(r'\b([A-Z]+-\d+)\b', text or "")))
 
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
-class SprintConfigIn(BaseModel):
-    board_id:           Optional[str] = ""
-    sprint_id:          Optional[str] = ""
-    sprint_name:        Optional[str] = ""
-    my_jira_email:      Optional[str] = ""
-    my_gitlab_username: Optional[str] = ""
-
-
 # ── Endpoints ─────────────────────────────────────────────────────────────────
-@router.get("/config")
-def get_config(db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
-    return {
-        "board_id":           cfg.board_id or "",
-        "sprint_id":          cfg.sprint_id or "",
-        "sprint_name":        cfg.sprint_name or "",
-        "my_jira_email":      cfg.my_jira_email or "",
-        "my_gitlab_username": cfg.my_gitlab_username or "",
-    }
-
-
-@router.post("/config")
-def save_config(body: SprintConfigIn, db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
-    if body.board_id is not None:
-        cfg.board_id = body.board_id
-    if body.sprint_id is not None:
-        cfg.sprint_id = body.sprint_id
-    if body.sprint_name is not None:
-        cfg.sprint_name = body.sprint_name
-    if body.my_jira_email is not None:
-        cfg.my_jira_email = body.my_jira_email
-    if body.my_gitlab_username is not None:
-        cfg.my_gitlab_username = body.my_gitlab_username
-    db.commit()
-    _cache_bust()
-    return {"ok": True}
-
-
 @router.get("/boards")
-def list_boards(db: Session = Depends(_db)):
+def list_boards(app_id: str = Query(...), db: Session = Depends(_db)):
     """List Jira boards (Software boards that have sprints)."""
-    jira_cfg = _get_jira_cfg(db)
-    if not jira_cfg.enabled or not jira_cfg.api_token:
-        raise HTTPException(400, "Jira integration is not enabled")
+    jira_cfg = _get_jira_cfg(app_id, db)
 
-    cached = _cache_get("boards")
+    cached = _cache_get(f"boards_{app_id}")
     if cached:
         return cached
 
@@ -164,18 +114,16 @@ def list_boards(db: Session = Depends(_db)):
         {"id": str(b["id"]), "name": b.get("name", ""), "type": b.get("type", "")}
         for b in data.get("values", [])
     ]
-    _cache_set("boards", boards)
+    _cache_set(f"boards_{app_id}", boards)
     return boards
 
 
 @router.get("/sprints")
-def list_sprints(board_id: str = Query(...), db: Session = Depends(_db)):
+def list_sprints(app_id: str = Query(...), board_id: str = Query(...), db: Session = Depends(_db)):
     """List sprints for a Jira board."""
-    jira_cfg = _get_jira_cfg(db)
-    if not jira_cfg.enabled or not jira_cfg.api_token:
-        raise HTTPException(400, "Jira integration is not enabled")
+    jira_cfg = _get_jira_cfg(app_id, db)
 
-    cache_key = f"sprints_{board_id}"
+    cache_key = f"sprints_{app_id}_{board_id}"
     cached = _cache_get(cache_key)
     if cached:
         return cached
@@ -203,18 +151,18 @@ def list_sprints(board_id: str = Query(...), db: Session = Depends(_db)):
 
 
 @router.get("/board")
-def sprint_board(db: Session = Depends(_db)):
+def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
     """Fetch sprint items with correlated GitLab MRs."""
-    cached = _cache_get("board")
+    cached = _cache_get(f"board_{app_id}")
     if cached:
         return cached
 
-    cfg      = _get_cfg(db)
-    jira_cfg = _get_jira_cfg(db)
-    gl_cfg   = _get_gl_cfg(db)
-
-    if not jira_cfg.enabled or not jira_cfg.api_token:
-        raise HTTPException(400, "Jira integration is not enabled")
+    cfg      = _get_cfg(app_id, db)
+    jira_cfg = _get_jira_cfg(app_id, db)
+    try:
+        gl_cfg = _get_gl_cfg(app_id, db)
+    except HTTPException:
+        gl_cfg = None
 
     if not cfg.sprint_id:
         raise HTTPException(400, "No sprint configured — go to Sprint Settings and select a sprint")
@@ -256,7 +204,7 @@ def sprint_board(db: Session = Depends(_db)):
     import urllib.parse
     all_gl_mrs = []
     merged_gl_mrs = []
-    if gl_cfg.enabled and gl_cfg.access_token:
+    if gl_cfg and gl_cfg.enabled and gl_cfg.access_token:
         raw_ids = json.loads(gl_cfg.project_ids or "[]")
         if not raw_ids:
             try:
@@ -389,11 +337,16 @@ def sprint_board(db: Session = Depends(_db)):
         "last_fetched": datetime.utcnow().isoformat(),
     }
 
-    _cache_set("board", result)
+    _cache_set(f"board_{app_id}", result)
     return result
 
 
 @router.post("/refresh")
-def refresh_cache():
-    _cache_bust()
+def refresh_cache(app_id: str = Query(...)):
+    for key in (f"board_{app_id}", f"boards_{app_id}"):
+        _cache.pop(key, None)
+    # Also clear any sprints keys for this app
+    for key in list(_cache.keys()):
+        if key.startswith(f"sprints_{app_id}"):
+            _cache.pop(key, None)
     return {"ok": True}
