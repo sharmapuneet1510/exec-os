@@ -25,6 +25,7 @@ class ProjectIn(BaseModel):
     owner: Optional[str] = None
     due_date: Optional[date] = None
     tags: List[str] = []
+    application_id: Optional[str] = None
 
 
 class ProjectOut(BaseModel):
@@ -35,6 +36,7 @@ class ProjectOut(BaseModel):
     owner: Optional[str]
     due_date: Optional[date]
     tags: List[str]
+    application_id: Optional[str]
     task_count: int = 0
     completed_count: int = 0
     health: str = "green"
@@ -72,6 +74,7 @@ def _to_out(p: ProjectORM, db: Session) -> dict:
         "owner": p.owner,
         "due_date": p.due_date,
         "tags": json.loads(p.tags or "[]"),
+        "application_id": p.application_id,
         "task_count": total,
         "completed_count": completed,
         "health": _health(total, completed, overdue),
@@ -97,6 +100,7 @@ def create_project(body: ProjectIn, db: Session = Depends(get_db)):
         owner=body.owner,
         due_date=body.due_date,
         tags=json.dumps(body.tags),
+        application_id=body.application_id,
     )
     db.add(p)
     db.commit()
@@ -118,7 +122,7 @@ def update_project(project_id: str, body: dict, db: Session = Depends(get_db)):
     p = db.query(ProjectORM).filter(ProjectORM.project_id == project_id).first()
     if not p:
         raise HTTPException(404, "project not found")
-    allowed = {"name", "description", "status", "owner", "due_date", "tags"}
+    allowed = {"name", "description", "status", "owner", "due_date", "tags", "application_id"}
     for k, v in body.items():
         if k not in allowed:
             continue

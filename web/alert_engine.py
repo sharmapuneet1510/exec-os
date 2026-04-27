@@ -15,11 +15,10 @@ _INFO     = "info"
 
 
 def _exists(db, source_key: str) -> bool:
-    """Return True if an unread auto-alert with this source key already exists today."""
+    """Return True if ANY auto-alert with this source key was created today (read or unread)."""
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     return db.query(AlertORM).filter(
         AlertORM.source == source_key,
-        AlertORM.is_read == False,          # noqa: E712
         AlertORM.created_at >= today_start,
     ).first() is not None
 

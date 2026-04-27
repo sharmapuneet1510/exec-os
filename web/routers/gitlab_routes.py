@@ -4,12 +4,12 @@ import json, time, logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import GitLabConfigORM
+from db.models import AppGitLabConfigORM
 
 log = logging.getLogger("execos.gitlab")
 router = APIRouter(prefix="/api/gitlab", tags=["gitlab"])
@@ -41,17 +41,14 @@ def _db():
         db.close()
 
 
-def _get_cfg(db: Session) -> GitLabConfigORM:
-    cfg = db.query(GitLabConfigORM).filter(GitLabConfigORM.id == 1).first()
+def _get_cfg(app_id: str, db: Session) -> AppGitLabConfigORM:
+    cfg = db.query(AppGitLabConfigORM).filter(AppGitLabConfigORM.application_id == app_id).first()
     if not cfg:
-        cfg = GitLabConfigORM(id=1)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+        raise HTTPException(404, f"No GitLab config found for application '{app_id}' — configure it in Settings first")
     return cfg
 
 
-def _gl_get(cfg: GitLabConfigORM, path: str, params: dict = None):
+def _gl_get(cfg: AppGitLabConfigORM, path: str, params: dict = None):
     import requests
     base = cfg.base_url.rstrip("/") if cfg.base_url else "https://gitlab.com"
     url = f"{base}/api/v4/{path.lstrip('/')}"
@@ -72,49 +69,11 @@ def _gl_get(cfg: GitLabConfigORM, path: str, params: dict = None):
     return resp.json(), resp.headers
 
 
-class GitLabConfigIn(BaseModel):
-    base_url:     Optional[str] = "https://gitlab.com"
-    access_token: Optional[str] = ""
-    project_ids:  Optional[str] = "[]"   # JSON array of project IDs or "namespace/path"
-    enabled:      Optional[bool] = False
-
-
-@router.get("/config")
-def get_config(db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
-    return {
-        "base_url":     cfg.base_url or "https://gitlab.com",
-        "access_token": "••••••••" if cfg.access_token else "",
-        "project_ids":  cfg.project_ids or "[]",
-        "enabled":      cfg.enabled,
-        "last_synced":  cfg.last_synced.isoformat() if cfg.last_synced else None,
-    }
-
-
-@router.post("/config")
-def save_config(body: GitLabConfigIn, db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
-    if body.base_url is not None:
-        cfg.base_url = body.base_url.rstrip("/")
-    if body.access_token and body.access_token != "••••••••":
-        cfg.access_token = body.access_token
-    if body.project_ids is not None:
-        raw = body.project_ids.strip()
-        if not raw.startswith("["):
-            # Accept newline/comma-separated project paths
-            items = [p.strip() for p in raw.replace("\n", ",").split(",") if p.strip()]
-            cfg.project_ids = json.dumps(items)
-        else:
-            cfg.project_ids = raw
-    cfg.enabled = body.enabled
-    db.commit()
-    _cache_bust()
-    return {"ok": True}
 
 
 @router.post("/test")
-def test_connection(db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
+def test_connection(app_id: str = Query(...), db: Session = Depends(_db)):
+    cfg = _get_cfg(app_id, db)
     if not cfg.access_token:
         raise HTTPException(400, "GitLab not configured — enter an access token first")
     data, _ = _gl_get(cfg, "user")
@@ -127,12 +86,13 @@ def test_connection(db: Session = Depends(_db)):
 
 
 @router.get("/projects")
-def list_projects(db: Session = Depends(_db)):
+def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
     """Return projects from the configured list (resolves path-based IDs)."""
-    cfg = _get_cfg(db)
+    cfg = _get_cfg(app_id, db)
     if not cfg.enabled or not cfg.access_token:
         raise HTTPException(400, "GitLab integration is not enabled")
-    cached = _cache_get("gl_projects")
+    cache_key = f"gl_projects_{app_id}"
+    cached = _cache_get(cache_key)
     if cached:
         return cached
 
@@ -151,18 +111,19 @@ def list_projects(db: Session = Depends(_db)):
             projects.append({"id": p["id"], "name": p["name"], "path": p["path_with_namespace"], "web_url": p.get("web_url","")})
         except HTTPException:
             pass
-    _cache_set("gl_projects", projects)
+    _cache_set(cache_key, projects)
     return projects
 
 
 @router.get("/mrs")
-def open_mrs(db: Session = Depends(_db)):
+def open_mrs(app_id: str = Query(...), db: Session = Depends(_db)):
     """Return all open MRs across configured projects, grouped by author."""
-    cfg = _get_cfg(db)
+    cfg = _get_cfg(app_id, db)
     if not cfg.enabled or not cfg.access_token:
         raise HTTPException(400, "GitLab integration is not enabled")
 
-    cached = _cache_get("gl_mrs")
+    cache_key = f"gl_mrs_{app_id}"
+    cached = _cache_get(cache_key)
     if cached:
         return cached
 
@@ -245,13 +206,14 @@ def open_mrs(db: Session = Depends(_db)):
         "last_fetched":  datetime.utcnow().isoformat(),
     }
 
-    _cache_set("gl_mrs", result)
+    _cache_set(cache_key, result)
     cfg.last_synced = datetime.utcnow()
     db.commit()
     return result
 
 
 @router.post("/refresh")
-def refresh_cache(db: Session = Depends(_db)):
-    _cache_bust()
+def refresh_cache(app_id: str = Query(...)):
+    _cache.pop(f"gl_mrs_{app_id}", None)
+    _cache.pop(f"gl_projects_{app_id}", None)
     return {"ok": True}
