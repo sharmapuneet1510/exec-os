@@ -15,6 +15,7 @@ def _migrate():
     migrations = [
         "ALTER TABLE projects ADD COLUMN application_id TEXT",
         "ALTER TABLE tasks ADD COLUMN assignee_id TEXT",
+        "ALTER TABLE estimations ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL",
     ]
     with engine.connect() as conn:
         for sql in migrations:

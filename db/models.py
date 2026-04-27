@@ -178,6 +178,7 @@ class EstimationORM(Base):
     holiday_buffer_days = Column(Integer, default=0)
     total_working_days = Column(Integer, default=0)
     estimated_end_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class OutlookConfigORM(Base):
