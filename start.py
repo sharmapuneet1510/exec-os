@@ -3,6 +3,10 @@
 ExecOS — single-script startup.
 Installs dependencies, initialises the SQLite database, and starts the web server.
 Open http://localhost:8080 after running.
+
+Usage:
+  python3 start.py              # Start with empty database
+  python3 start.py --with-data  # Start with sample data loaded
 """
 
 import subprocess
@@ -45,15 +49,15 @@ def ensure_deps():
         _pip("-r", req)
 
 
-def init_db():
+def init_db(populate_data=False):
     sys.path.insert(0, ROOT)
     from db.init_db import create_all
-    create_all()
+    create_all(populate_data=populate_data)
 
 
-def start():
+def start(populate_data=False):
     ensure_deps()
-    init_db()
+    init_db(populate_data=populate_data)
 
     port = int(os.getenv("PORT", "8080"))
     print(f"\nExecOS running → http://localhost:{port}\n")
@@ -75,4 +79,5 @@ def start():
 
 
 if __name__ == "__main__":
-    start()
+    populate_data = "--with-data" in sys.argv
+    start(populate_data=populate_data)
