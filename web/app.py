@@ -16,6 +16,7 @@ from web.routers import delivery_routes
 from web.routers import application_routes
 from web.routers import app_integration_routes
 from web.routers import workload_routes
+from web.routers import outlook_calendar_routes
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
@@ -37,6 +38,7 @@ app.include_router(delivery_routes.router)
 app.include_router(application_routes.router)
 app.include_router(app_integration_routes.router)
 app.include_router(workload_routes.router)
+app.include_router(outlook_calendar_routes.router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
