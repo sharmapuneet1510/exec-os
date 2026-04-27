@@ -4,12 +4,12 @@ import json, time, logging
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import JiraConfigORM
+from db.models import AppJiraConfigORM
 
 log = logging.getLogger("execos.jira")
 router = APIRouter(prefix="/api/jira", tags=["jira"])
@@ -43,18 +43,15 @@ def _db():
         db.close()
 
 
-def _get_cfg(db: Session) -> JiraConfigORM:
-    cfg = db.query(JiraConfigORM).filter(JiraConfigORM.id == 1).first()
+def _get_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
+    cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
     if not cfg:
-        cfg = JiraConfigORM(id=1)
-        db.add(cfg)
-        db.commit()
-        db.refresh(cfg)
+        raise HTTPException(404, f"No Jira config found for application '{app_id}' — configure it in Settings first")
     return cfg
 
 
 # ── Jira HTTP helpers ─────────────────────────────────────────────────────────
-def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
+def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
     """Make an authenticated GET to the Jira Cloud REST API."""
     import requests
     url = f"{cfg.base_url.rstrip('/')}/rest/api/3/{path.lstrip('/')}"
@@ -74,7 +71,7 @@ def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
     return resp.json()
 
 
-def _build_jql(cfg: JiraConfigORM, extra: str = "") -> str:
+def _build_jql(cfg: AppJiraConfigORM, extra: str = "") -> str:
     keys = json.loads(cfg.project_keys or "[]")
     parts = []
     if keys:
@@ -86,7 +83,7 @@ def _build_jql(cfg: JiraConfigORM, extra: str = "") -> str:
     return " AND ".join(parts)
 
 
-def _jira_search_all(cfg: JiraConfigORM, jql: str, fields: str) -> list:
+def _jira_search_all(cfg: AppJiraConfigORM, jql: str, fields: str) -> list:
     """Paginate through all Jira search results (max 500)."""
     all_issues = []
     start_at = 0
@@ -105,55 +102,10 @@ def _jira_search_all(cfg: JiraConfigORM, jql: str, fields: str) -> list:
     return all_issues
 
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
-class JiraConfigIn(BaseModel):
-    base_url:     Optional[str] = ""
-    email:        Optional[str] = ""
-    api_token:    Optional[str] = ""
-    project_keys: Optional[str] = "[]"  # raw JSON string
-    enabled:      Optional[bool] = False
-
-
 # ── Endpoints ─────────────────────────────────────────────────────────────────
-@router.get("/config")
-def get_config(db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
-    return {
-        "base_url":     cfg.base_url or "",
-        "email":        cfg.email or "",
-        "api_token":    "••••••••" if cfg.api_token else "",
-        "project_keys": cfg.project_keys or "[]",
-        "enabled":      cfg.enabled,
-        "last_synced":  cfg.last_synced.isoformat() if cfg.last_synced else None,
-    }
-
-
-@router.post("/config")
-def save_config(body: JiraConfigIn, db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
-    if body.base_url is not None:
-        cfg.base_url = body.base_url.rstrip("/")
-    if body.email is not None:
-        cfg.email = body.email
-    if body.api_token and body.api_token != "••••••••":
-        cfg.api_token = body.api_token
-    if body.project_keys is not None:
-        # Accept comma-separated string OR JSON array
-        raw = body.project_keys.strip()
-        if not raw.startswith("["):
-            keys = [k.strip().upper() for k in raw.split(",") if k.strip()]
-            cfg.project_keys = json.dumps(keys)
-        else:
-            cfg.project_keys = raw
-    cfg.enabled = body.enabled
-    db.commit()
-    _cache_bust()
-    return {"ok": True}
-
-
 @router.post("/test")
-def test_connection(db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
+def test_connection(app_id: str = Query(...), db: Session = Depends(_db)):
+    cfg = _get_cfg(app_id, db)
     if not cfg.base_url or not cfg.email or not cfg.api_token:
         raise HTTPException(400, "Jira not configured — fill in URL, email, and API token first")
     data = _jira_get(cfg, "myself")
@@ -166,11 +118,12 @@ def test_connection(db: Session = Depends(_db)):
 
 
 @router.get("/projects")
-def list_projects(db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
+def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
+    cfg = _get_cfg(app_id, db)
     if not cfg.enabled or not cfg.api_token:
         raise HTTPException(400, "Jira integration is not enabled")
-    cached = _cache_get("projects")
+    cache_key = f"projects_{app_id}"
+    cached = _cache_get(cache_key)
     if cached:
         return cached
     data = _jira_get(cfg, "project/search", {"maxResults": 50, "orderBy": "name"})
@@ -178,18 +131,19 @@ def list_projects(db: Session = Depends(_db)):
         {"key": p["key"], "name": p["name"], "type": p.get("projectTypeKey", "")}
         for p in data.get("values", [])
     ]
-    _cache_set("projects", projects)
+    _cache_set(cache_key, projects)
     return projects
 
 
 @router.get("/team")
-def team_workload(db: Session = Depends(_db)):
+def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     """Return team workload: one entry per assignee with their open issues."""
-    cfg = _get_cfg(db)
+    cfg = _get_cfg(app_id, db)
     if not cfg.enabled or not cfg.api_token:
         raise HTTPException(400, "Jira integration is not enabled")
 
-    cached = _cache_get("team")
+    cache_key = f"team_{app_id}"
+    cached = _cache_get(cache_key)
     if cached:
         return cached
 
@@ -241,9 +195,8 @@ def team_workload(db: Session = Depends(_db)):
         "last_fetched": datetime.utcnow().isoformat(),
     }
 
-    _cache_set("team", result)
+    _cache_set(cache_key, result)
 
-    # Update last_synced timestamp
     cfg.last_synced = datetime.utcnow()
     db.commit()
 
@@ -251,6 +204,7 @@ def team_workload(db: Session = Depends(_db)):
 
 
 @router.post("/refresh")
-def refresh_cache(db: Session = Depends(_db)):
-    _cache_bust()
+def refresh_cache(app_id: str = Query(...)):
+    _cache.pop(f"team_{app_id}", None)
+    _cache.pop(f"projects_{app_id}", None)
     return {"ok": True, "message": "Cache cleared — next fetch will pull live data"}
