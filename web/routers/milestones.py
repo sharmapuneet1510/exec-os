@@ -7,6 +7,13 @@ from sqlalchemy.orm import Session
 from db.base import get_db
 from db.models import MilestoneORM
 
+
+def _bust_dash():
+    from web.deps import get_redis
+    r = get_redis()
+    r.delete("dashboard:operational")
+    r.delete("dashboard:executive")
+
 router = APIRouter(prefix="/api/milestones", tags=["milestones"])
 
 
@@ -72,6 +79,7 @@ def create_milestone(body: MilestoneIn, db: Session = Depends(get_db)):
     db.add(m)
     db.commit()
     db.refresh(m)
+    _bust_dash()
     return _to_out(m)
 
 
@@ -88,6 +96,7 @@ def update_milestone(milestone_id: str, body: dict, db: Session = Depends(get_db
     m.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(m)
+    _bust_dash()
     return _to_out(m)
 
 
@@ -98,3 +107,4 @@ def delete_milestone(milestone_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "milestone not found")
     db.delete(m)
     db.commit()
+    _bust_dash()

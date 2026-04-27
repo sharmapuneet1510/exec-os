@@ -7,6 +7,13 @@ from sqlalchemy.orm import Session
 from db.base import get_db
 from db.models import CommitmentORM
 
+
+def _bust_dash():
+    from web.deps import get_redis
+    r = get_redis()
+    r.delete("dashboard:operational")
+    r.delete("dashboard:executive")
+
 router = APIRouter(prefix="/api/commitments", tags=["commitments"])
 
 
@@ -70,6 +77,7 @@ def create_commitment(body: CommitmentIn, db: Session = Depends(get_db)):
     db.add(c)
     db.commit()
     db.refresh(c)
+    _bust_dash()
     return _to_out(c)
 
 
@@ -86,6 +94,7 @@ def update_commitment(commitment_id: str, body: dict, db: Session = Depends(get_
     c.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(c)
+    _bust_dash()
     return _to_out(c)
 
 
@@ -96,3 +105,4 @@ def delete_commitment(commitment_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "commitment not found")
     db.delete(c)
     db.commit()
+    _bust_dash()

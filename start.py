@@ -8,9 +8,25 @@ Open http://localhost:8080 after running.
 import subprocess
 import sys
 import os
+import pathlib
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 os.chdir(ROOT)
+
+# Load .env before anything else so DATABASE_URL / DB_PATH are available
+_env_file = pathlib.Path(ROOT) / ".env"
+if _env_file.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_env_file, override=False)
+    except ImportError:
+        # dotenv not yet installed — parse manually for the two critical keys
+        for line in _env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                if k.strip() in ("DATABASE_URL", "DB_PATH", "PORT") and k.strip() not in os.environ:
+                    os.environ[k.strip()] = v.strip()
 
 
 def _pip(*packages):

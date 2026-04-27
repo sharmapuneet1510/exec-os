@@ -84,3 +84,32 @@ def delete_alert(alert_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "alert not found")
     db.delete(a)
     db.commit()
+
+
+@router.get("/unread-count")
+def unread_count(db: Session = Depends(get_db)):
+    count = db.query(AlertORM).filter(AlertORM.is_read == False).count()  # noqa: E712
+    return {"count": count}
+
+
+@router.get("/new-since/{iso_ts}")
+def new_since(iso_ts: str, db: Session = Depends(get_db)):
+    """Return unread alerts created after the given ISO timestamp (for polling)."""
+    try:
+        since = datetime.fromisoformat(iso_ts.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        raise HTTPException(400, "invalid timestamp — use ISO 8601")
+    rows = db.query(AlertORM).filter(
+        AlertORM.is_read == False,      # noqa: E712
+        AlertORM.created_at > since,
+    ).order_by(AlertORM.created_at.asc()).all()
+    return [_to_out(a) for a in rows]
+
+
+@router.post("/run-engine", status_code=202)
+def trigger_engine():
+    """Manually trigger the alert engine (useful for testing)."""
+    import threading
+    from web.alert_engine import run
+    threading.Thread(target=run, daemon=True).start()
+    return {"ok": True, "message": "Alert engine triggered"}
