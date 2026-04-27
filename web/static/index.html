@@ -859,7 +859,7 @@
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);">Applications</div>
-              <button @click="$root.openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
+              <button @click="openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
             </div>
 
             <div x-show="!$root.applications.length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
@@ -892,8 +892,8 @@
                 <div style="font-size:12.5px;color:var(--text-2);margin-top:2px;" x-text="selApp?.description||'No description'"></div>
               </div>
               <div style="display:flex;gap:8px;flex-shrink:0;">
-                <button @click="$root.openApplicationModal(selApp)" class="btn-secondary" style="font-size:12px;">✏️ Edit</button>
-                <button @click="$root.deleteApplication(selApp.application_id)"
+                <button @click="openApplicationModal(selApp)" class="btn-secondary" style="font-size:12px;">✏️ Edit</button>
+                <button @click="deleteApplication(selApp.application_id)"
                   style="padding:7px 12px;border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">🗑</button>
               </div>
             </div>
@@ -4584,17 +4584,26 @@ function app() {
     },
     async saveApplication() {
       const d=this.applicationModal.data;
-      if(!d.name?.trim()) return;
-      const payload={name:d.name.trim(),code:d.code||'',description:d.description||''};
-      if(this.applicationModal.editing) {
-        await fetch(`/api/applications/${d.application_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        this.addToast('Application updated','success');
-      } else {
-        await fetch('/api/applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        this.addToast('Application created','success');
+      if(!d.name?.trim()) {
+        this.addToast('Application name required','error');
+        return;
       }
-      this.applicationModal.open=false;
-      await this.loadApplications();
+      const payload={name:d.name.trim(),code:d.code||'',description:d.description||''};
+      try {
+        if(this.applicationModal.editing) {
+          const resp=await fetch(`/api/applications/${d.application_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          if(!resp.ok) throw new Error(resp.statusText);
+          this.addToast('Application updated','success');
+        } else {
+          const resp=await fetch('/api/applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          if(!resp.ok) throw new Error(resp.statusText);
+          this.addToast('Application created','success');
+        }
+        this.applicationModal.open=false;
+        await this.loadApplications();
+      } catch(e) {
+        this.addToast('Error saving application: '+e.message,'error');
+      }
     },
     async deleteApplication(id) {
       if(!confirm('Delete this application? Projects linked to it will be unlinked.')) return;
