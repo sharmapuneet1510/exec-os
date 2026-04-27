@@ -826,22 +826,42 @@
               fetch('/api/applications/'+aid+'/integrations/sprint').then(r=>r.json()).catch(()=>({})),
             ]);
             this.appCfg = {
-              jira: { base_url:j.base_url||'', email:j.email||'', api_token:'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
-              gitlab: { base_url:g.base_url||'https://gitlab.com', access_token:'', project_ids_raw:(g.project_ids||[]).join('\n'), enabled:g.enabled||false },
+              jira: { base_url:j.base_url||'', email:j.email||'', api_token:j.api_token||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
+              gitlab: { base_url:g.base_url||'https://gitlab.com', access_token:g.access_token||'', project_ids_raw:(g.project_ids||[]).join('\n'), enabled:g.enabled||false },
               sprint: { board_id:s.board_id||'', sprint_id:s.sprint_id||'', sprint_name:s.sprint_name||'', my_jira_email:s.my_jira_email||'', my_gitlab_username:s.my_gitlab_username||'' },
             };
           },
           async saveJira() {
             this.cfgSaving=true; this.cfgMsg='';
-            const c=this.appCfg.jira;
-            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,email:c.email,api_token:c.api_token,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
-            this.cfgMsg='Jira config saved ✓'; this.cfgSaving=false;
+            try {
+              const c=this.appCfg.jira;
+              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,email:c.email,api_token:c.api_token,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
+              if(!resp.ok) {
+                const err=await resp.text();
+                throw new Error(err||resp.statusText);
+              }
+              await resp.json();
+              this.cfgMsg='Jira config saved ✓';
+            } catch(e) {
+              this.cfgMsg='Error: '+e.message;
+            }
+            this.cfgSaving=false;
           },
           async saveGitLab() {
             this.cfgSaving=true; this.cfgMsg='';
-            const c=this.appCfg.gitlab;
-            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/gitlab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,access_token:c.access_token,project_ids:c.project_ids_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
-            this.cfgMsg='GitLab config saved ✓'; this.cfgSaving=false;
+            try {
+              const c=this.appCfg.gitlab;
+              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/gitlab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,access_token:c.access_token,project_ids:c.project_ids_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
+              if(!resp.ok) {
+                const err=await resp.text();
+                throw new Error(err||resp.statusText);
+              }
+              await resp.json();
+              this.cfgMsg='GitLab config saved ✓';
+            } catch(e) {
+              this.cfgMsg='Error: '+e.message;
+            }
+            this.cfgSaving=false;
           },
           async saveSprint() {
             this.cfgSaving=true; this.cfgMsg='';
