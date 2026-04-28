@@ -356,6 +356,22 @@ class AppSprintConfigORM(Base):
     updated_at         = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ActivityLogORM(Base):
+    __tablename__ = "activity_logs"
+
+    log_id             = Column(String, primary_key=True, default=_uuid)
+    method             = Column(String(10), nullable=False)
+    endpoint           = Column(String(500), nullable=False)
+    status_code        = Column(Integer, default=0)
+    request_headers    = Column(Text, default="{}")
+    request_body       = Column(Text, nullable=True)
+    response_headers   = Column(Text, default="{}")
+    response_body      = Column(Text, nullable=True)
+    duration_ms        = Column(Integer, default=0)
+    error              = Column(Text, nullable=True)
+    created_at         = Column(DateTime, default=datetime.utcnow)
+
+
 class DayPlanItemORM(Base):
     __tablename__ = "day_plan_items"
 

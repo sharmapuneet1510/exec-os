@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import pathlib
+import json
+import time
 
 from db.init_db import create_all
 from web.routers import tasks, projects, milestones, commitments, alerts, dashboard, estimation
@@ -17,8 +20,48 @@ from web.routers import application_routes
 from web.routers import app_integration_routes
 from web.routers import workload_routes
 from web.routers import outlook_calendar_routes
+from web.routers import activity_log_routes
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
+
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.time()
+        body = b""
+        if request.method in ("POST", "PATCH", "PUT"):
+            body = await request.body()
+            async def receive():
+                return {"type": "http.request", "body": body}
+            request._receive = receive
+
+        response = await call_next(request)
+        duration_ms = (time.time() - start) * 1000
+
+        if request.url.path.startswith("/api/"):
+            try:
+                from db.base import SessionLocal
+                db = SessionLocal()
+                from db.models import ActivityLogORM
+                log = ActivityLogORM(
+                    method=request.method,
+                    endpoint=request.url.path,
+                    status_code=response.status_code,
+                    request_headers=dict(request.headers),
+                    request_body=body.decode() if body else None,
+                    response_headers=dict(response.headers),
+                    duration_ms=int(duration_ms),
+                )
+                db.add(log)
+                db.commit()
+                db.close()
+            except Exception:
+                pass
+
+        return response
+
+
+app.add_middleware(LoggingMiddleware)
 
 app.include_router(tasks.router)
 app.include_router(projects.router)
@@ -39,6 +82,7 @@ app.include_router(application_routes.router)
 app.include_router(app_integration_routes.router)
 app.include_router(workload_routes.router)
 app.include_router(outlook_calendar_routes.router)
+app.include_router(activity_log_routes.router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
