@@ -6,7 +6,7 @@ from email.mime.text import MIMEText
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
-from db.models import TaskORM, ProjectORM, MilestoneORM, CommitmentORM, EmailConfigORM
+from db.models import TaskORM, ProjectORM, MilestoneORM, CommitmentORM, EmailConfigORM, ApplicationORM
 
 
 # ── tiny helpers ──────────────────────────────────────────────────────────────
@@ -71,6 +71,24 @@ def _project_health(tasks, today_str):
     else:
         health = "grey"
     return health, pct, done, total, ov
+
+
+def _task_to_app_names(tasks, db: Session) -> dict:
+    """Map task_id → application name. Returns dict with 'app_name' key added to tasks."""
+    projects = {p.project_id: (p.name, p.application_id) for p in db.query(ProjectORM).all()}
+    apps = {a.application_id: a.name for a in db.query(ApplicationORM).all()} if db.query(ApplicationORM).count() else {}
+
+    result = []
+    for t in tasks:
+        proj_info = projects.get(t.project_id)
+        app_name = "Unassigned"
+        if proj_info:
+            proj_name, app_id = proj_info
+            app_name = apps.get(app_id, "Unassigned")
+        # Add app_name as attribute for easy access in templates
+        t._email_app_name = app_name
+        result.append(t)
+    return result
 
 
 # ── email wrapper ─────────────────────────────────────────────────────────────
@@ -174,18 +192,18 @@ def build_sod_html(db: Session) -> str:
     week_str = (today + timedelta(days=7)).isoformat()
     proj_names = {p.project_id: p.name for p in db.query(ProjectORM).all()}
 
-    overdue_tasks = (db.query(TaskORM)
+    overdue_tasks = _task_to_app_names((db.query(TaskORM)
                      .filter(TaskORM.due_date < today_str, TaskORM.status.notin_(["done", "cancelled"]))
-                     .order_by(TaskORM.due_date).all())
+                     .order_by(TaskORM.due_date).all()), db)
 
-    due_today = (db.query(TaskORM)
+    due_today = _task_to_app_names((db.query(TaskORM)
                  .filter(TaskORM.due_date == today_str, TaskORM.status.notin_(["done", "cancelled"]))
-                 .order_by(TaskORM.priority).all())
+                 .order_by(TaskORM.priority).all()), db)
 
     in_progress_ids = {t.task_id for t in due_today}
-    carry_forward = [t for t in
+    carry_forward = _task_to_app_names([t for t in
                      db.query(TaskORM).filter(TaskORM.status == "in_progress").all()
-                     if t.task_id not in in_progress_ids]
+                     if t.task_id not in in_progress_ids], db)
 
     milestones = (db.query(MilestoneORM)
                   .filter(MilestoneORM.due_date >= today_str, MilestoneORM.due_date <= week_str,
@@ -241,7 +259,8 @@ def build_sod_html(db: Session) -> str:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in overdue_tasks[:10]:
             note = _days_overdue(str(t.due_date))
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""), note, "#EF4444")
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip(), note, "#EF4444")
         rows += "</table>"
         overdue_section = _card("Overdue — Needs Immediate Attention", "⚠️", rows, "#EF4444")
     else:
@@ -251,7 +270,8 @@ def build_sod_html(db: Session) -> str:
     if due_today:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in due_today:
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""))
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip())
         rows += "</table>"
         today_section = _card("Today's Book of Work", "📋", rows, "#6366F1")
     else:
@@ -262,7 +282,8 @@ def build_sod_html(db: Session) -> str:
     if carry_forward:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in carry_forward[:8]:
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""), "in progress", "#F59E0B")
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip(), "in progress", "#F59E0B")
         rows += "</table>"
         carry_section = _card("Continuing From Yesterday", "⏳", rows, "#F59E0B")
 
@@ -335,22 +356,22 @@ def build_eod_html(db: Session) -> str:
     today_start = datetime.combine(today, datetime.min.time())
     proj_names = {p.project_id: p.name for p in db.query(ProjectORM).all()}
 
-    completed = (db.query(TaskORM)
+    completed = _task_to_app_names((db.query(TaskORM)
                  .filter(TaskORM.status == "done",
                          TaskORM.completed_at >= today_start)
-                 .order_by(TaskORM.completed_at.desc()).all())
+                 .order_by(TaskORM.completed_at.desc()).all()), db)
 
-    missed = (db.query(TaskORM)
+    missed = _task_to_app_names((db.query(TaskORM)
               .filter(TaskORM.due_date == today_str,
-                      TaskORM.status.notin_(["done", "cancelled"])).all())
+                      TaskORM.status.notin_(["done", "cancelled"])).all()), db)
 
-    still_in_progress = (db.query(TaskORM)
-                         .filter(TaskORM.status == "in_progress").all())
+    still_in_progress = _task_to_app_names((db.query(TaskORM)
+                         .filter(TaskORM.status == "in_progress").all()), db)
 
-    all_overdue = (db.query(TaskORM)
+    all_overdue = _task_to_app_names((db.query(TaskORM)
                    .filter(TaskORM.due_date < today_str,
                            TaskORM.status.notin_(["done", "cancelled"]))
-                   .order_by(TaskORM.due_date).all())
+                   .order_by(TaskORM.due_date).all()), db)
 
     date_label = today.strftime("%A, %B %d, %Y")
 
@@ -391,7 +412,8 @@ def build_eod_html(db: Session) -> str:
     if completed:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in completed[:15]:
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""),
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip(),
                               check_color="#D1FAE5")
         rows += "</table>"
         completed_section = _card("Completed Today", "✅", rows, "#10B981")
@@ -402,7 +424,8 @@ def build_eod_html(db: Session) -> str:
     if missed:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in missed:
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""),
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip(),
                               note="was due today", note_color="#EF4444", check_color="#FEE2E2")
         rows += "</table>"
         missed_section = _card("Missed — Due Today, Not Done", "❌", rows, "#EF4444")
@@ -414,7 +437,8 @@ def build_eod_html(db: Session) -> str:
     if still_in_progress:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in still_in_progress[:8]:
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""),
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip(),
                               note="carry forward", note_color="#F59E0B")
         rows += "</table>"
         carry_section = _card("Carrying Forward to Tomorrow", "⏳", rows, "#F59E0B")
@@ -425,7 +449,8 @@ def build_eod_html(db: Session) -> str:
         rows = '<table width="100%" cellpadding="0" cellspacing="0" role="presentation">'
         for t in all_overdue[:10]:
             note = _days_overdue(str(t.due_date))
-            rows += _task_row(t.title, t.priority, proj_names.get(t.project_id, ""),
+            app_tag = f"[{t._email_app_name}]" if t._email_app_name != "Unassigned" else ""
+            rows += _task_row(t.title, t.priority, f"{proj_names.get(t.project_id, '')} {app_tag}".strip(),
                               note=note, note_color="#EF4444")
         rows += "</table>"
         ov_section = _card(f"Overdue Backlog ({len(all_overdue)} items)", "⚠️", rows, "#EF4444")
