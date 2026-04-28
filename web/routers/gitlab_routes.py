@@ -50,6 +50,8 @@ def _get_cfg(app_id: str, db: Session) -> AppGitLabConfigORM:
 
 def _gl_get(cfg: AppGitLabConfigORM, path: str, params: dict = None):
     import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     base = cfg.base_url.rstrip("/") if cfg.base_url else "https://gitlab.com"
     url = f"{base}/api/v4/{path.lstrip('/')}"
     resp = requests.get(
@@ -57,6 +59,7 @@ def _gl_get(cfg: AppGitLabConfigORM, path: str, params: dict = None):
         params=params or {},
         headers={"PRIVATE-TOKEN": cfg.access_token, "Accept": "application/json"},
         timeout=15,
+        verify=False,  # Disable SSL verification for corporate proxies/self-signed certs
     )
     if resp.status_code == 401:
         raise HTTPException(401, "GitLab auth failed — check your access token")

@@ -54,6 +54,8 @@ def _get_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
 def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
     """Make an authenticated GET to the Jira Cloud REST API."""
     import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     url = f"{cfg.base_url.rstrip('/')}/rest/api/3/{path.lstrip('/')}"
     resp = requests.get(
         url,
@@ -61,6 +63,7 @@ def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
         auth=(cfg.email, cfg.api_token),
         headers={"Accept": "application/json"},
         timeout=15,
+        verify=False,  # Disable SSL verification for corporate proxies/self-signed certs
     )
     if resp.status_code == 401:
         raise HTTPException(401, "Jira auth failed — check email and API token")

@@ -7,20 +7,26 @@ import json
 import time
 
 from db.init_db import create_all
-from web.routers import tasks, projects, milestones, commitments, alerts, dashboard, estimation
-from web.routers import email_routes
-from web.routers import jira_routes
-from web.routers import gitlab_routes
-from web.routers import planner_routes
-from web.routers import team_routes
-from web.routers import sprint_routes
-from web.routers import proj_estimate_routes
-from web.routers import delivery_routes
-from web.routers import application_routes
-from web.routers import app_integration_routes
-from web.routers import workload_routes
-from web.routers import outlook_calendar_routes
-from web.routers import activity_log_routes
+from web.routers.tasks import router as tasks_router
+from web.routers.projects import router as projects_router
+from web.routers.milestones import router as milestones_router
+from web.routers.commitments import router as commitments_router
+from web.routers.alerts import router as alerts_router
+from web.routers.dashboard import router as dashboard_router
+from web.routers.estimation import router as estimation_router
+from web.routers.email_routes import router as email_router
+from web.routers.jira_routes import router as jira_router
+from web.routers.gitlab_routes import router as gitlab_router
+from web.routers.planner_routes import router as planner_router
+from web.routers.team_routes import router as team_router
+from web.routers.sprint_routes import router as sprint_router
+from web.routers.proj_estimate_routes import router as proj_estimate_router
+from web.routers.delivery_routes import router as delivery_router
+from web.routers.application_routes import router as application_router
+from web.routers.app_integration_routes import router as app_integration_router
+from web.routers.workload_routes import router as workload_router
+from web.routers.outlook_calendar_routes import router as outlook_router
+from web.routers.activity_log_routes import router as activity_log_router
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
@@ -63,26 +69,26 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(LoggingMiddleware)
 
-app.include_router(tasks.router)
-app.include_router(projects.router)
-app.include_router(milestones.router)
-app.include_router(commitments.router)
-app.include_router(alerts.router)
-app.include_router(dashboard.router)
-app.include_router(estimation.router)
-app.include_router(email_routes.router)
-app.include_router(jira_routes.router)
-app.include_router(gitlab_routes.router)
-app.include_router(planner_routes.router)
-app.include_router(team_routes.router)
-app.include_router(sprint_routes.router)
-app.include_router(proj_estimate_routes.router)
-app.include_router(delivery_routes.router)
-app.include_router(application_routes.router)
-app.include_router(app_integration_routes.router)
-app.include_router(workload_routes.router)
-app.include_router(outlook_calendar_routes.router)
-app.include_router(activity_log_routes.router)
+app.include_router(tasks_router)
+app.include_router(projects_router)
+app.include_router(milestones_router)
+app.include_router(commitments_router)
+app.include_router(alerts_router)
+app.include_router(dashboard_router)
+app.include_router(estimation_router)
+app.include_router(email_router)
+app.include_router(jira_router)
+app.include_router(gitlab_router)
+app.include_router(planner_router)
+app.include_router(team_router)
+app.include_router(sprint_router)
+app.include_router(proj_estimate_router)
+app.include_router(delivery_router)
+app.include_router(application_router)
+app.include_router(app_integration_router)
+app.include_router(workload_router)
+app.include_router(outlook_router)
+app.include_router(activity_log_router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
