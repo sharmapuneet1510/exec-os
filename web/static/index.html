@@ -441,6 +441,9 @@
       </div>
       <div @click="nav('team-workload')"   :class="navCls('team-workload')">  <div class="nav-icon">👥</div><span style="flex:1">Team</span></div>
 
+      <div class="nav-group-label" style="margin-top:4px;">Debug</div>
+      <div @click="nav('activity-log')"     :class="navCls('activity-log')">     <div class="nav-icon">📜</div><span style="flex:1">Activity Log</span></div>
+
       <div class="nav-group-label" style="margin-top:4px;">Development</div>
       <div @click="nav('my-hub')" :class="navCls('my-hub')">
         <div class="nav-icon">🧑‍💻</div><span style="flex:1">My Hub</span>
@@ -1470,6 +1473,105 @@
           </div>
         </template>
         <style>.al-card:hover .al-actions{opacity:1!important;} .al-card:hover{border-color:var(--border-hover)!important;box-shadow:0 4px 16px rgba(0,0,0,.06);}</style>
+      </div>
+
+      <!-- ══ ACTIVITY LOG ══ -->
+      <div x-show="view==='activity-log'" x-cloak x-data="{
+        logs: [], filtered: [], logFilter: {method:'', endpoint:'', minStatus:0}, logLoading:false, selectedLog:null,
+        async loadLogs() {
+          this.logLoading=true;
+          try {
+            const url = new URL('/api/activity', window.location.origin);
+            if(this.logFilter.method) url.searchParams.append('method', this.logFilter.method);
+            if(this.logFilter.endpoint) url.searchParams.append('endpoint', this.logFilter.endpoint);
+            url.searchParams.append('limit', 200);
+            this.logs = await fetch(url).then(r=>r.json());
+            this.filterLogs();
+          } catch(e) { console.error('Failed to load activity logs:', e); }
+          this.logLoading=false;
+        },
+        filterLogs() {
+          this.filtered = this.logs.filter(l => (!this.logFilter.minStatus || l.status_code >= this.logFilter.minStatus));
+        },
+        async clearLogs() {
+          if(!confirm('Clear all activity logs?')) return;
+          await fetch('/api/activity', {method:'DELETE'});
+          this.logs=[]; this.filtered=[];
+        },
+        init() { this.loadLogs(); setInterval(()=>this.loadLogs(), 5000); }
+      }">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;align-items:center;">
+            <input x-model="logFilter.method" @change="filterLogs()" style="width:80px;" class="input" placeholder="GET/POST..." />
+            <input x-model="logFilter.endpoint" @change="filterLogs()" style="flex:1;min-width:200px;" class="input" placeholder="Filter endpoint..." />
+            <button class="btn-secondary" style="font-size:12px;" @click="loadLogs()">Refresh</button>
+            <button class="btn-secondary" style="font-size:12px;color:#dc2626;" @click="clearLogs()">🗑 Clear</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-3);" x-text="`${filtered.length} requests`"></div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border);background:var(--bg);">
+                <th style="text-align:left;padding:12px;font-weight:600;color:var(--text-1);">Time</th>
+                <th style="text-align:left;padding:12px;font-weight:600;color:var(--text-1);">Method</th>
+                <th style="text-align:left;padding:12px;font-weight:600;color:var(--text-1);">Endpoint</th>
+                <th style="text-align:center;padding:12px;font-weight:600;color:var(--text-1);">Status</th>
+                <th style="text-align:center;padding:12px;font-weight:600;color:var(--text-1);">Duration</th>
+                <th style="text-align:center;padding:12px;font-weight:600;color:var(--text-1);">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="log in filtered.slice().reverse()" :key="log.log_id">
+                <tr style="border-bottom:1px solid var(--border);cursor:pointer;" @click="selectedLog=log">
+                  <td style="padding:10px 12px;color:var(--text-3);" x-text="new Date(log.created_at).toLocaleTimeString()"></td>
+                  <td style="padding:10px 12px;font-weight:600;font-family:var(--font-mono);color:#6366f1;" x-text="log.method"></td>
+                  <td style="padding:10px 12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;" :title="log.endpoint" x-text="log.endpoint"></td>
+                  <td style="padding:10px 12px;text-align:center;" :style="`color:${log.status_code<300?'#16a34a':log.status_code<400?'#d97706':'#dc2626'}`;" x-text="log.status_code"></td>
+                  <td style="padding:10px 12px;text-align:center;color:var(--text-3);font-family:var(--font-mono);" x-text="`${log.duration_ms}ms`"></td>
+                  <td style="padding:10px 12px;text-align:center;"><button class="btn-secondary" style="font-size:11px;padding:4px 8px;" @click.stop="selectedLog=log">View</button></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Log detail modal -->
+        <div x-show="selectedLog" x-cloak style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;" @click.self="selectedLog=null">
+          <div style="background:white;border-radius:18px;width:90%;max-width:800px;max-height:85vh;overflow:auto;padding:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+              <h3 style="margin:0;font-size:18px;font-weight:600;" x-text="`${selectedLog?.method} ${selectedLog?.endpoint}`"></h3>
+              <button @click="selectedLog=null" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Status</div>
+                <div style="font-size:24px;font-weight:800;font-family:var(--font-mono);" :style="`color:${selectedLog?.status_code<300?'#16a34a':selectedLog?.status_code<400?'#d97706':'#dc2626'}`;" x-text="selectedLog?.status_code"></div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Duration</div>
+                <div style="font-size:24px;font-weight:800;font-family:var(--font-mono);color:#6366f1;" x-text="`${selectedLog?.duration_ms}ms`"></div>
+              </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Request Headers</div>
+              <pre style="background:var(--bg);padding:12px;border-radius:10px;border:1px solid var(--border);overflow-x:auto;font-size:11px;margin:0;" x-text="JSON.stringify(selectedLog?.request_headers, null, 2)"></pre>
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Request Body</div>
+              <pre style="background:var(--bg);padding:12px;border-radius:10px;border:1px solid var(--border);overflow-x:auto;font-size:11px;margin:0;" x-text="selectedLog?.request_body ? JSON.stringify(JSON.parse(selectedLog.request_body), null, 2) : '(empty)'"></pre>
+            </div>
+
+            <div style="margin-bottom:16px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Response Headers</div>
+              <pre style="background:var(--bg);padding:12px;border-radius:10px;border:1px solid var(--border);overflow-x:auto;font-size:11px;margin:0;" x-text="JSON.stringify(selectedLog?.response_headers, null, 2)"></pre>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ══ DAY PLANNER ══ -->
