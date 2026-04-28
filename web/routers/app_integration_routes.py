@@ -64,8 +64,13 @@ def save_jira(app_id: str, body: JiraIn, db: Session = Depends(get_db)):
         db.add(c)
     c.base_url = body.base_url.strip()
     c.email = body.email.strip()
-    if body.api_token and body.api_token != "••••":
+    # Only update token if it's a new value (not masked "••••" and not empty)
+    if body.api_token and body.api_token not in ("••••", ""):
         c.api_token = body.api_token
+    elif body.api_token == "" and not c.api_token:
+        # New record with empty token — that's ok, just leave it empty
+        c.api_token = ""
+    # If token is "••••", it means user didn't change it — keep existing
     c.project_keys = json.dumps(body.project_keys)
     c.enabled = body.enabled
     db.commit()
@@ -112,8 +117,13 @@ def save_gitlab(app_id: str, body: GitLabIn, db: Session = Depends(get_db)):
         c = AppGitLabConfigORM(application_id=app_id)
         db.add(c)
     c.base_url = body.base_url.strip() or "https://gitlab.com"
-    if body.access_token and body.access_token != "••••":
+    # Only update token if it's a new value (not masked "••••" and not empty)
+    if body.access_token and body.access_token not in ("••••", ""):
         c.access_token = body.access_token
+    elif body.access_token == "" and not c.access_token:
+        # New record with empty token — that's ok, just leave it empty
+        c.access_token = ""
+    # If token is "••••", it means user didn't change it — keep existing
     c.project_ids = json.dumps(body.project_ids)
     c.enabled = body.enabled
     db.commit()
