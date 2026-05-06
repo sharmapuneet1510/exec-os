@@ -4754,8 +4754,7 @@ function app() {
 
     openTaskModal(task) {
       if(task) {
-        const proj = this.projects.find(p=>p.project_id===task.project_id);
-        this.taskModal={open:true,editing:true,data:{...task,due_date:task.due_date||'',reminder_date:task.reminder_date||'',project_id:task.project_id||'',application_id:proj?.application_id||''}};
+        this.taskModal={open:true,editing:true,data:{...task,due_date:task.due_date||'',reminder_date:task.reminder_date||'',project_id:task.project_id||'',application_id:task.application_id||''}};
       } else {
         this.taskModal={open:true,editing:false,data:{title:'',description:'',priority:'medium',status:'todo',due_date:'',reminder_date:'',project_id:'',application_id:''}};
       }
@@ -4763,7 +4762,7 @@ function app() {
     async saveTask() {
       const d=this.taskModal.data;
       if(!d.title?.trim()) return;
-      const payload={title:d.title,description:d.description,priority:d.priority,status:d.status,due_date:d.due_date||null,reminder_date:d.reminder_date||null,project_id:d.project_id||null,assignee_id:d.assignee_id||null,tags:d.tags||[]};
+      const payload={title:d.title,description:d.description,priority:d.priority,status:d.status,due_date:d.due_date||null,reminder_date:d.reminder_date||null,project_id:d.project_id||null,application_id:d.application_id||null,assignee_id:d.assignee_id||null,tags:d.tags||[]};
       try {
         if(this.taskModal.editing) {
           const resp=await fetch(`/api/tasks/${d.task_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from db.models import TaskORM
+from db.models import TaskORM, ProjectORM
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -120,7 +120,7 @@ def update_task(task_id: str, body: dict, db: Session = Depends(get_db)):
     t = db.query(TaskORM).filter(TaskORM.task_id == task_id).first()
     if not t:
         raise HTTPException(404, "task not found")
-    allowed = {"title", "description", "due_date", "reminder_date", "priority", "status", "project_id", "assignee_id", "tags"}
+    allowed = {"title", "description", "due_date", "reminder_date", "priority", "status", "project_id", "application_id", "assignee_id", "tags"}
     for k, v in body.items():
         if k not in allowed:
             continue
@@ -129,6 +129,19 @@ def update_task(task_id: str, body: dict, db: Session = Depends(get_db)):
         if k in ("due_date", "reminder_date") and isinstance(v, str):
             v = date.fromisoformat(v) if v else None
         setattr(t, k, v)
+
+    # Auto-assign application_id based on project_id change
+    if "project_id" in body:
+        new_project_id = body["project_id"]
+        if new_project_id:
+            # Fetch the project and inherit its application_id
+            project = db.query(ProjectORM).filter(ProjectORM.project_id == new_project_id).first()
+            if project:
+                t.application_id = project.application_id
+        else:
+            # Clear application_id if project_id is being cleared
+            t.application_id = None
+
     t.updated_at = datetime.utcnow()
     if body.get("status") == "done" and not t.completed_at:
         t.completed_at = datetime.utcnow()
