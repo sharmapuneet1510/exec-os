@@ -319,15 +319,14 @@ class SprintConfigORM(Base):
 class AppJiraConfigORM(Base):
     __tablename__ = "app_jira_configs"
 
-    id             = Column(String, primary_key=True, default=_uuid)
-    application_id = Column(String, nullable=False, unique=True)
-    base_url       = Column(String(500), default="")
-    email          = Column(String(255), default="")
-    api_token      = Column(Text, default="")
-    project_keys   = Column(Text, default="[]")
-    enabled        = Column(Boolean, default=False)
-    created_at     = Column(DateTime, default=datetime.utcnow)
-    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id           = Column(Integer, primary_key=True, default=1)
+    base_url     = Column(String(500), default="")
+    pat          = Column(Text,        default="")   # Personal Access Token (bearer auth)
+    project_keys = Column(Text,        default="[]")
+    enabled      = Column(Boolean,     default=False)
+    last_synced  = Column(DateTime,    nullable=True)
+    created_at   = Column(DateTime,    default=datetime.utcnow)
+    updated_at   = Column(DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class AppGitLabConfigORM(Base):
