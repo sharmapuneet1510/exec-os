@@ -2,10 +2,35 @@ from .base import engine, SessionLocal
 from . import models  # noqa: F401 — ensures all ORM classes are registered
 from datetime import datetime, timedelta
 import json
+from sqlalchemy import inspect, text
+
+
+def _migrate_jira_config():
+    """Migrate jira_config table: remove email, rename api_token to pat."""
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+
+    if "jira_config" not in table_names:
+        return  # Table doesn't exist yet, will be created fresh
+
+    # Check if columns exist
+    columns = {col['name'] for col in inspector.get_columns("jira_config")}
+
+    with engine.connect() as conn:
+        # Drop email column if it exists
+        if "email" in columns:
+            conn.execute(text("ALTER TABLE jira_config DROP COLUMN email"))
+
+        # Rename api_token to pat if api_token exists
+        if "api_token" in columns and "pat" not in columns:
+            conn.execute(text("ALTER TABLE jira_config RENAME COLUMN api_token TO pat"))
+
+        conn.commit()
 
 
 def create_all(populate_data=False):
     models.Base.metadata.create_all(bind=engine)
+    _migrate_jira_config()
     _migrate()
     print("Database tables created.")
     if populate_data:
