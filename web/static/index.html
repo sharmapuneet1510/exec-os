@@ -776,6 +776,64 @@
         <style>.data-table tbody tr:hover .row-actions{opacity:1!important;}</style>
       </div>
 
+      <!-- ══ INBOX ══ -->
+      <div x-show="view==='inbox'" style="flex:1;display:flex;flex-direction:column;">
+        <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;font-size:24px;font-weight:800;">Inbox</h2>
+          <button @click="openTaskModal()" class="btn-primary">+ New</button>
+        </div>
+        <div style="flex:1;overflow:auto;padding:20px;">
+          <div style="margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;">
+            <input type="text" x-model="inboxFilters.search" @change="filterInbox()" placeholder="Search inbox..." class="input" style="flex:1;min-width:200px;" />
+            <select x-model="inboxFilters.priority" @change="filterInbox()" class="input">
+              <option value="">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden;" x-show="inboxTasks.length>0">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Priority</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th style="width:90px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="t in inboxTasks" :key="t.task_id">
+                  <tr :class="t.due_date && t.due_date < todayStr && t.status!=='done' ? 'overdue-row' : ''">
+                    <td>
+                      <div style="font-weight:600;color:var(--text-1);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></div>
+                      <div style="font-size:12px;color:var(--text-3);margin-top:2px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-show="t.description" x-text="t.description"></div>
+                    </td>
+                    <td><span :class="'chip ' + priorityChip(t.priority)" x-text="t.priority"></span></td>
+                    <td>
+                      <span :style="'font-size:13px;font-weight:500;color:' + (t.due_date && t.due_date < todayStr && t.status!=='done' ? '#ef4444' : '#6b6860')"
+                        x-text="t.due_date || '—'"></span>
+                    </td>
+                    <td><span :class="'chip ' + statusChip(t.status)" x-text="t.status.replace('_',' ')"></span></td>
+                    <td>
+                      <div style="display:flex;gap:6px;opacity:0;transition:opacity .15s;" class="row-actions">
+                        <button @click="openTaskModal(t)" class="btn-icon" title="Edit">✏️</button>
+                        <button @click="deleteTask(t.task_id)" class="btn-icon" title="Delete" style="color:#ef4444;">🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div x-show="inboxTasks.length===0" style="text-align:center;padding:40px;color:var(--text-2);">
+            <p>No inbox tasks. You're all caught up! 🎉</p>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ PROJECTS ══ -->
       <div x-show="view==='projects'" x-cloak>
         <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
@@ -4452,6 +4510,8 @@ function app() {
     opDash: null, exDash: null, sod: null, eod: null,
     tasks: [], filteredTasks: [],
     taskSearch: '', taskStatusFilter: '', taskPriorityFilter: '',
+    inboxFilters: { search: '', priority: '' },
+    inboxTasks: [],
     projects: [], milestones: [], commitments: [], alerts: [],
     unreadAlerts: 0,
     _alertPollTs: null,   // ISO timestamp of last poll — tracks new alerts
@@ -4527,7 +4587,7 @@ function app() {
 
     get pageTitle() {
       return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
-        tasks:'Tasks', projects:'Projects', milestones:'Milestones',
+        tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
         commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
         'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
@@ -4537,7 +4597,8 @@ function app() {
     },
     get pageSubtitle() {
       return { dashboard:"Today's execution pulse", executive:'Portfolio health & risk',
-        tasks:'All tasks across projects', projects:'Project tracking & health',
+        tasks:'All tasks across projects', inbox:'Unassigned tasks needing review',
+        projects:'Project tracking & health',
         milestones:'Key milestones & deadlines', commitments:'Tracked promises',
         alerts:'System & execution alerts', summaries:'Start & end of day briefings',
         estimate:'Multi-item · Weighted · Holidays · Release paperwork',
@@ -4681,7 +4742,7 @@ function app() {
       } catch(e) {}
     },
     async loadTasks() {
-      try { this.tasks=await fetch('/api/tasks').then(r=>r.json()); this.filterTasks(); } catch(e) {}
+      try { this.tasks=await fetch('/api/tasks').then(r=>r.json()); this.filterTasks(); this.filterInbox(); } catch(e) {}
     },
     async loadProjects() {
       try { this.projects=await fetch('/api/projects').then(r=>r.json()); } catch(e) {}
@@ -4750,6 +4811,22 @@ function app() {
       if(this.taskStatusFilter) ts=ts.filter(t=>t.status===this.taskStatusFilter);
       if(this.taskPriorityFilter) ts=ts.filter(t=>t.priority===this.taskPriorityFilter);
       this.filteredTasks=ts;
+    },
+    filterInbox() {
+      let ts=this.tasks.filter(t=>!t.project_id && !t.application_id);
+      if(this.inboxFilters.search) {
+        const q=this.inboxFilters.search.toLowerCase();
+        ts=ts.filter(t=>t.title.toLowerCase().includes(q) || (t.description && t.description.toLowerCase().includes(q)));
+      }
+      if(this.inboxFilters.priority) {
+        ts=ts.filter(t=>t.priority===this.inboxFilters.priority);
+      }
+      this.inboxTasks=ts.sort((a,b)=>{
+        if(a.due_date && b.due_date) return new Date(a.due_date)-new Date(b.due_date);
+        if(a.due_date) return -1;
+        if(b.due_date) return 1;
+        return 0;
+      });
     },
     projectName(id) { const p=this.projects.find(p=>p.project_id===id); return p?p.name:''; },
 
