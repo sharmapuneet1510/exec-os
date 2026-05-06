@@ -9,7 +9,6 @@ Migration: Add reminders table and update schema
 import sqlite3
 import pathlib
 import os
-from urllib.parse import urlparse
 
 
 def get_db_path():
@@ -48,7 +47,15 @@ def table_exists(conn, table_name):
 
 
 def column_exists(conn, table_name, column_name):
-    """Check if a column exists in a table."""
+    """Check if a column exists in a table.
+
+    Note: PRAGMA table_info() does not support parameterized queries,
+    so table_name is validated to contain only alphanumeric chars, _, and -.
+    """
+    # Validate table_name to prevent SQL injection (PRAGMA doesn't support params)
+    if not all(c.isalnum() or c in ('_', '-') for c in table_name):
+        raise ValueError(f"Invalid table name: {table_name}")
+
     cursor = conn.cursor()
     try:
         cursor.execute(f"PRAGMA table_info({table_name})")
@@ -60,6 +67,7 @@ def column_exists(conn, table_name, column_name):
 
 def run_migration():
     """Run the migration."""
+    conn = None
     try:
         db_path = get_db_path()
         conn = sqlite3.connect(db_path)
@@ -118,8 +126,10 @@ def run_migration():
                     description TEXT DEFAULT '',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
-                    FOREIGN KEY(application_id) REFERENCES applications(application_id) ON DELETE SET NULL
+                    FOREIGN KEY(project_id)
+                        REFERENCES projects(project_id) ON DELETE CASCADE,
+                    FOREIGN KEY(application_id)
+                        REFERENCES applications(application_id) ON DELETE SET NULL
                 )
             """)
             print("✓ Created releases table")
@@ -157,8 +167,6 @@ def run_migration():
             print("✓ Created email_config table")
 
         conn.commit()
-        conn.close()
-
         print("\nMigration completed successfully")
         return True
 
@@ -168,6 +176,9 @@ def run_migration():
     except Exception as e:
         print(f"Error: {e}")
         return False
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 if __name__ == "__main__":
