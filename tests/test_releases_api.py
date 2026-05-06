@@ -138,3 +138,82 @@ def test_create_release_invalid_project(db):
         "project_id": "nonexistent-proj"
     })
     assert response.status_code == 400
+
+
+def test_get_release(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    # First create one
+    create_resp = client.post("/api/releases", json={"name": "v1.0"})
+    release_id = create_resp.json()["release_id"]
+
+    # Get it
+    response = client.get(f"/api/releases/{release_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["release_id"] == release_id
+    assert data["name"] == "v1.0"
+
+
+def test_get_release_not_found(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.get("/api/releases/nonexistent")
+    assert response.status_code == 404
+
+
+def test_update_release(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    create_resp = client.post("/api/releases", json={"name": "v1.0", "status": "planned"})
+    release_id = create_resp.json()["release_id"]
+
+    response = client.patch(f"/api/releases/{release_id}", json={
+        "status": "in_progress",
+        "description": "Now in progress"
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "in_progress"
+    assert data["description"] == "Now in progress"
+    assert data["name"] == "v1.0"  # Unchanged
+
+
+def test_update_release_not_found(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.patch("/api/releases/nonexistent", json={"status": "completed"})
+    assert response.status_code == 404
+
+
+def test_delete_release(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    create_resp = client.post("/api/releases", json={"name": "v1.0"})
+    release_id = create_resp.json()["release_id"]
+
+    response = client.delete(f"/api/releases/{release_id}")
+    assert response.status_code == 204
+
+    # Verify deleted
+    get_resp = client.get(f"/api/releases/{release_id}")
+    assert get_resp.status_code == 404
+
+
+def test_delete_release_not_found(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.delete("/api/releases/nonexistent")
+    assert response.status_code == 404

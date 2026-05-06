@@ -121,3 +121,48 @@ def create_release(body: ReleaseIn, db: Session = Depends(get_db)):
     db.refresh(rel)
     _bust_dash()
     return _to_out(rel, db)
+
+
+@router.get("/{release_id}", response_model=ReleaseOut)
+def get_release(release_id: str, db: Session = Depends(get_db)):
+    rel = db.query(ReleaseORM).filter(ReleaseORM.release_id == release_id).first()
+    if not rel:
+        raise HTTPException(404, "release not found")
+    return _to_out(rel, db)
+
+
+@router.patch("/{release_id}", response_model=ReleaseOut)
+def update_release(release_id: str, body: dict, db: Session = Depends(get_db)):
+    rel = db.query(ReleaseORM).filter(ReleaseORM.release_id == release_id).first()
+    if not rel:
+        raise HTTPException(404, "release not found")
+
+    allowed = {"name", "version", "project_id", "application_id", "due_date", "status", "description"}
+    for k, v in body.items():
+        if k not in allowed:
+            continue
+        if k == "due_date" and isinstance(v, str):
+            v = date.fromisoformat(v) if v else None
+        setattr(rel, k, v)
+
+    # Validate project_id if changed
+    if "project_id" in body and body["project_id"]:
+        project = db.query(ProjectORM).filter(ProjectORM.project_id == body["project_id"]).first()
+        if not project:
+            raise HTTPException(400, "project not found")
+
+    rel.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(rel)
+    _bust_dash()
+    return _to_out(rel, db)
+
+
+@router.delete("/{release_id}", status_code=204)
+def delete_release(release_id: str, db: Session = Depends(get_db)):
+    rel = db.query(ReleaseORM).filter(ReleaseORM.release_id == release_id).first()
+    if not rel:
+        raise HTTPException(404, "release not found")
+    db.delete(rel)
+    db.commit()
+    _bust_dash()
