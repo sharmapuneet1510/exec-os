@@ -133,8 +133,7 @@ class JiraConfigORM(Base):
 
     id           = Column(Integer, primary_key=True, default=1)
     base_url     = Column(String(500), default="")   # https://company.atlassian.net
-    email        = Column(String(255), default="")
-    api_token    = Column(Text,        default="")   # Jira API token (masked in GET)
+    pat          = Column(Text,        default="")   # Personal Access Token (bearer auth)
     project_keys = Column(Text,        default="[]") # JSON list e.g. ["ENG","OPS"]
     enabled      = Column(Boolean,     default=False)
     last_synced  = Column(DateTime,    nullable=True)

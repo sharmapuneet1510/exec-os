@@ -75,12 +75,17 @@ def _jira_get(cfg, path: str, params: dict = None):
     url = f"{cfg.base_url.rstrip('/')}/rest/api/3/{path.lstrip('/')}"
     resp = requests.get(
         url, params=params or {},
-        auth=(cfg.email, cfg.api_token),
-        headers={"Accept": "application/json"},
+        headers={
+            "Authorization": f"Bearer {cfg.pat}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
         timeout=15,
     )
     if resp.status_code == 401:
-        raise HTTPException(401, "Jira auth failed")
+        raise HTTPException(401, "Jira auth failed — check PAT and permissions")
+    if resp.status_code == 403:
+        raise HTTPException(403, "Jira returned 403 — PAT may lack permissions")
     if not resp.ok:
         raise HTTPException(resp.status_code, f"Jira error: {resp.text[:200]}")
     return resp.json()
@@ -176,13 +181,13 @@ def my_dashboard(db: Session = Depends(_db)):
     jira_cfg   = _get_jira_cfg(db)
     gl_cfg     = _get_gl_cfg(db)
 
-    my_jira_email      = sprint_cfg.my_jira_email or jira_cfg.email or ""
+    my_jira_email      = sprint_cfg.my_jira_email or ""
     my_gitlab_username = sprint_cfg.my_gitlab_username or ""
 
     result = {
         "my_jira_email":      my_jira_email,
         "my_gitlab_username": my_gitlab_username,
-        "jira_enabled":       jira_cfg.enabled and bool(jira_cfg.api_token),
+        "jira_enabled":       jira_cfg.enabled and bool(jira_cfg.pat),
         "gitlab_enabled":     gl_cfg.enabled and bool(gl_cfg.access_token),
         "jira":               None,
         "my_mrs":             [],
@@ -191,7 +196,7 @@ def my_dashboard(db: Session = Depends(_db)):
     }
 
     # ── Jira: my assigned issues ──────────────────────────────────────────────
-    if jira_cfg.enabled and jira_cfg.api_token:
+    if jira_cfg.enabled and jira_cfg.pat:
         try:
             # Build JQL: my assigned open issues
             keys = json.loads(jira_cfg.project_keys or "[]")
