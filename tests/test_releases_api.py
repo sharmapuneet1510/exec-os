@@ -84,3 +84,57 @@ def test_to_out_with_orm_object(db):
     assert result["days_until_due"] is not None  # Should be calculated
     assert isinstance(result["created_at"], datetime)
     assert isinstance(result["updated_at"], datetime)
+
+
+def test_create_release_minimal(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.post("/api/releases", json={"name": "v1.0"})
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "v1.0"
+    assert data["status"] == "planned"
+    assert data["release_id"]
+
+
+def test_create_release_full(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.post("/api/releases", json={
+        "name": "v2.0",
+        "version": "2.0.0",
+        "project_id": None,
+        "due_date": "2026-06-01",
+        "status": "in_progress",
+        "description": "Major release",
+    })
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "v2.0"
+    assert data["version"] == "2.0.0"
+    assert data["status"] == "in_progress"
+
+
+def test_create_release_empty_name(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.post("/api/releases", json={"name": ""})
+    assert response.status_code == 400
+
+
+def test_create_release_invalid_project(db):
+    from fastapi.testclient import TestClient
+    from web.app import app
+
+    client = TestClient(app)
+    response = client.post("/api/releases", json={
+        "name": "v1.0",
+        "project_id": "nonexistent-proj"
+    })
+    assert response.status_code == 400

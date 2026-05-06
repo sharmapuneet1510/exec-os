@@ -94,3 +94,30 @@ def list_releases(
         q = q.filter(ReleaseORM.status == status)
     releases = q.options(joinedload(ReleaseORM.project)).order_by(ReleaseORM.due_date.asc(), ReleaseORM.created_at.desc()).all()
     return [_to_out(rel, db) for rel in releases]
+
+
+@router.post("", response_model=ReleaseOut, status_code=201)
+def create_release(body: ReleaseIn, db: Session = Depends(get_db)):
+    if not body.name.strip():
+        raise HTTPException(400, "name must not be empty")
+
+    # Validate project_id if provided
+    if body.project_id:
+        project = db.query(ProjectORM).filter(ProjectORM.project_id == body.project_id).first()
+        if not project:
+            raise HTTPException(400, "project not found")
+
+    rel = ReleaseORM(
+        name=body.name.strip(),
+        version=body.version,
+        project_id=body.project_id,
+        application_id=body.application_id,
+        due_date=body.due_date,
+        status=body.status,
+        description=body.description,
+    )
+    db.add(rel)
+    db.commit()
+    db.refresh(rel)
+    _bust_dash()
+    return _to_out(rel, db)
