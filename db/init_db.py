@@ -3,6 +3,7 @@ from . import models  # noqa: F401 — ensures all ORM classes are registered
 from datetime import datetime, timedelta
 import json
 from sqlalchemy import inspect, text
+from db.migrations.001_add_reminders_table import run_migration
 
 
 def _migrate_jira_config():
@@ -30,6 +31,11 @@ def _migrate_jira_config():
 
 def create_all(populate_data=False):
     models.Base.metadata.create_all(bind=engine)
+    # Run migrations first
+    try:
+        run_migration()
+    except Exception as e:
+        print(f"Migration warning: {e}")
     _migrate_jira_config()
     _migrate()
     print("Database tables created.")
