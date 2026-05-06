@@ -917,7 +917,7 @@
               fetch('/api/applications/'+aid+'/integrations/sprint').then(r=>r.json()).catch(()=>({})),
             ]);
             this.appCfg = {
-              jira: { base_url:j.base_url||'', email:j.email||'', api_token:j.api_token||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
+              jira: { base_url:j.base_url||'', pat:j.pat||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
               gitlab: { base_url:g.base_url||'https://gitlab.com', access_token:g.access_token||'', project_ids_raw:(g.project_ids||[]).join('\n'), enabled:g.enabled||false },
               sprint: { board_id:s.board_id||'', sprint_id:s.sprint_id||'', sprint_name:s.sprint_name||'', my_jira_email:s.my_jira_email||'', my_gitlab_username:s.my_gitlab_username||'' },
             };
@@ -926,7 +926,7 @@
             this.cfgSaving=true; this.cfgMsg='';
             try {
               const c=this.appCfg.jira;
-              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,email:c.email,api_token:c.api_token,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
+              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,pat:c.pat,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
               if(!resp.ok) {
                 const err=await resp.text();
                 throw new Error(err||resp.statusText);
@@ -1070,15 +1070,9 @@
                     <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Base URL</label>
                     <input x-model="appCfg.jira.base_url" class="input" placeholder="https://yourcompany.atlassian.net" />
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Email</label>
-                      <input x-model="appCfg.jira.email" class="input" placeholder="you@company.com" />
-                    </div>
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">API Token</label>
-                      <input type="password" x-model="appCfg.jira.api_token" class="input" placeholder="Leave blank to keep existing" />
-                    </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token (PAT)</label>
+                    <input type="password" x-model="appCfg.jira.pat" class="input" placeholder="Your Jira Personal Access Token" />
                   </div>
                   <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">(one per line, e.g. EXEC)</span></label>
@@ -4007,16 +4001,11 @@
                     <input x-model="settingsAppCfg.jira.base_url" placeholder="https://yourcompany.atlassian.net"
                       style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
                   </div>
-                  <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Email</label>
-                    <input x-model="settingsAppCfg.jira.email" type="email" placeholder="you@company.com"
-                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                  </div>
-                  <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">API Token
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Personal Access Token (PAT)
                       <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#6366f1;font-weight:400;margin-left:4px;">Get token ↗</a>
                     </label>
-                    <input x-model="settingsAppCfg.jira.api_token" type="password" placeholder="Leave blank to keep existing"
+                    <input x-model="settingsAppCfg.jira.pat" type="password" placeholder="Leave blank to keep existing"
                       style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
                   </div>
                   <div style="grid-column:1/-1;">
@@ -4578,11 +4567,11 @@ function app() {
     emailMsg: '', emailMsgOk: true, emailSending: false,
 
     outlookCfg: { ics_url:'', ics_configured:false, enabled:false, working_start:'09:00', working_end:'18:00' },
-    jiraCfg: { base_url:'', email:'', api_token:'', project_keys:'[]', project_keys_raw:'', enabled:false, last_synced:null },
+    jiraCfg: { base_url:'', pat:'', project_keys:'[]', project_keys_raw:'', enabled:false, last_synced:null },
     // Settings page per-app integration state
     settingsApp: '',
     settingsAppCfg: {
-      jira: { base_url:'', email:'', api_token:'', project_keys_raw:'', enabled:false },
+      jira: { base_url:'', pat:'', project_keys_raw:'', enabled:false },
       gitlab: { base_url:'https://gitlab.com', access_token:'', project_ids_raw:'', enabled:false },
       sprint: { board_id:'', sprint_id:'', sprint_name:'', my_jira_email:'', my_gitlab_username:'' },
     },
@@ -5468,7 +5457,7 @@ function app() {
         ]);
         this.settingsAppCfg = {
           jira: {
-            base_url: j.base_url||'', email: j.email||'', api_token: '',
+            base_url: j.base_url||'', pat: '',
             project_keys_raw: (j.project_keys||[]).join('\n'), enabled: j.enabled||false,
           },
           gitlab: {
@@ -5489,7 +5478,7 @@ function app() {
       await fetch(`/api/applications/${this.settingsApp}/integrations/jira`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          base_url: c.base_url, email: c.email, api_token: c.api_token,
+          base_url: c.base_url, pat: c.pat,
           project_keys: c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),
           enabled: c.enabled,
         }),
@@ -5636,7 +5625,7 @@ function app() {
           my_jira_email: s.my_jira_email||'', my_gitlab_username: s.my_gitlab_username||'',
         };
         const j = await fetch(`/api/applications/${appId}/integrations/jira`).then(r=>r.json());
-        this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', email: j.email||'', enabled: j.enabled||false };
+        this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', enabled: j.enabled||false };
       } catch(e) {}
     },
     async saveSprintAppConfig() {
@@ -5658,7 +5647,7 @@ function app() {
       this.jiraData = { team:[], last_fetched:null };
       if (!this.jiraAppId) return;
       const j = await fetch(`/api/applications/${this.jiraAppId}/integrations/jira`).then(r=>r.json()).catch(()=>({}));
-      this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', email: j.email||'', enabled: j.enabled||false };
+      this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', enabled: j.enabled||false };
       if (this.jiraCfg.enabled) this.loadJiraTeam();
     },
     async onGitLabAppChange() {
