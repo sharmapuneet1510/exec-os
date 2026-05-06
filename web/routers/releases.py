@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from db.base import get_db
 from db.models import ReleaseORM, ProjectORM
@@ -33,7 +33,7 @@ class ReleaseOut(BaseModel):
     days_until_due: Optional[int]
     is_overdue: bool
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -54,11 +54,15 @@ def _to_out(rel: ReleaseORM, db: Session) -> dict:
         days_until_due = (rel.due_date - today).days
         is_overdue = rel.due_date < today and rel.status not in ("completed", "cancelled")
 
+    # Use eager-loaded relationship if available, fall back to query
     project_name = None
     if rel.project_id:
-        proj = db.query(ProjectORM).filter(ProjectORM.project_id == rel.project_id).first()
-        if proj:
-            project_name = proj.name
+        if hasattr(rel, 'project') and rel.project:
+            project_name = rel.project.name
+        else:
+            proj = db.query(ProjectORM).filter(ProjectORM.project_id == rel.project_id).first()
+            if proj:
+                project_name = proj.name
 
     return {
         "release_id": rel.release_id,
@@ -88,5 +92,5 @@ def list_releases(
         q = q.filter(ReleaseORM.project_id == project_id)
     if status:
         q = q.filter(ReleaseORM.status == status)
-    releases = q.order_by(ReleaseORM.due_date.asc(), ReleaseORM.created_at.desc()).all()
+    releases = q.options(joinedload(ReleaseORM.project)).order_by(ReleaseORM.due_date.asc(), ReleaseORM.created_at.desc()).all()
     return [_to_out(rel, db) for rel in releases]
