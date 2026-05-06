@@ -4252,7 +4252,8 @@
           <input type="date" x-model="taskModal.data.reminder_date" class="input" />
         </div>
       </div>
-      <div>
+      <!-- Application dropdown — hidden in Inbox -->
+      <div x-show="!taskModal.inboxMode">
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Application</label>
         <select x-model="taskModal.data.application_id" @change="taskModal.data.project_id=''" class="input">
           <option value="">— Select an application —</option>
@@ -4261,7 +4262,8 @@
           </template>
         </select>
       </div>
-      <div>
+      <!-- Project dropdown — hidden in Inbox -->
+      <div x-show="!taskModal.inboxMode">
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Project</label>
         <select x-model="taskModal.data.project_id" class="input">
           <option value="">No project</option>
@@ -4579,7 +4581,7 @@ function app() {
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
 
-    taskModal:       { open:false, editing:false, data:{} },
+    taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
     milestoneModal:  { open:false, editing:false, data:{} },
     commitmentModal: { open:false, data:{} },
@@ -4831,10 +4833,11 @@ function app() {
     projectName(id) { const p=this.projects.find(p=>p.project_id===id); return p?p.name:''; },
 
     openTaskModal(task) {
+      const inboxMode = this.view === 'inbox';
       if(task) {
-        this.taskModal={open:true,editing:true,data:{...task,due_date:task.due_date||'',reminder_date:task.reminder_date||'',project_id:task.project_id||'',application_id:task.application_id||''}};
+        this.taskModal={open:true,editing:true,inboxMode:inboxMode,data:{...task,due_date:task.due_date||'',reminder_date:task.reminder_date||'',project_id:task.project_id||'',application_id:task.application_id||''}};
       } else {
-        this.taskModal={open:true,editing:false,data:{title:'',description:'',priority:'medium',status:'todo',due_date:'',reminder_date:'',project_id:'',application_id:''}};
+        this.taskModal={open:true,editing:false,inboxMode:inboxMode,data:{title:'',description:'',priority:'medium',status:'todo',due_date:'',reminder_date:'',project_id:'',application_id:''}};
       }
     },
     async saveTask() {
