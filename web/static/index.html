@@ -5099,7 +5099,15 @@ function app() {
       try { this.estimations=await fetch('/api/estimations').then(r=>r.json()); } catch(e) {}
     },
     async loadApplications() {
-      try { this.applications=await fetch('/api/applications').then(r=>r.json()); } catch(e) {}
+      try {
+        const resp = await fetch('/api/applications');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        this.applications = await resp.json();
+        console.log(`Loaded ${this.applications.length} applications`);
+      } catch(e) {
+        console.error('Failed to load applications:', e);
+        this.applications = [];
+      }
     },
     applicationName(id) { const a=this.applications.find(a=>a.application_id===id); return a?a.name:''; },
     openApplicationModal(app) {
@@ -5128,6 +5136,16 @@ function app() {
         }
         this.applicationModal.open=false;
         await this.loadApplications();
+        // Auto-select first application after loading (new or updated)
+        if(this.applications?.length && !this.applicationModal.editing) {
+          const newApp = this.applications[this.applications.length - 1];
+          setTimeout(() => {
+            if(this.view==='applications') {
+              this.selApp = newApp;
+              this.appTab = 'overview';
+            }
+          }, 100);
+        }
       } catch(e) {
         this.addToast('Error saving application: '+e.message,'error');
       }
