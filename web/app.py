@@ -29,8 +29,10 @@ from web.routers.outlook_calendar_routes import router as outlook_router
 from web.routers.activity_log_routes import router as activity_log_router
 from web.routers.releases import router as releases_router
 from web.routers import reminders
+from web.routers.admin import router as admin_router
 
 from services.reminder_scheduler import create_scheduler_job
+from services.backup_scheduler import start_backup_scheduler, shutdown_backup_scheduler
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
@@ -94,6 +96,7 @@ app.include_router(workload_router)
 app.include_router(outlook_router)
 app.include_router(activity_log_router)
 app.include_router(releases_router)
+app.include_router(admin_router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
@@ -103,6 +106,7 @@ app.mount("/static", StaticFiles(directory=str(_static)), name="static")
 def on_startup():
     create_all()
     _start_scheduler()
+    start_backup_scheduler()
 
 
 def _start_scheduler():
@@ -120,6 +124,11 @@ def _start_scheduler():
         scheduler.start(sod, eod)
     except Exception:
         pass
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    shutdown_backup_scheduler()
 
 
 @app.get("/", include_in_schema=False)
