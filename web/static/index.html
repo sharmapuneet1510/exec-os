@@ -4209,6 +4209,59 @@
             </div><!-- /x-show settingsApp -->
           </div><!-- /Integrations card -->
 
+          <!-- Export / Import / Backups -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:18px;">💾</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Backup & Restore</div>
+                <div style="font-size:12px;color:var(--text-3);">Export database · Restore from backup · Automatic daily snapshots</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <!-- Export Card -->
+              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="font-size:20px;">📥</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text-1);">Export Database</div>
+                </div>
+                <p style="font-size:12px;color:var(--text-3);margin:0;">Download entire database as JSON for backup or migration</p>
+                <button @click="exportDatabase()" style="padding:8px 14px;border-radius:9px;background:#4f46e5;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.2s;" @mouseenter="$el.style.background='#4338ca'" @mouseleave="$el.style.background='#4f46e5'">
+                  Export as JSON
+                </button>
+              </div>
+
+              <!-- Import Card -->
+              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="font-size:20px;">📤</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text-1);">Import/Restore</div>
+                </div>
+                <p style="font-size:12px;color:var(--text-3);margin:0;">Restore database from a JSON backup file</p>
+                <button @click="triggerImport()" style="padding:8px 14px;border-radius:9px;background:#16a34a;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.2s;" @mouseenter="$el.style.background='#15803d'" @mouseleave="$el.style.background='#16a34a'">
+                  Import from File
+                </button>
+                <input type="file" id="importFile" @change="importDatabase($event)" style="display:none" accept=".json">
+              </div>
+            </div>
+
+            <!-- Backup History Info -->
+            <div style="background:#f5f3ff;border-radius:12px;border:1px solid #e9d5ff;padding:12px 14px;margin-top:16px;font-size:12px;color:#6b21a8;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span>🗄️</span>
+                <span style="font-weight:700;">Automatic Daily Backups</span>
+              </div>
+              <p style="margin:0;">The system creates automatic backups daily at 2:00 AM. Backups are stored locally in <code style="font-family:var(--font-mono);font-size:11px;background:rgba(0,0,0,0.08);padding:1px 4px;border-radius:3px;">~/.commanddesk/backups/</code></p>
+            </div>
+
+            <!-- Status Messages -->
+            <div x-show="adminStatus" style="margin-top:16px;padding:12px 14px;border-radius:9px;font-size:13px;font-weight:600;"
+              :style="adminStatus?.type === 'error' ? 'background:#fff1f2;border:1px solid #fecdd3;color:#be123c;' : adminStatus?.type === 'success' ? 'background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;' : 'background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;'">
+              <p style="margin:0;" x-text="adminStatus?.message"></p>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -4762,6 +4815,8 @@ function app() {
     releaseModal:    { open:false, editing:false, data:{} },
     commitmentModal: { open:false, data:{} },
     alertModal:      { open:false, data:{} },
+
+    adminStatus: null,
 
     get pageTitle() {
       return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
@@ -5879,6 +5934,71 @@ function app() {
         this.sprintError = e.message;
       }
       this.sprintLoading = false;
+    },
+
+    // ── Admin: Export/Import ──────────────────────────────────────────────────
+    async exportDatabase() {
+      try {
+        this.adminStatus = { type: 'info', message: 'Exporting database...' };
+        const resp = await fetch('/api/admin/export');
+        const data = await resp.json();
+
+        // Create download link
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `execos_backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+
+        this.adminStatus = { type: 'success', message: '✓ Database exported successfully' };
+        setTimeout(() => this.adminStatus = null, 3000);
+      } catch (err) {
+        this.adminStatus = { type: 'error', message: `✗ Export failed: ${err.message}` };
+      }
+    },
+
+    triggerImport() {
+      document.getElementById('importFile').click();
+    },
+
+    async importDatabase(event) {
+      try {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        this.adminStatus = { type: 'info', message: 'Reading file...' };
+        const json = await file.text();
+        const data = JSON.parse(json);
+
+        this.adminStatus = { type: 'info', message: 'Importing database (this may take a moment)...' };
+        const resp = await fetch('/api/admin/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!resp.ok) {
+          throw new Error((await resp.json()).detail || 'Import failed');
+        }
+
+        const result = await resp.json();
+        this.adminStatus = {
+          type: 'success',
+          message: `✓ Import successful: ${result.message}`
+        };
+
+        // Reload all data
+        await this.loadAll();
+
+        setTimeout(() => this.adminStatus = null, 5000);
+      } catch (err) {
+        this.adminStatus = { type: 'error', message: `✗ Import failed: ${err.message}` };
+      } finally {
+        // Reset file input
+        document.getElementById('importFile').value = '';
+      }
     },
 
     // ── Badge helpers ────────────────────────────────────────────────────────

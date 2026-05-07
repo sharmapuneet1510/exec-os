@@ -109,12 +109,16 @@ def import_database(data: dict, db: Session = Depends(get_db)):
             inserted = 0
             for row_dict in rows:
                 # Parse datetime strings back to datetime objects
-                for key, val in row_dict.items():
-                    if isinstance(val, str) and val and 'T' in val:
-                        try:
-                            row_dict[key] = datetime.fromisoformat(val)
-                        except (ValueError, TypeError):
-                            pass
+                for key, val in list(row_dict.items()):
+                    if isinstance(val, str) and val:
+                        # Try parsing as ISO datetime (with T or space)
+                        if 'T' in val or ' ' in val:
+                            try:
+                                # Handle both ISO format and space-separated format
+                                dt_str = val.replace(' ', 'T')
+                                row_dict[key] = datetime.fromisoformat(dt_str)
+                            except (ValueError, TypeError):
+                                pass
 
                 try:
                     obj = model_class(**row_dict)
