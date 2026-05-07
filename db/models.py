@@ -18,6 +18,7 @@ class EmailConfigORM(Base):
     eod_time         = Column(String(5),   default="18:00")
     sod_enabled      = Column(Boolean,     default=True)
     eod_enabled      = Column(Boolean,     default=True)
+    reminder_priority_filter = Column(String(20), default="all")
     created_at       = Column(DateTime,    default=datetime.utcnow)
     updated_at       = Column(DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -52,6 +53,7 @@ class TaskORM(Base):
     priority = Column(String(20), default="medium")
     status = Column(String(20), default="todo")
     project_id = Column(String, ForeignKey("projects.project_id", ondelete="SET NULL"), nullable=True)
+    application_id = Column(String, ForeignKey("applications.application_id", ondelete="SET NULL"), nullable=True)
     assignee_id = Column(String, ForeignKey("team_members.member_id", ondelete="SET NULL"), nullable=True)
     tags = Column(Text, default="[]")
     postponed_count = Column(Integer, default=0)
@@ -67,6 +69,7 @@ class ReleaseORM(Base):
     name = Column(String(255), nullable=False)
     version = Column(String(50), default="")
     project_id = Column(String, ForeignKey("projects.project_id", ondelete="CASCADE"), nullable=True)
+    application_id = Column(String, ForeignKey("applications.application_id", ondelete="SET NULL"), nullable=True)
     due_date = Column(Date, nullable=True)
     status = Column(String(50), default="planned")
     description = Column(Text, default="")
@@ -116,6 +119,29 @@ class AlertORM(Base):
     snoozed_until = Column(DateTime, nullable=True)
 
 
+class ReminderORM(Base):
+    __tablename__ = "reminders"
+
+    reminder_id = Column(String, primary_key=True, default=_uuid)
+    title = Column(String(500), nullable=False)
+    description = Column(Text, default="")
+    reminder_type = Column(String(20), default="independent")  # 'task' | 'independent'
+    task_id = Column(String, ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
+    trigger_type = Column(String(20), nullable=False)  # 'fixed_time' | 'relative_interval'
+    trigger_value = Column(String(50), nullable=False)  # "HH:MM" or "-1d" / "2h"
+    trigger_date = Column(Date, nullable=True)  # for fixed_time reminders
+    due_date = Column(Date, nullable=True)  # reference date for relative_interval
+    recurrence_pattern = Column(Text, default='{}')  # JSON: {"type": "daily"} etc
+    is_active = Column(Boolean, default=True)
+    last_triggered = Column(DateTime, nullable=True)
+    snooze_until = Column(DateTime, nullable=True)
+    include_in_sod = Column(Boolean, default=True)
+    include_in_eod = Column(Boolean, default=True)
+    priority = Column(String(20), default="medium")  # 'low' | 'medium' | 'high'
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AuditLogORM(Base):
     __tablename__ = "audit_logs"
 
@@ -132,8 +158,7 @@ class JiraConfigORM(Base):
 
     id           = Column(Integer, primary_key=True, default=1)
     base_url     = Column(String(500), default="")   # https://company.atlassian.net
-    email        = Column(String(255), default="")
-    api_token    = Column(Text,        default="")   # Jira API token (masked in GET)
+    pat          = Column(Text,        default="")   # Personal Access Token (bearer auth)
     project_keys = Column(Text,        default="[]") # JSON list e.g. ["ENG","OPS"]
     enabled      = Column(Boolean,     default=False)
     last_synced  = Column(DateTime,    nullable=True)
@@ -321,12 +346,12 @@ class AppJiraConfigORM(Base):
     id             = Column(String, primary_key=True, default=_uuid)
     application_id = Column(String, nullable=False, unique=True)
     base_url       = Column(String(500), default="")
-    email          = Column(String(255), default="")
-    api_token      = Column(Text, default="")
-    project_keys   = Column(Text, default="[]")
-    enabled        = Column(Boolean, default=False)
-    created_at     = Column(DateTime, default=datetime.utcnow)
-    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    pat            = Column(Text,        default="")   # Personal Access Token (bearer auth)
+    project_keys   = Column(Text,        default="[]")
+    enabled        = Column(Boolean,     default=False)
+    last_synced    = Column(DateTime,    nullable=True)
+    created_at     = Column(DateTime,    default=datetime.utcnow)
+    updated_at     = Column(DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class AppGitLabConfigORM(Base):

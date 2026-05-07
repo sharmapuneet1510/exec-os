@@ -813,8 +813,7 @@ db.add_all([
     AppJiraConfigORM(
         application_id=a1,
         base_url="https://execos.atlassian.net",
-        email="puneet@execos.io",
-        api_token="ATATT3xFfGF0_demo_token_exec_12345",
+        pat="ATATT3xFfGF0_demo_token_exec_12345",
         project_keys=_json.dumps(["EXEC", "INFRA"]),
         enabled=True,
     ),
@@ -840,8 +839,7 @@ db.add_all([
     AppJiraConfigORM(
         application_id=a2,
         base_url="https://execos.atlassian.net",
-        email="priya@execos.io",
-        api_token="ATATT3xFfGF0_demo_token_mobile_54321",
+        pat="ATATT3xFfGF0_demo_token_mobile_54321",
         project_keys=_json.dumps(["MOBILE", "PUSHNOTIF"]),
         enabled=True,
     ),
@@ -867,8 +865,7 @@ db.add_all([
     AppJiraConfigORM(
         application_id=a3,
         base_url="https://execos.atlassian.net",
-        email="priya@execos.io",
-        api_token="ATATT3xFfGF0_demo_token_portal_99999",
+        pat="ATATT3xFfGF0_demo_token_portal_99999",
         project_keys=_json.dumps(["PORTAL"]),
         enabled=False,
     ),
@@ -886,8 +883,7 @@ db.add_all([
     AppJiraConfigORM(
         application_id=a4,
         base_url="https://execos.atlassian.net",
-        email="ananya@execos.io",
-        api_token="ATATT3xFfGF0_demo_token_data_33333",
+        pat="ATATT3xFfGF0_demo_token_data_33333",
         project_keys=_json.dumps(["DATA", "DBTMODELS"]),
         enabled=True,
     ),

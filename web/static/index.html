@@ -422,6 +422,7 @@
       <div class="nav-group-label">Execution</div>
       <div @click="nav('applications')"    :class="navCls('applications')">    <div class="nav-icon">🏛</div><span style="flex:1">Applications</span></div>
       <div @click="nav('tasks')"           :class="navCls('tasks')">           <div class="nav-icon">✅</div><span style="flex:1">Tasks</span></div>
+      <div @click="nav('inbox')"           :class="navCls('inbox')">           <div class="nav-icon">📥</div><span style="flex:1">Inbox</span></div>
       <div @click="nav('projects')"        :class="navCls('projects')">        <div class="nav-icon">📁</div><span style="flex:1">Projects</span></div>
       <div @click="nav('project-tracker')" :class="navCls('project-tracker')"> <div class="nav-icon">📅</div><span style="flex:1">Project Tracker</span></div>
       <div @click="nav('milestones')"      :class="navCls('milestones')">      <div class="nav-icon">🏁</div><span style="flex:1">Milestones</span></div>
@@ -607,6 +608,35 @@
                 </template>
               </div>
             </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;cursor:pointer;" @click="nav('inbox')">
+              <div style="font-size:13px;font-weight:700;color:#16a34a;margin-bottom:12px;">INBOX</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                  <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Critical</div>
+                  <div style="font-size:20px;font-weight:800;" x-text="inboxStats.critical"></div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">High</div>
+                  <div style="font-size:20px;font-weight:800;" x-text="inboxStats.high"></div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Medium</div>
+                  <div style="font-size:20px;font-weight:800;" x-text="inboxStats.medium"></div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">Low</div>
+                  <div style="font-size:20px;font-weight:800;" x-text="inboxStats.low"></div>
+                </div>
+              </div>
+              <div style="border-top:1px solid #bbf7d0;padding-top:12px;display:flex;gap:12px;">
+                <div x-show="inboxStats.overdue > 0" style="display:flex;align-items:center;gap:6px;font-size:12px;color:#dc2626;">
+                  <span style="font-weight:700;" x-text="inboxStats.overdue + ' overdue'"></span>❌
+                </div>
+                <div x-show="inboxStats.dueToday > 0" style="display:flex;align-items:center;gap:6px;font-size:12px;color:#f59e0b;">
+                  <span style="font-weight:700;" x-text="inboxStats.dueToday + ' due today'"></span>⚠️
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -775,6 +805,64 @@
         <style>.data-table tbody tr:hover .row-actions{opacity:1!important;}</style>
       </div>
 
+      <!-- ══ INBOX ══ -->
+      <div x-show="view==='inbox'" style="flex:1;display:flex;flex-direction:column;">
+        <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;font-size:24px;font-weight:800;">Inbox</h2>
+          <button @click="openTaskModal()" class="btn-primary">+ New</button>
+        </div>
+        <div style="flex:1;overflow:auto;padding:20px;">
+          <div style="margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;">
+            <input type="text" x-model="inboxFilters.search" @change="filterInbox()" placeholder="Search inbox..." class="input" style="flex:1;min-width:200px;" />
+            <select x-model="inboxFilters.priority" @change="filterInbox()" class="input">
+              <option value="">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden;" x-show="inboxTasks.length>0">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Priority</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th style="width:90px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="t in inboxTasks" :key="t.task_id">
+                  <tr :class="t.due_date && t.due_date < todayStr && t.status!=='done' ? 'overdue-row' : ''">
+                    <td>
+                      <div style="font-weight:600;color:var(--text-1);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></div>
+                      <div style="font-size:12px;color:var(--text-3);margin-top:2px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-show="t.description" x-text="t.description"></div>
+                    </td>
+                    <td><span :class="'chip ' + priorityChip(t.priority)" x-text="t.priority"></span></td>
+                    <td>
+                      <span :style="'font-size:13px;font-weight:500;color:' + (t.due_date && t.due_date < todayStr && t.status!=='done' ? '#ef4444' : '#6b6860')"
+                        x-text="t.due_date || '—'"></span>
+                    </td>
+                    <td><span :class="'chip ' + statusChip(t.status)" x-text="t.status.replace('_',' ')"></span></td>
+                    <td>
+                      <div style="display:flex;gap:6px;opacity:0;transition:opacity .15s;" class="row-actions">
+                        <button @click="openTaskModal(t)" class="btn-icon" title="Edit">✏️</button>
+                        <button @click="deleteTask(t.task_id)" class="btn-icon" title="Delete" style="color:#ef4444;">🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div x-show="inboxTasks.length===0" style="text-align:center;padding:40px;color:var(--text-2);">
+            <p>No inbox tasks. You're all caught up! 🎉</p>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ PROJECTS ══ -->
       <div x-show="view==='projects'" x-cloak>
         <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
@@ -829,7 +917,7 @@
               fetch('/api/applications/'+aid+'/integrations/sprint').then(r=>r.json()).catch(()=>({})),
             ]);
             this.appCfg = {
-              jira: { base_url:j.base_url||'', email:j.email||'', api_token:j.api_token||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
+              jira: { base_url:j.base_url||'', pat:j.pat||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
               gitlab: { base_url:g.base_url||'https://gitlab.com', access_token:g.access_token||'', project_ids_raw:(g.project_ids||[]).join('\n'), enabled:g.enabled||false },
               sprint: { board_id:s.board_id||'', sprint_id:s.sprint_id||'', sprint_name:s.sprint_name||'', my_jira_email:s.my_jira_email||'', my_gitlab_username:s.my_gitlab_username||'' },
             };
@@ -838,7 +926,7 @@
             this.cfgSaving=true; this.cfgMsg='';
             try {
               const c=this.appCfg.jira;
-              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,email:c.email,api_token:c.api_token,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
+              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,pat:c.pat,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
               if(!resp.ok) {
                 const err=await resp.text();
                 throw new Error(err||resp.statusText);
@@ -982,15 +1070,9 @@
                     <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Base URL</label>
                     <input x-model="appCfg.jira.base_url" class="input" placeholder="https://yourcompany.atlassian.net" />
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Email</label>
-                      <input x-model="appCfg.jira.email" class="input" placeholder="you@company.com" />
-                    </div>
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">API Token</label>
-                      <input type="password" x-model="appCfg.jira.api_token" class="input" placeholder="Leave blank to keep existing" />
-                    </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token (PAT)</label>
+                    <input type="password" x-model="appCfg.jira.pat" class="input" placeholder="Your Jira Personal Access Token" />
                   </div>
                   <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">(one per line, e.g. EXEC)</span></label>
@@ -3919,16 +4001,11 @@
                     <input x-model="settingsAppCfg.jira.base_url" placeholder="https://yourcompany.atlassian.net"
                       style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
                   </div>
-                  <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Email</label>
-                    <input x-model="settingsAppCfg.jira.email" type="email" placeholder="you@company.com"
-                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                  </div>
-                  <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">API Token
+                  <div style="grid-column:1/-1;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Personal Access Token (PAT)
                       <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#6366f1;font-weight:400;margin-left:4px;">Get token ↗</a>
                     </label>
-                    <input x-model="settingsAppCfg.jira.api_token" type="password" placeholder="Leave blank to keep existing"
+                    <input x-model="settingsAppCfg.jira.pat" type="password" placeholder="Leave blank to keep existing"
                       style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
                   </div>
                   <div style="grid-column:1/-1;">
@@ -4193,7 +4270,8 @@
           <input type="date" x-model="taskModal.data.reminder_date" class="input" />
         </div>
       </div>
-      <div>
+      <!-- Application dropdown — hidden in Inbox -->
+      <div x-show="!taskModal.inboxMode">
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Application</label>
         <select x-model="taskModal.data.application_id" @change="taskModal.data.project_id=''" class="input">
           <option value="">— Select an application —</option>
@@ -4202,7 +4280,8 @@
           </template>
         </select>
       </div>
-      <div>
+      <!-- Project dropdown — hidden in Inbox -->
+      <div x-show="!taskModal.inboxMode">
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Project</label>
         <select x-model="taskModal.data.project_id" class="input">
           <option value="">No project</option>
@@ -4451,6 +4530,8 @@ function app() {
     opDash: null, exDash: null, sod: null, eod: null,
     tasks: [], filteredTasks: [],
     taskSearch: '', taskStatusFilter: '', taskPriorityFilter: '',
+    inboxFilters: { search: '', priority: '' },
+    inboxTasks: [],
     projects: [], milestones: [], commitments: [], alerts: [],
     unreadAlerts: 0,
     _alertPollTs: null,   // ISO timestamp of last poll — tracks new alerts
@@ -4464,6 +4545,14 @@ function app() {
     estAggregate: null,
     estPlanProjectId: '',
     _estIdCounter: 0,
+    inboxStats: {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      overdue: 0,
+      dueToday: 0,
+    },
 
     toasts: [], _toastId: 0,
     briefing: { open: false, dismissed: false },
@@ -4478,11 +4567,11 @@ function app() {
     emailMsg: '', emailMsgOk: true, emailSending: false,
 
     outlookCfg: { ics_url:'', ics_configured:false, enabled:false, working_start:'09:00', working_end:'18:00' },
-    jiraCfg: { base_url:'', email:'', api_token:'', project_keys:'[]', project_keys_raw:'', enabled:false, last_synced:null },
+    jiraCfg: { base_url:'', pat:'', project_keys:'[]', project_keys_raw:'', enabled:false, last_synced:null },
     // Settings page per-app integration state
     settingsApp: '',
     settingsAppCfg: {
-      jira: { base_url:'', email:'', api_token:'', project_keys_raw:'', enabled:false },
+      jira: { base_url:'', pat:'', project_keys_raw:'', enabled:false },
       gitlab: { base_url:'https://gitlab.com', access_token:'', project_ids_raw:'', enabled:false },
       sprint: { board_id:'', sprint_id:'', sprint_name:'', my_jira_email:'', my_gitlab_username:'' },
     },
@@ -4518,7 +4607,7 @@ function app() {
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
 
-    taskModal:       { open:false, editing:false, data:{} },
+    taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
     milestoneModal:  { open:false, editing:false, data:{} },
     commitmentModal: { open:false, data:{} },
@@ -4526,7 +4615,7 @@ function app() {
 
     get pageTitle() {
       return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
-        tasks:'Tasks', projects:'Projects', milestones:'Milestones',
+        tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
         commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
         'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
@@ -4536,7 +4625,8 @@ function app() {
     },
     get pageSubtitle() {
       return { dashboard:"Today's execution pulse", executive:'Portfolio health & risk',
-        tasks:'All tasks across projects', projects:'Project tracking & health',
+        tasks:'All tasks across projects', inbox:'Unassigned tasks needing review',
+        projects:'Project tracking & health',
         milestones:'Key milestones & deadlines', commitments:'Tracked promises',
         alerts:'System & execution alerts', summaries:'Start & end of day briefings',
         estimate:'Multi-item · Weighted · Holidays · Release paperwork',
@@ -4680,7 +4770,7 @@ function app() {
       } catch(e) {}
     },
     async loadTasks() {
-      try { this.tasks=await fetch('/api/tasks').then(r=>r.json()); this.filterTasks(); } catch(e) {}
+      try { this.tasks=await fetch('/api/tasks').then(r=>r.json()); this.filterTasks(); this.filterInbox(); this.calculateInboxStats(); } catch(e) {}
     },
     async loadProjects() {
       try { this.projects=await fetch('/api/projects').then(r=>r.json()); } catch(e) {}
@@ -4750,20 +4840,49 @@ function app() {
       if(this.taskPriorityFilter) ts=ts.filter(t=>t.priority===this.taskPriorityFilter);
       this.filteredTasks=ts;
     },
+    filterInbox() {
+      let ts=this.tasks.filter(t=>!t.project_id && !t.application_id);
+      if(this.inboxFilters.search) {
+        const q=this.inboxFilters.search.toLowerCase();
+        ts=ts.filter(t=>t.title.toLowerCase().includes(q) || (t.description && t.description.toLowerCase().includes(q)));
+      }
+      if(this.inboxFilters.priority) {
+        ts=ts.filter(t=>t.priority===this.inboxFilters.priority);
+      }
+      this.inboxTasks=ts.sort((a,b)=>{
+        if(a.due_date && b.due_date) return new Date(a.due_date)-new Date(b.due_date);
+        if(a.due_date) return -1;
+        if(b.due_date) return 1;
+        return 0;
+      });
+    },
+    calculateInboxStats() {
+      const today = new Date().toISOString().split('T')[0];
+      const inbox = this.tasks.filter(t => !t.project_id && !t.application_id);
+
+      this.inboxStats = {
+        critical: inbox.filter(t => t.priority === 'critical').length,
+        high: inbox.filter(t => t.priority === 'high').length,
+        medium: inbox.filter(t => t.priority === 'medium').length,
+        low: inbox.filter(t => t.priority === 'low').length,
+        overdue: inbox.filter(t => t.due_date && t.due_date < today && t.status !== 'done').length,
+        dueToday: inbox.filter(t => t.due_date === today && t.status !== 'done').length,
+      };
+    },
     projectName(id) { const p=this.projects.find(p=>p.project_id===id); return p?p.name:''; },
 
     openTaskModal(task) {
+      const inboxMode = this.view === 'inbox';
       if(task) {
-        const proj = this.projects.find(p=>p.project_id===task.project_id);
-        this.taskModal={open:true,editing:true,data:{...task,due_date:task.due_date||'',reminder_date:task.reminder_date||'',project_id:task.project_id||'',application_id:proj?.application_id||''}};
+        this.taskModal={open:true,editing:true,inboxMode:inboxMode,data:{...task,due_date:task.due_date||'',reminder_date:task.reminder_date||'',project_id:task.project_id||'',application_id:task.application_id||''}};
       } else {
-        this.taskModal={open:true,editing:false,data:{title:'',description:'',priority:'medium',status:'todo',due_date:'',reminder_date:'',project_id:'',application_id:''}};
+        this.taskModal={open:true,editing:false,inboxMode:inboxMode,data:{title:'',description:'',priority:'medium',status:'todo',due_date:'',reminder_date:'',project_id:'',application_id:''}};
       }
     },
     async saveTask() {
       const d=this.taskModal.data;
       if(!d.title?.trim()) return;
-      const payload={title:d.title,description:d.description,priority:d.priority,status:d.status,due_date:d.due_date||null,reminder_date:d.reminder_date||null,project_id:d.project_id||null,assignee_id:d.assignee_id||null,tags:d.tags||[]};
+      const payload={title:d.title,description:d.description,priority:d.priority,status:d.status,due_date:d.due_date||null,reminder_date:d.reminder_date||null,project_id:d.project_id||null,application_id:d.application_id||null,assignee_id:d.assignee_id||null,tags:d.tags||[]};
       try {
         if(this.taskModal.editing) {
           const resp=await fetch(`/api/tasks/${d.task_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -5338,7 +5457,7 @@ function app() {
         ]);
         this.settingsAppCfg = {
           jira: {
-            base_url: j.base_url||'', email: j.email||'', api_token: '',
+            base_url: j.base_url||'', pat: '',
             project_keys_raw: (j.project_keys||[]).join('\n'), enabled: j.enabled||false,
           },
           gitlab: {
@@ -5359,7 +5478,7 @@ function app() {
       await fetch(`/api/applications/${this.settingsApp}/integrations/jira`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          base_url: c.base_url, email: c.email, api_token: c.api_token,
+          base_url: c.base_url, pat: c.pat,
           project_keys: c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),
           enabled: c.enabled,
         }),
@@ -5506,7 +5625,7 @@ function app() {
           my_jira_email: s.my_jira_email||'', my_gitlab_username: s.my_gitlab_username||'',
         };
         const j = await fetch(`/api/applications/${appId}/integrations/jira`).then(r=>r.json());
-        this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', email: j.email||'', enabled: j.enabled||false };
+        this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', enabled: j.enabled||false };
       } catch(e) {}
     },
     async saveSprintAppConfig() {
@@ -5528,7 +5647,7 @@ function app() {
       this.jiraData = { team:[], last_fetched:null };
       if (!this.jiraAppId) return;
       const j = await fetch(`/api/applications/${this.jiraAppId}/integrations/jira`).then(r=>r.json()).catch(()=>({}));
-      this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', email: j.email||'', enabled: j.enabled||false };
+      this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', enabled: j.enabled||false };
       if (this.jiraCfg.enabled) this.loadJiraTeam();
     },
     async onGitLabAppChange() {

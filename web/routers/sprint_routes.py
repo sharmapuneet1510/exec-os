@@ -45,7 +45,7 @@ def _get_cfg(app_id: str, db: Session) -> AppSprintConfigORM:
 
 def _get_jira_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
     cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
-    if not cfg or not cfg.enabled or not cfg.api_token:
+    if not cfg or not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled for this application")
     return cfg
 
@@ -62,12 +62,17 @@ def _jira_get(cfg, path: str, params: dict = None):
     url = f"{cfg.base_url.rstrip('/')}/{path.lstrip('/')}"
     resp = requests.get(
         url, params=params or {},
-        auth=(cfg.email, cfg.api_token),
-        headers={"Accept": "application/json"},
+        headers={
+            "Authorization": f"Bearer {cfg.pat}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
         timeout=20,
     )
     if resp.status_code == 401:
-        raise HTTPException(401, "Jira auth failed")
+        raise HTTPException(401, "Jira auth failed — check PAT and permissions")
+    if resp.status_code == 403:
+        raise HTTPException(403, "Jira returned 403 — PAT may lack permissions")
     if not resp.ok:
         raise HTTPException(resp.status_code, f"Jira error: {resp.text[:300]}")
     return resp.json()

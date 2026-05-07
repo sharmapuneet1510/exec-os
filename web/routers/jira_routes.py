@@ -34,6 +34,26 @@ def _cache_bust():
     _cache.clear()
 
 
+# ── Jira Header Builder ───────────────────────────────────────────────────────
+def _jira_headers(cfg: AppJiraConfigORM) -> dict:
+    """Return centralized Jira API headers with bearer token authentication.
+
+    All Jira API requests should use these headers for authentication.
+    Centralized here for easy maintenance and future changes.
+
+    Args:
+        cfg: AppJiraConfigORM config with PAT
+
+    Returns:
+        dict: Headers including Authorization: Bearer <PAT>
+    """
+    return {
+        "Authorization": f"Bearer {cfg.pat}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
+
 # ── DB helpers ────────────────────────────────────────────────────────────────
 def _db():
     db = SessionLocal()
@@ -52,7 +72,7 @@ def _get_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
 
 # ── Jira HTTP helpers ─────────────────────────────────────────────────────────
 def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
-    """Make an authenticated GET to the Jira Cloud REST API."""
+    """Make an authenticated GET to the Jira Cloud REST API with bearer token."""
     import requests
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -60,15 +80,14 @@ def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
     resp = requests.get(
         url,
         params=params or {},
-        auth=(cfg.email, cfg.api_token),
-        headers={"Accept": "application/json"},
+        headers=_jira_headers(cfg),
         timeout=15,
-        verify=False,  # Disable SSL verification for corporate proxies/self-signed certs
+        verify=False,
     )
     if resp.status_code == 401:
-        raise HTTPException(401, "Jira auth failed — check email and API token")
+        raise HTTPException(401, "Jira auth failed — check PAT and permissions")
     if resp.status_code == 403:
-        raise HTTPException(403, "Jira returned 403 — token may lack permissions")
+        raise HTTPException(403, "Jira returned 403 — PAT may lack permissions")
     if not resp.ok:
         raise HTTPException(resp.status_code, f"Jira error: {resp.text[:200]}")
     return resp.json()
@@ -109,21 +128,21 @@ def _jira_search_all(cfg: AppJiraConfigORM, jql: str, fields: str) -> list:
 @router.post("/test")
 def test_connection(app_id: str = Query(...), db: Session = Depends(_db)):
     cfg = _get_cfg(app_id, db)
-    if not cfg.base_url or not cfg.email or not cfg.api_token:
-        raise HTTPException(400, "Jira not configured — fill in URL, email, and API token first")
+    if not cfg.base_url or not cfg.pat:
+        raise HTTPException(400, "Jira not configured — fill in URL and PAT first")
     data = _jira_get(cfg, "myself")
     return {
         "ok": True,
         "display_name": data.get("displayName", ""),
         "account_id":   data.get("accountId", ""),
-        "message": f"Connected as {data.get('displayName', cfg.email)}",
+        "message": f"Connected as {data.get('displayName', '')}",
     }
 
 
 @router.get("/projects")
 def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
     cfg = _get_cfg(app_id, db)
-    if not cfg.enabled or not cfg.api_token:
+    if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled")
     cache_key = f"projects_{app_id}"
     cached = _cache_get(cache_key)
@@ -142,7 +161,7 @@ def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
 def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     """Return team workload: one entry per assignee with their open issues."""
     cfg = _get_cfg(app_id, db)
-    if not cfg.enabled or not cfg.api_token:
+    if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled")
 
     cache_key = f"team_{app_id}"

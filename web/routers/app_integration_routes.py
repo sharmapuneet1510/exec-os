@@ -26,22 +26,18 @@ def _get_app(app_id: str, db: Session):
 
 class JiraIn(BaseModel):
     base_url: str = ""
-    email: str = ""
-    api_token: str = ""
+    pat: str = ""  # Personal Access Token
     project_keys: list = []
     enabled: bool = False
 
 
 def _jira_out(c: AppJiraConfigORM) -> dict:
     return {
-        "id": c.id,
-        "application_id": c.application_id,
         "base_url": c.base_url or "",
-        "email": c.email or "",
-        "api_token": "••••" if c.api_token else "",
+        "pat": "••••" if c.pat else "",
         "project_keys": json.loads(c.project_keys or "[]"),
         "enabled": c.enabled,
-        "updated_at": c.updated_at,
+        "last_synced": c.last_synced,
     }
 
 
@@ -50,8 +46,7 @@ def get_jira(app_id: str, db: Session = Depends(get_db)):
     _get_app(app_id, db)
     c = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
     if not c:
-        return {"application_id": app_id, "base_url": "", "email": "", "api_token": "",
-                "project_keys": [], "enabled": False}
+        return {"base_url": "", "pat": "", "project_keys": [], "enabled": False, "last_synced": None}
     return _jira_out(c)
 
 
@@ -63,14 +58,14 @@ def save_jira(app_id: str, body: JiraIn, db: Session = Depends(get_db)):
         c = AppJiraConfigORM(application_id=app_id)
         db.add(c)
     c.base_url = body.base_url.strip()
-    c.email = body.email.strip()
-    # Only update token if it's a new value (not masked "••••" and not empty)
-    if body.api_token and body.api_token not in ("••••", ""):
-        c.api_token = body.api_token
-    elif body.api_token == "" and not c.api_token:
-        # New record with empty token — that's ok, just leave it empty
-        c.api_token = ""
-    # If token is "••••", it means user didn't change it — keep existing
+
+    # PAT preservation: only update if it's a new value
+    if body.pat and body.pat not in ("••••", ""):
+        c.pat = body.pat
+    elif body.pat == "" and not c.pat:
+        c.pat = ""
+    # If PAT is "••••", keep existing
+
     c.project_keys = json.dumps(body.project_keys)
     c.enabled = body.enabled
     db.commit()
