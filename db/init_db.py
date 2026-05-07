@@ -3,7 +3,7 @@ from . import models  # noqa: F401 — ensures all ORM classes are registered
 from datetime import datetime, timedelta
 import json
 from sqlalchemy import inspect, text
-from db.migrations.001_add_reminders_table import run_migration
+from db.migrations.migration_001_add_reminders_table import run_migration
 
 
 def _migrate_jira_config():
