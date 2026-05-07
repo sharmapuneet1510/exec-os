@@ -426,6 +426,7 @@
       <div @click="nav('projects')"        :class="navCls('projects')">        <div class="nav-icon">📁</div><span style="flex:1">Projects</span></div>
       <div @click="nav('project-tracker')" :class="navCls('project-tracker')"> <div class="nav-icon">📅</div><span style="flex:1">Project Tracker</span></div>
       <div @click="nav('milestones')"      :class="navCls('milestones')">      <div class="nav-icon">🏁</div><span style="flex:1">Milestones</span></div>
+      <div @click="nav('releases')"        :class="navCls('releases')">        <div class="nav-icon">📦</div><span style="flex:1">Releases</span></div>
       <div @click="nav('commitments')"     :class="navCls('commitments')">     <div class="nav-icon">🤝</div><span style="flex:1">Commitments</span></div>
 
       <div class="nav-group-label">Tools</div>
@@ -606,6 +607,34 @@
                     <span style="font-size:11.5px;color:var(--text-3);flex-shrink:0;" x-text="c.due_date"></span>
                   </div>
                 </template>
+              </div>
+            </div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <div class="section-title" style="margin:0;">📦 Releases</div>
+                <a href="#" @click="view='releases'" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;">View all</a>
+              </div>
+              <div style="space-y:2;text-sm;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Total</span>
+                  <span style="font-weight:600;" x-text="opDash?.releases_stats?.total || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Planned</span>
+                  <span style="font-weight:600;color:#2563eb;" x-text="opDash?.releases_stats?.planned || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">In Progress</span>
+                  <span style="font-weight:600;color:#f59e0b;" x-text="opDash?.releases_stats?.in_progress || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Completed</span>
+                  <span style="font-weight:600;color:#16a34a;" x-text="opDash?.releases_stats?.completed || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;">
+                  <span style="color:#dc2626;font-weight:600;">Overdue</span>
+                  <span style="font-weight:600;color:#dc2626;" x-text="opDash?.releases_stats?.overdue || 0"></span>
+                </div>
               </div>
             </div>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;cursor:pointer;" @click="nav('inbox')">
@@ -1407,6 +1436,67 @@
           </div>
         </div>
         <style>.group-row:hover .ms-actions{opacity:1!important;}</style>
+      </div>
+
+      <!-- ══ RELEASES ══ -->
+      <div x-show="view==='releases'" x-cloak>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
+          <button @click="openReleaseModal()" class="btn-primary">+ New Release</button>
+        </div>
+        <div class="card">
+          <div class="p-4 border-b space-y-3" style="padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:12px;">
+            <input type="text"
+              x-model="releaseSearchTerm"
+              placeholder="Search releases..."
+              class="input"
+              style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;" />
+            <select x-model="releaseStatusFilter" class="input" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;">
+              <option value="">All Statuses</option>
+              <option value="planned">Planned</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <table class="w-full text-sm" style="width:100%;border-collapse:collapse;">
+            <thead style="background:var(--bg);border-bottom:1px solid var(--border);">
+              <tr>
+                <th class="px-4 py-2 text-left font-semibold" style="padding:12px 16px;text-align:left;font-weight:600;font-size:12px;color:var(--text-2);">Name</th>
+                <th class="px-4 py-2 text-left font-semibold" style="padding:12px 16px;text-align:left;font-weight:600;font-size:12px;color:var(--text-2);">Version</th>
+                <th class="px-4 py-2 text-left font-semibold" style="padding:12px 16px;text-align:left;font-weight:600;font-size:12px;color:var(--text-2);">Project</th>
+                <th class="px-4 py-2 text-left font-semibold" style="padding:12px 16px;text-align:left;font-weight:600;font-size:12px;color:var(--text-2);">Due Date</th>
+                <th class="px-4 py-2 text-left font-semibold" style="padding:12px 16px;text-align:left;font-weight:600;font-size:12px;color:var(--text-2);">Status</th>
+                <th class="px-4 py-2 text-left font-semibold" style="padding:12px 16px;text-align:left;font-weight:600;font-size:12px;color:var(--text-2);">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="rel in filteredReleases" :key="rel.release_id">
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td class="px-4 py-2" style="padding:12px 16px;cursor:pointer;">
+                    <a href="#" @click.prevent="openReleaseModal(rel)" style="color:#6366f1;font-weight:500;text-decoration:none;hover:text-decoration:underline;" x-text="rel.name"></a>
+                  </td>
+                  <td class="px-4 py-2" style="padding:12px 16px;font-size:13px;color:var(--text-2);" x-text="rel.version || '—'"></td>
+                  <td class="px-4 py-2" style="padding:12px 16px;font-size:13px;color:var(--text-2);" x-text="projectName(rel.project_id) || '—'"></td>
+                  <td class="px-4 py-2" style="padding:12px 16px;">
+                    <span :style="rel.is_overdue ? 'color:#dc2626;font-weight:600;' : rel.days_until_due <= 7 ? 'color:#d97706;' : ''"
+                      style="font-size:13px;"
+                      x-text="rel.due_date || '—'"></span>
+                  </td>
+                  <td class="px-4 py-2" style="padding:12px 16px;">
+                    <span :class="'chip ' + releaseStatusChip(rel.status)" x-text="rel.status.replace('_',' ')"></span>
+                  </td>
+                  <td class="px-4 py-2" style="padding:12px 16px;display:flex;gap:8px;">
+                    <button @click="openReleaseModal(rel)" style="color:#6366f1;cursor:pointer;background:none;border:none;font-size:14px;">✏️</button>
+                    <button @click="deleteRelease(rel.release_id)" style="color:#ef4444;cursor:pointer;background:none;border:none;font-size:14px;">🗑</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <div x-show="!releases.length" style="text-align:center;padding:48px;color:var(--text-3);">No releases yet</div>
+        </div>
       </div>
 
       <!-- ══ COMMITMENTS ══ -->
@@ -4409,6 +4499,63 @@
   </div>
 </div>
 
+<!-- ══ RELEASE MODAL ══ -->
+<div x-show="releaseModal.open" x-cloak class="modal-backdrop" @click.self="releaseModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header" style="background:linear-gradient(135deg,#06b6d4,#67e8f9);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:18px;font-weight:800;" x-text="releaseModal.editing ? 'Edit Release' : 'New Release'"></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px;">Track product releases and versions</div>
+        </div>
+        <button @click="releaseModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Release Name *</label>
+        <input x-model="releaseModal.data.name" class="input" placeholder="e.g. Version 2.0 Release" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Version</label>
+        <input x-model="releaseModal.data.version" class="input" placeholder="e.g. 2.0.0" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Project</label>
+        <select x-model="releaseModal.data.project_id" class="input">
+          <option value="">— Unassigned —</option>
+          <template x-for="p in projects" :key="p.project_id">
+            <option :value="p.project_id" x-text="p.name"></option>
+          </template>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Due Date</label>
+          <input type="date" x-model="releaseModal.data.due_date" class="input" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Status</label>
+          <select x-model="releaseModal.data.status" class="input">
+            <option value="planned">Planned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Description</label>
+        <textarea x-model="releaseModal.data.description" class="input" style="height:70px;" placeholder="Release notes or description…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button @click="releaseModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveRelease()" class="btn-primary" x-text="releaseModal.editing ? 'Update Release' : 'Create Release'"></button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ COMMITMENT MODAL ══ -->
 <div x-show="commitmentModal.open" x-cloak class="modal-backdrop" @click.self="commitmentModal.open=false">
   <div class="modal-box">
@@ -4532,7 +4679,9 @@ function app() {
     taskSearch: '', taskStatusFilter: '', taskPriorityFilter: '',
     inboxFilters: { search: '', priority: '' },
     inboxTasks: [],
-    projects: [], milestones: [], commitments: [], alerts: [],
+    projects: [], milestones: [], releases: [], commitments: [], alerts: [],
+    releaseSearchTerm: '',
+    releaseStatusFilter: '',
     unreadAlerts: 0,
     _alertPollTs: null,   // ISO timestamp of last poll — tracks new alerts
     _toastedIds: new Set(),  // alert_ids already shown as toasts this session
@@ -4610,13 +4759,14 @@ function app() {
     taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
     milestoneModal:  { open:false, editing:false, data:{} },
+    releaseModal:    { open:false, editing:false, data:{} },
     commitmentModal: { open:false, data:{} },
     alertModal:      { open:false, data:{} },
 
     get pageTitle() {
       return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
         tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
-        commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
+        releases:'Releases', commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
         'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
         planner:'Day Planner', 'my-hub':'My Hub', 'sprint-board':'Sprint Board',
@@ -4627,7 +4777,8 @@ function app() {
       return { dashboard:"Today's execution pulse", executive:'Portfolio health & risk',
         tasks:'All tasks across projects', inbox:'Unassigned tasks needing review',
         projects:'Project tracking & health',
-        milestones:'Key milestones & deadlines', commitments:'Tracked promises',
+        milestones:'Key milestones & deadlines', releases:'Product releases & versions',
+        commitments:'Tracked promises',
         alerts:'System & execution alerts', summaries:'Start & end of day briefings',
         estimate:'Multi-item · Weighted · Holidays · Release paperwork',
         'project-tracker':'Gantt timeline · Current status · Export to PNG',
@@ -4641,6 +4792,14 @@ function app() {
         'proj-planner':'Hierarchy: Milestones → Tasks · Sequential & parallel · Real-time dates',
         delivery:'Releases · Templates · Pre/release/post checklists',
         applications:'Portfolio of applications — manage apps, link projects & releases' }[this.view] || '';
+    },
+
+    get filteredReleases() {
+      return this.releases.filter(rel => {
+        const matchesSearch = rel.name.toLowerCase().includes(this.releaseSearchTerm.toLowerCase());
+        const matchesStatus = !this.releaseStatusFilter || rel.status === this.releaseStatusFilter;
+        return matchesSearch && matchesStatus;
+      });
     },
 
     navCls(id) { return ['nav-item', this.view === id ? 'active' : '']; },
@@ -4730,7 +4889,7 @@ function app() {
       this.loading = true;
       await Promise.all([
         this.loadDashboard(), this.loadTasks(), this.loadProjects(),
-        this.loadMilestones(), this.loadCommitments(), this.loadAlerts(),
+        this.loadMilestones(), this.loadReleases(), this.loadCommitments(), this.loadAlerts(),
         this.loadSummaries(), this.loadEstimations(), this.loadEmailConfig(), this.loadOutlookConfig(),
         this.loadApplications(),
       ]);
@@ -4777,6 +4936,9 @@ function app() {
     },
     async loadMilestones() {
       try { this.milestones=await fetch('/api/milestones').then(r=>r.json()); } catch(e) {}
+    },
+    async loadReleases() {
+      try { this.releases=await fetch('/api/releases').then(r=>r.json()); } catch(e) {}
     },
     async loadCommitments() {
       try { this.commitments=await fetch('/api/commitments').then(r=>r.json()); } catch(e) {}
@@ -4949,6 +5111,31 @@ function app() {
     async deleteMilestone(id) {
       if(!confirm('Delete this milestone?')) return;
       await fetch(`/api/milestones/${id}`,{method:'DELETE'}); await this.loadMilestones();
+    },
+
+    openReleaseModal(rel) {
+      if(rel) {
+        this.releaseModal={open:true,editing:true,data:{...rel,due_date:rel.due_date||'',project_id:rel.project_id||''}};
+      } else {
+        this.releaseModal={open:true,editing:false,data:{name:'',version:'',project_id:'',due_date:'',status:'planned',description:''}};
+      }
+    },
+    async saveRelease() {
+      const d=this.releaseModal.data;
+      if(!d.name?.trim()) return;
+      const payload={...d,due_date:d.due_date||null,project_id:d.project_id||null};
+      if(this.releaseModal.editing) {
+        await fetch(`/api/releases/${d.release_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      } else {
+        await fetch('/api/releases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      }
+      this.releaseModal.open=false;
+      this.addToast(this.releaseModal.editing?'Release updated':'Release created','success');
+      await this.loadReleases();
+    },
+    async deleteRelease(id) {
+      if(!confirm('Delete this release?')) return;
+      await fetch(`/api/releases/${id}`,{method:'DELETE'}); await this.loadReleases();
     },
 
     openCommitmentModal() { this.commitmentModal={open:true,data:{title:'',description:'',due_date:''}}; },
@@ -5699,6 +5886,7 @@ function app() {
     statusChip(s)         { return {todo:'chip-gray',in_progress:'chip-blue',done:'chip-green',cancelled:'chip-gray'}[s]||'chip-gray'; },
     healthChip(h)         { return {green:'chip-green',yellow:'chip-yellow',red:'chip-red',grey:'chip-gray'}[h]||'chip-gray'; },
     projectStatusChip(s)  { return {active:'chip-green',on_hold:'chip-yellow',completed:'chip-blue',archived:'chip-gray'}[s]||'chip-gray'; },
+    releaseStatusChip(s)  { return {planned:'chip-blue',in_progress:'chip-yellow',completed:'chip-green',cancelled:'chip-gray'}[s]||'chip-gray'; },
     commitmentChip(s)     { return {pending:'chip-blue',fulfilled:'chip-green',missed:'chip-red'}[s]||'chip-gray'; },
     severityChip(s)       { return {critical:'chip-red',warning:'chip-yellow',info:'chip-purple'}[s]||'chip-gray'; },
     complexityColor(c)    { return {low:'chip-green',medium:'chip-blue',high:'chip-yellow',very_high:'chip-red'}[c]||'chip-gray'; },

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Text, Date, DateTime, ForeignKey, Boolean, Integer
+from sqlalchemy.orm import relationship
 from .base import Base
 
 
@@ -75,6 +76,8 @@ class ReleaseORM(Base):
     description = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project = relationship("ProjectORM", lazy="select")
 
 
 class MilestoneORM(Base):
