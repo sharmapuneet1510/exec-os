@@ -1,0 +1,145 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e9]:
+        - generic [ref=e10]: ExecOS
+        - generic [ref=e11]: Command Center
+    - navigation [ref=e12]:
+      - generic [ref=e13]: Overview
+      - generic [ref=e14] [cursor=pointer]:
+        - generic [ref=e15]: 📊
+        - generic [ref=e16]: Dashboard
+      - generic [ref=e17] [cursor=pointer]:
+        - generic [ref=e18]: 📋
+        - generic [ref=e19]: Summaries
+      - generic [ref=e20] [cursor=pointer]:
+        - generic [ref=e21]: 🎯
+        - generic [ref=e22]: Executive
+      - generic [ref=e23]: Execution
+      - generic [ref=e24] [cursor=pointer]:
+        - generic [ref=e25]: 🏛
+        - generic [ref=e26]: Applications
+      - generic [ref=e27] [cursor=pointer]:
+        - generic [ref=e28]: ✅
+        - generic [ref=e29]: Tasks
+      - generic [ref=e30] [cursor=pointer]:
+        - generic [ref=e31]: 📥
+        - generic [ref=e32]: Inbox
+      - generic [ref=e33] [cursor=pointer]:
+        - generic [ref=e34]: 📁
+        - generic [ref=e35]: Projects
+      - generic [ref=e36] [cursor=pointer]:
+        - generic [ref=e37]: 📅
+        - generic [ref=e38]: Project Tracker
+      - generic [ref=e39] [cursor=pointer]:
+        - generic [ref=e40]: 🏁
+        - generic [ref=e41]: Milestones
+      - generic [ref=e42] [cursor=pointer]:
+        - generic [ref=e43]: 🤝
+        - generic [ref=e44]: Commitments
+      - generic [ref=e45]: Tools
+      - generic [ref=e46] [cursor=pointer]:
+        - generic [ref=e47]: 🗓️
+        - generic [ref=e48]: Day Planner
+      - generic [ref=e49] [cursor=pointer]:
+        - generic [ref=e50]: 🔔
+        - generic [ref=e51]: Alerts
+      - generic [ref=e52] [cursor=pointer]:
+        - generic [ref=e53]: 📐
+        - generic [ref=e54]: Project Planner
+      - generic [ref=e55] [cursor=pointer]:
+        - generic [ref=e56]: 🚀
+        - generic [ref=e57]: Release Tracker
+      - generic [ref=e58] [cursor=pointer]:
+        - generic [ref=e59]: 🔢
+        - generic [ref=e60]: Story Estimator
+      - generic [ref=e61] [cursor=pointer]:
+        - generic [ref=e62]: 👥
+        - generic [ref=e63]: Team Workload
+      - generic [ref=e64] [cursor=pointer]:
+        - generic [ref=e65]: 👥
+        - generic [ref=e66]: Team
+      - generic [ref=e67]: Debug
+      - generic [ref=e68] [cursor=pointer]:
+        - generic [ref=e69]: 📜
+        - generic [ref=e70]: Activity Log
+      - generic [ref=e71]: Development
+      - generic [ref=e72] [cursor=pointer]:
+        - generic [ref=e73]: 🧑‍💻
+        - generic [ref=e74]: My Hub
+      - generic [ref=e75] [cursor=pointer]:
+        - generic [ref=e76]: 🏃
+        - generic [ref=e77]: Sprint Board
+      - generic [ref=e78] [cursor=pointer]:
+        - generic [ref=e79]: 🦊
+        - generic [ref=e80]: Open MRs
+      - generic [ref=e81]: Admin
+      - generic [ref=e82] [cursor=pointer]:
+        - generic [ref=e83]: ⚙️
+        - generic [ref=e84]: Settings
+    - generic [ref=e85]:
+      - generic [ref=e86]:
+        - generic [ref=e87]: PS
+        - generic [ref=e88]:
+          - generic [ref=e89]: Puneet Sharma
+          - generic [ref=e90]: Operations Lead
+      - generic [ref=e91]: Wednesday, May 6, 2026
+  - main [ref=e92]:
+    - generic [ref=e93]:
+      - generic [ref=e94]:
+        - heading "Operational Dashboard" [level=1] [ref=e95]
+        - paragraph [ref=e96]: Today's execution pulse
+      - generic [ref=e97]:
+        - generic [ref=e98]: Wed, May 6
+        - button "Refresh" [ref=e100] [cursor=pointer]:
+          - img [ref=e101]
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]: Execution Pulse
+          - generic [ref=e108]: Wednesday, May 6, 2026
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - generic [ref=e111]: "0"
+            - generic [ref=e112]: Overdue
+          - generic [ref=e113]:
+            - generic [ref=e114]: "0"
+            - generic [ref=e115]: Total
+          - generic [ref=e116]:
+            - generic [ref=e117]: "0"
+            - generic [ref=e118]: In Progress
+          - generic [ref=e119]:
+            - generic [ref=e120]: "0"
+            - generic [ref=e121]: Done Today
+      - generic [ref=e122]:
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - generic [ref=e125]: Overdue Tasks
+            - generic [ref=e126]: 0 overdue
+          - generic [ref=e127]: 🎉 No overdue tasks
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - generic [ref=e130]: Upcoming (7 days)
+            - generic [ref=e131]: Nothing scheduled
+          - generic [ref=e132]:
+            - generic [ref=e133]: Milestones
+            - generic [ref=e134]: None upcoming
+          - generic [ref=e135]:
+            - generic [ref=e136]: Commitments Due
+            - generic [ref=e137]: None this week
+          - generic [ref=e138] [cursor=pointer]:
+            - generic [ref=e139]: INBOX
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - generic [ref=e142]: Critical
+                - generic [ref=e143]: "0"
+              - generic [ref=e144]:
+                - generic [ref=e145]: High
+                - generic [ref=e146]: "0"
+              - generic [ref=e147]:
+                - generic [ref=e148]: Medium
+                - generic [ref=e149]: "0"
+              - generic [ref=e150]:
+                - generic [ref=e151]: Low
+                - generic [ref=e152]: "0"

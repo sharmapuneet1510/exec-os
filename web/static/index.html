@@ -124,6 +124,35 @@
     .chip-gray   { background: #f9f8f6; color: #57534e; border: 1px solid #e7e5e0; }
     .chip-teal   { background: #f0fdfa; color: #0f766e; }
 
+    /* ── Team Workload Styles ── */
+    .stat-chip {
+      display: inline-flex; align-items: center;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .stat-chip.indigo { background: #ede9fe; color: #5b21b6; }
+    .stat-chip.red    { background: #fff1f2; color: #be123c; }
+    .stat-chip.blue   { background: #eff6ff; color: #1d4ed8; }
+    .stat-chip.amber  { background: #fffbeb; color: #b45309; }
+    .stat-chip.green  { background: #f0fdf4; color: #15803d; }
+
+    .wl-table { width: 100%; border-collapse: collapse; }
+    .wl-table th {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-3);
+      padding: 8px 12px; text-align: left;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+    }
+    .wl-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .wl-row-header { cursor: pointer; }
+    .wl-row-header:hover td { background: var(--bg); }
+    .wl-sub-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .wl-sub-table th { font-size: 10px; font-weight: 700; color: var(--text-3); padding: 6px 10px; text-align: left; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); }
+    .wl-sub-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+    .wl-tab { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text-2); }
+    .wl-tab.active { background: var(--accent); color: #fff; }
+
     /* ── Buttons ── */
     .btn-primary {
       display: inline-flex; align-items: center; gap: 6px;
@@ -438,10 +467,9 @@
       <div @click="nav('proj-planner')"    :class="navCls('proj-planner')">    <div class="nav-icon">📐</div><span style="flex:1">Project Planner</span></div>
       <div @click="nav('delivery')"        :class="navCls('delivery')">        <div class="nav-icon">🚀</div><span style="flex:1">Release Tracker</span></div>
       <div @click="nav('estimate')"        :class="navCls('estimate')">        <div class="nav-icon">🔢</div><span style="flex:1">Story Estimator</span></div>
-      <div @click="nav('jira-team')"       :class="navCls('jira-team')">
+      <div @click="nav('team-workload')"   :class="navCls('team-workload')">
         <div class="nav-icon">👥</div><span style="flex:1">Team Workload</span>
       </div>
-      <div @click="nav('team-workload')"   :class="navCls('team-workload')">  <div class="nav-icon">👥</div><span style="flex:1">Team</span></div>
 
       <div class="nav-group-label" style="margin-top:4px;">Debug</div>
       <div @click="nav('activity-log')"     :class="navCls('activity-log')">     <div class="nav-icon">📜</div><span style="flex:1">Activity Log</span></div>
@@ -3402,86 +3430,147 @@
         <!-- Error -->
         <div x-show="workloadError" style="padding:12px 16px;border-radius:8px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="workloadError"></div>
 
-        <!-- Summary Cards -->
-        <div x-show="workloadData.summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;">
-          <div class="card" style="padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:#6366f1;" x-text="workloadData.summary.total_members||0"></div>
-            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Team Members</div>
-          </div>
-          <div class="card" style="padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:#ef4444;" x-text="workloadData.summary.overloaded_count||0"></div>
-            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Overloaded</div>
-          </div>
-          <div class="card" style="padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:#3b82f6;" x-text="workloadData.summary.total_local_tasks||0"></div>
-            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Local Tasks</div>
-          </div>
-          <div class="card" style="padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:#f59e0b;" x-text="workloadData.summary.total_jira_issues||0"></div>
-            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">Jira Issues</div>
-          </div>
-          <div class="card" style="padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:800;color:#10b981;" x-text="workloadData.summary.total_mrs||0"></div>
-            <div style="font-size:11px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;">GitLab MRs</div>
-          </div>
+        <!-- Compressed Summary Strip -->
+        <div x-show="workloadData.summary" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;">
+          <span style="color:var(--text-3);font-weight:600;margin-right:4px;">TEAM</span>
+          <span class="stat-chip indigo" x-text="workloadData.summary.total_members + ' members'"></span>
+          <span class="stat-chip red" x-text="workloadData.summary.overloaded_count + ' overloaded'"></span>
+          <span class="stat-chip blue" x-text="workloadData.summary.total_local_tasks + ' local'"></span>
+          <span class="stat-chip amber" x-text="workloadData.summary.total_jira_issues + ' jira'"></span>
+          <span class="stat-chip green" x-text="workloadData.summary.total_mrs + ' MRs'"></span>
+          <span style="margin-left:auto;color:var(--text-3);font-size:11px;" x-text="workloadData.summary.last_updated ? 'Updated ' + new Date(workloadData.summary.last_updated).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''"></span>
         </div>
 
-        <!-- Team Member Cards -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
-          <template x-for="member in (workloadData.team||[]).filter(m=>!workloadFilter||m.name.toLowerCase().includes(workloadFilter.toLowerCase()))" :key="member.member_id">
-            <div class="card" style="padding:0;overflow:hidden;">
-
-              <!-- Member Header -->
-              <div style="padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
-                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;"
-                  x-text="member.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)"></div>
-                <div style="flex:1;min-width:0;">
-                  <div style="font-size:14px;font-weight:700;color:var(--text-1);" x-text="member.name"></div>
-                  <div style="font-size:11px;color:var(--text-2);" x-text="member.role||'—'"></div>
-                </div>
-                <div :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.workload.capacity_status==='heavy'?'background:#fff1f2;color:#be123c;':member.workload.capacity_status==='moderate'?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
-                  x-text="member.workload.capacity_status==='heavy'?'Heavy':member.workload.capacity_status==='moderate'?'Moderate':'Light'"></div>
-              </div>
-
-              <!-- Workload Breakdown -->
-              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;font-size:12px;color:var(--text-2);">
-                <span><strong x-text="member.workload.local_count"></strong> local</span>
-                <span><strong x-text="member.workload.jira_count"></strong> Jira</span>
-                <span><strong x-text="member.workload.mr_count"></strong> MRs</span>
-                <span style="margin-left:auto;font-weight:700;color:var(--text-1);" x-text="member.workload.total_active+' total'"></span>
-              </div>
-
-              <!-- Items List (Expandable) -->
-              <div x-data="{expanded: false}" style="padding:12px 16px;">
-                <button @click="expanded=!expanded" style="width:100%;text-align:left;background:none;border:none;padding:0;color:var(--text-2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-                  <span>Details</span>
-                  <span x-text="expanded?'▼':'▶'"></span>
-                </button>
-                <div x-show="expanded" style="margin-top:8px;font-size:12px;color:var(--text-2);">
-                  <div x-show="member.workload.local_count>0" style="margin-bottom:8px;">
-                    <div style="font-weight:700;color:var(--text-1);margin-bottom:4px;">Local Tasks</div>
-                    <template x-for="task in member.workload.local_tasks" :key="task.task_id">
-                      <div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);" x-text="task.title"></div>
-                    </template>
+        <!-- Team Workload Accordion Table -->
+        <table class="wl-table">
+          <thead>
+            <tr>
+              <th style="width:30%;">Name / Role</th>
+              <th style="width:10%;text-align:center;">Local</th>
+              <th style="width:10%;text-align:center;">Jira</th>
+              <th style="width:10%;text-align:center;">MRs</th>
+              <th style="width:10%;text-align:center;">Total</th>
+              <th style="width:15%;">Status</th>
+              <th style="width:8%;text-align:center;">Expand</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="member in (workloadData.team||[]).filter(m=>!workloadFilter||m.name.toLowerCase().includes(workloadFilter.toLowerCase()))" :key="member.member_id">
+              <!-- Member Row -->
+              <tr x-data="{open:false,tab:'local'}" class="wl-row-header" @click="open=!open">
+                <td style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;"
+                    x-text="member.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:var(--text-1);" x-text="member.name"></div>
+                    <div style="font-size:11px;color:var(--text-2);" x-text="member.role||'—'"></div>
                   </div>
-                  <div x-show="member.workload.jira_count>0" style="margin-bottom:8px;">
-                    <div style="font-weight:700;color:var(--text-1);margin-bottom:4px;">Jira Issues</div>
-                    <template x-for="issue in member.workload.jira_issues" :key="issue.key">
-                      <div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);" x-text="issue.key+' - '+issue.summary"></div>
-                    </template>
-                  </div>
-                  <div x-show="member.workload.mr_count>0">
-                    <div style="font-weight:700;color:var(--text-1);margin-bottom:4px;">GitLab MRs</div>
-                    <template x-for="mr in member.workload.gitlab_mrs" :key="mr.iid">
-                      <div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);" x-text="'!'+mr.iid+' - '+mr.title"></div>
-                    </template>
-                  </div>
-                </div>
-              </div>
+                </td>
+                <td style="text-align:center;font-weight:600;" x-text="member.workload.local_count"></td>
+                <td style="text-align:center;font-weight:600;" x-text="member.workload.jira_count"></td>
+                <td style="text-align:center;font-weight:600;" x-text="member.workload.mr_count"></td>
+                <td style="text-align:center;font-weight:700;color:var(--text-1);" x-text="member.workload.total_active"></td>
+                <td>
+                  <span :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.workload.capacity_status==='heavy'?'background:#fff1f2;color:#be123c;':member.workload.capacity_status==='moderate'?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
+                    x-text="member.workload.capacity_status==='heavy'?'Heavy':member.workload.capacity_status==='moderate'?'Moderate':'Light'"></span>
+                </td>
+                <td style="text-align:center;color:var(--text-3);">
+                  <span x-text="open?'▼':'▶'" style="font-weight:700;"></span>
+                </td>
+              </tr>
 
-            </div>
-          </template>
-        </div>
+              <!-- Expanded Details -->
+              <tr x-show="open">
+                <td colspan="7" style="padding:16px !important;background:var(--bg);">
+                  <!-- Tab Strip -->
+                  <div style="display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                    <button class="wl-tab" :class="{active: tab==='local'}" @click.stop="tab='local'" x-show="member.workload.local_count>0">
+                      Local Tasks <span style="font-size:10px;" x-text="'('+member.workload.local_count+')'"></span>
+                    </button>
+                    <button class="wl-tab" :class="{active: tab==='jira'}" @click.stop="tab='jira'" x-show="member.workload.jira_count>0">
+                      Jira Issues <span style="font-size:10px;" x-text="'('+member.workload.jira_count+')'"></span>
+                    </button>
+                    <button class="wl-tab" :class="{active: tab==='mrs'}" @click.stop="tab='mrs'" x-show="member.workload.mr_count>0">
+                      GitLab MRs <span style="font-size:10px;" x-text="'('+member.workload.mr_count+')'"></span>
+                    </button>
+                  </div>
+
+                  <!-- Local Tasks Tab -->
+                  <div x-show="tab==='local' && member.workload.local_count>0">
+                    <table class="wl-sub-table">
+                      <thead>
+                        <tr>
+                          <th style="width:50%;">Title</th>
+                          <th style="width:15%;">Status</th>
+                          <th style="width:15%;">Priority</th>
+                          <th style="width:20%;">Due Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="task in member.workload.local_tasks" :key="task.task_id">
+                          <tr>
+                            <td x-text="task.title"></td>
+                            <td style="font-size:11px;" x-text="task.status"></td>
+                            <td style="font-size:11px;" x-text="task.priority"></td>
+                            <td style="font-size:11px;" x-text="task.due_date || '—'"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Jira Issues Tab -->
+                  <div x-show="tab==='jira' && member.workload.jira_count>0">
+                    <table class="wl-sub-table">
+                      <thead>
+                        <tr>
+                          <th style="width:10%;">Key</th>
+                          <th style="width:45%;">Summary</th>
+                          <th style="width:20%;">Status</th>
+                          <th style="width:15%;">Priority</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="issue in member.workload.jira_issues" :key="issue.key">
+                          <tr>
+                            <td style="font-weight:600;" x-text="issue.key"></td>
+                            <td x-text="issue.summary"></td>
+                            <td style="font-size:11px;" x-text="issue.status"></td>
+                            <td style="font-size:11px;" x-text="issue.priority"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- GitLab MRs Tab -->
+                  <div x-show="tab==='mrs' && member.workload.mr_count>0">
+                    <table class="wl-sub-table">
+                      <thead>
+                        <tr>
+                          <th style="width:8%;">MR</th>
+                          <th style="width:50%;">Title</th>
+                          <th style="width:15%;">State</th>
+                          <th style="width:20%;">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="mr in member.workload.gitlab_mrs" :key="mr.iid">
+                          <tr>
+                            <td style="font-weight:600;" x-text="'!' + mr.iid"></td>
+                            <td x-text="mr.title"></td>
+                            <td style="font-size:11px;" x-text="mr.state"></td>
+                            <td style="font-size:11px;" x-text="mr.created_at ? new Date(mr.created_at).toLocaleDateString() : '—'"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
 
         <!-- Empty State -->
         <div x-show="!workloadData.team||workloadData.team.length===0" style="text-align:center;padding:60px 20px;">
@@ -5699,11 +5788,11 @@ function app() {
         ]);
         this.settingsAppCfg = {
           jira: {
-            base_url: j.base_url||'', pat: '',
+            base_url: j.base_url||'', pat: j.pat||'',
             project_keys_raw: (j.project_keys||[]).join('\n'), enabled: j.enabled||false,
           },
           gitlab: {
-            base_url: g.base_url||'https://gitlab.com', access_token: '',
+            base_url: g.base_url||'https://gitlab.com', access_token: g.access_token||'',
             project_ids_raw: (g.project_ids||[]).join('\n'), enabled: g.enabled||false,
           },
           sprint: {
