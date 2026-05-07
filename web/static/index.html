@@ -5788,11 +5788,11 @@ function app() {
         ]);
         this.settingsAppCfg = {
           jira: {
-            base_url: j.base_url||'', pat: '',
+            base_url: j.base_url||'', pat: j.pat||'',
             project_keys_raw: (j.project_keys||[]).join('\n'), enabled: j.enabled||false,
           },
           gitlab: {
-            base_url: g.base_url||'https://gitlab.com', access_token: '',
+            base_url: g.base_url||'https://gitlab.com', access_token: g.access_token||'',
             project_ids_raw: (g.project_ids||[]).join('\n'), enabled: g.enabled||false,
           },
           sprint: {
