@@ -42,3 +42,38 @@ def test_export_contains_tables(db):
     for table_name, table_data in tables.items():
         assert "rows" in table_data
         assert isinstance(table_data["rows"], list)
+
+
+def test_import_database(db):
+    from web.app import app
+    client = TestClient(app)
+
+    # First export data
+    export_resp = client.get("/api/admin/export")
+    assert export_resp.status_code == 200
+    export_data = export_resp.json()
+
+    # Now import it back
+    response = client.post("/api/admin/import", json=export_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "restored_tables" in data
+    assert "message" in data
+
+
+def test_import_invalid_json(db):
+    from web.app import app
+    client = TestClient(app)
+
+    response = client.post("/api/admin/import", json={"invalid": "data"})
+    assert response.status_code == 400
+    assert "version" in response.json()["detail"].lower() or "invalid" in response.json()["detail"].lower()
+
+
+def test_import_empty_data(db):
+    from web.app import app
+    client = TestClient(app)
+
+    response = client.post("/api/admin/import", json={})
+    assert response.status_code == 400
