@@ -4,12 +4,24 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from db.models import TaskORM, ProjectORM, MilestoneORM, CommitmentORM, AlertORM
+from db.models import TaskORM, ProjectORM, MilestoneORM, CommitmentORM, AlertORM, ReleaseORM
 from web.deps import get_redis
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 CACHE_TTL = 60  # seconds
+
+
+def _releases_stats(db: Session):
+    releases = db.query(ReleaseORM).all()
+    return {
+        "total": len(releases),
+        "planned": sum(1 for r in releases if r.status == "planned"),
+        "in_progress": sum(1 for r in releases if r.status == "in_progress"),
+        "completed": sum(1 for r in releases if r.status == "completed"),
+        "cancelled": sum(1 for r in releases if r.status == "cancelled"),
+        "overdue": sum(1 for r in releases if r.due_date and r.due_date < date.today() and r.status not in ("completed", "cancelled")),
+    }
 
 
 @router.get("/operational")
@@ -73,6 +85,7 @@ def operational_dashboard(db: Session = Depends(get_db)):
             for c in commitments
         ],
         "unread_alerts": unread_alerts,
+        "releases_stats": _releases_stats(db),
     }
 
     redis.setex(cache_key, CACHE_TTL, json.dumps(result, default=str))

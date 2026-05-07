@@ -609,6 +609,34 @@
                 </template>
               </div>
             </div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <div class="section-title" style="margin:0;">📦 Releases</div>
+                <a href="#" @click="view='releases'" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;">View all</a>
+              </div>
+              <div style="space-y:2;text-sm;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Total</span>
+                  <span style="font-weight:600;" x-text="opDash?.releases_stats?.total || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Planned</span>
+                  <span style="font-weight:600;color:#2563eb;" x-text="opDash?.releases_stats?.planned || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">In Progress</span>
+                  <span style="font-weight:600;color:#f59e0b;" x-text="opDash?.releases_stats?.in_progress || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-2);">Completed</span>
+                  <span style="font-weight:600;color:#16a34a;" x-text="opDash?.releases_stats?.completed || 0"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;">
+                  <span style="color:#dc2626;font-weight:600;">Overdue</span>
+                  <span style="font-weight:600;color:#dc2626;" x-text="opDash?.releases_stats?.overdue || 0"></span>
+                </div>
+              </div>
+            </div>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;cursor:pointer;" @click="nav('inbox')">
               <div style="font-size:13px;font-weight:700;color:#16a34a;margin-bottom:12px;">INBOX</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
