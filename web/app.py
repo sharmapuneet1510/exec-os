@@ -28,6 +28,7 @@ from web.routers.workload_routes import router as workload_router
 from web.routers.outlook_calendar_routes import router as outlook_router
 from web.routers.activity_log_routes import router as activity_log_router
 from web.routers.releases import router as releases_router
+from web.routers.resource_allocation_routes import router as resource_allocation_router
 from web.routers import reminders
 
 from services.reminder_scheduler import create_scheduler_job
@@ -94,6 +95,7 @@ app.include_router(workload_router)
 app.include_router(outlook_router)
 app.include_router(activity_log_router)
 app.include_router(releases_router)
+app.include_router(resource_allocation_router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
