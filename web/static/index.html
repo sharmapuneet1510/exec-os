@@ -957,87 +957,25 @@
 
       <!-- ══ APPLICATIONS ══ -->
       <div x-show="view==='applications'" x-cloak
-        x-data="{
-          selApp: null,
-          appTab: 'overview',
-          appCfg: { jira:{}, gitlab:{}, sprint:{} },
-          cfgSaving: false,
-          cfgMsg: '',
-          async selectApp(app) {
-            this.selApp = app;
-            this.appTab = 'overview';
-            this.cfgMsg = '';
-            await this.loadAppCfg(app.application_id);
-          },
-          async loadAppCfg(aid) {
-            const [j,g,s] = await Promise.all([
-              fetch('/api/applications/'+aid+'/integrations/jira').then(r=>r.json()).catch(()=>({})),
-              fetch('/api/applications/'+aid+'/integrations/gitlab').then(r=>r.json()).catch(()=>({})),
-              fetch('/api/applications/'+aid+'/integrations/sprint').then(r=>r.json()).catch(()=>({})),
-            ]);
-            this.appCfg = {
-              jira: { base_url:j.base_url||'', pat:j.pat||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
-              gitlab: { base_url:g.base_url||'https://gitlab.com', access_token:g.access_token||'', project_ids_raw:(g.project_ids||[]).join('\n'), enabled:g.enabled||false },
-              sprint: { board_id:s.board_id||'', sprint_id:s.sprint_id||'', sprint_name:s.sprint_name||'', my_jira_email:s.my_jira_email||'', my_gitlab_username:s.my_gitlab_username||'' },
-            };
-          },
-          async saveJira() {
-            this.cfgSaving=true; this.cfgMsg='';
-            try {
-              const c=this.appCfg.jira;
-              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,pat:c.pat,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
-              if(!resp.ok) {
-                const err=await resp.text();
-                throw new Error(err||resp.statusText);
-              }
-              await resp.json();
-              this.cfgMsg='Jira config saved ✓';
-            } catch(e) {
-              this.cfgMsg='Error: '+e.message;
-            }
-            this.cfgSaving=false;
-          },
-          async saveGitLab() {
-            this.cfgSaving=true; this.cfgMsg='';
-            try {
-              const c=this.appCfg.gitlab;
-              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/gitlab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,access_token:c.access_token,project_ids:c.project_ids_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
-              if(!resp.ok) {
-                const err=await resp.text();
-                throw new Error(err||resp.statusText);
-              }
-              await resp.json();
-              this.cfgMsg='GitLab config saved ✓';
-            } catch(e) {
-              this.cfgMsg='Error: '+e.message;
-            }
-            this.cfgSaving=false;
-          },
-          async saveSprint() {
-            this.cfgSaving=true; this.cfgMsg='';
-            const c=this.appCfg.sprint;
-            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/sprint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});
-            this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
-          },
-        }"
+        x-data="{ selApp: null, appTab: 'overview', appCfg: { jira:{}, gitlab:{}, sprint:{} }, cfgSaving: false, cfgMsg: '' }"
         x-init="">
 
         <!-- SECTION 1: Applications Table -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
           <div style="display:flex;align-items:center;gap:12px;">
             <h2 style="font-size:20px;font-weight:700;color:var(--text-1);">Applications</h2>
-            <span class="chip" style="background:#f3f4f6;color:var(--text-2);font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;" x-text="$root.applications.length + ' apps'"></span>
+            <span class="chip" style="background:#f3f4f6;color:var(--text-2);font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;" x-text="($root?.applications?.length ?? 0) + ' apps'"></span>
           </div>
           <button @click="$root.openApplicationModal()" class="btn-primary">+ New Application</button>
         </div>
 
         <!-- Empty state -->
-        <div x-show="!$root.applications.length" style="text-align:center;padding:80px;color:var(--text-3);">
+        <div x-show="!($root?.applications?.length)" style="text-align:center;padding:80px;color:var(--text-3);">
           No applications yet. Create your first application.
         </div>
 
         <!-- Table -->
-        <div x-show="$root.applications.length" class="card" style="padding:0;overflow:hidden;margin-bottom:24px;">
+        <div x-show="$root?.applications?.length" class="card" style="padding:0;overflow:hidden;margin-bottom:24px;">
           <table style="width:100%;border-collapse:collapse;">
             <thead>
               <tr style="border-bottom:1px solid var(--border);">
@@ -1048,7 +986,7 @@
               </tr>
             </thead>
             <tbody>
-              <template x-for="app in $root.applications" :key="app.application_id">
+              <template x-for="app in ($root?.applications || [])" :key="app.application_id">
                 <tr style="border-bottom:1px solid var(--border);transition:background .15s;" @mouseenter="$el.style.background='var(--bg-2)'" @mouseleave="$el.style.background=''">
                   <td style="padding:12px 16px;">
                     <div style="font-weight:600;color:var(--text-1);" x-text="app.name"></div>
@@ -1103,19 +1041,19 @@
           <div x-show="appTab==='overview'">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
               <div class="card" style="text-align:center;padding:18px;">
-                <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id).length"></div>
+                <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="($root?.projects?.filter(p=>p.application_id===selApp?.application_id)?.length ?? 0)"></div>
                 <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Projects</div>
               </div>
               <div class="card" style="text-align:center;padding:18px;">
-                <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id&&p.status==='active').length"></div>
+                <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="($root?.projects?.filter(p=>p.application_id===selApp?.application_id&&p.status==='active')?.length ?? 0)"></div>
                 <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Active</div>
               </div>
             </div>
 
             <div class="card" style="margin-bottom:14px;">
               <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Linked Projects</div>
-              <div x-show="!$root.projects.filter(p=>p.application_id===selApp?.application_id).length" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
-              <template x-for="p in $root.projects.filter(p=>p.application_id===selApp?.application_id)" :key="p.project_id">
+              <div x-show="!($root?.projects?.filter(p=>p.application_id===selApp?.application_id)?.length)" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
+              <template x-for="p in ($root?.projects?.filter(p=>p.application_id===selApp?.application_id) || [])" :key="p.project_id">
                 <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
                   <div :class="'dot-'+(p.health||'grey')" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
                   <span style="flex:1;font-size:13px;font-weight:500;" x-text="p.name"></span>
