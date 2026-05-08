@@ -3152,16 +3152,16 @@
 
           <!-- Summary Strip -->
           <div x-show="glData.total_mrs >= 0"
-            style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;
-                   padding:10px 14px;background:var(--surface);border:1px solid var(--border);
-                   border-radius:10px;font-size:12px;">
-            <span style="color:var(--text-3);font-weight:600;margin-right:4px;">GITLAB</span>
-            <span class="stat-chip" style="background:#fff7f3;color:#c2410c;" x-text="(glData.total_mrs||0)+' open'"></span>
-            <span class="stat-chip green" x-text="(glData.ready_mrs||0)+' ready'"></span>
-            <span class="stat-chip" style="background:#f8fafc;color:#64748b;" x-text="(glData.draft_mrs||0)+' draft'"></span>
-            <span class="stat-chip indigo" x-text="(glData.authors||[]).length+' contributors'"></span>
-            <span class="stat-chip blue" x-text="(glData.projects||[]).length+' projects'"></span>
-            <span style="margin-left:auto;color:var(--text-3);font-size:11px;"
+            style="display:flex;align-items:center;gap:4px;margin-bottom:16px;
+                   padding:8px 12px;background:var(--surface);border:1px solid var(--border);
+                   border-radius:10px;font-size:11px;white-space:nowrap;overflow-x:auto;">
+            <span style="color:var(--text-3);font-weight:700;margin-right:2px;flex-shrink:0;">GITLAB</span>
+            <span class="stat-chip" style="background:#fff7f3;color:#c2410c;flex-shrink:0;" x-text="(glData.total_mrs||0)+' open'"></span>
+            <span class="stat-chip green" style="flex-shrink:0;" x-text="(glData.ready_mrs||0)+' ready'"></span>
+            <span class="stat-chip" style="background:#f8fafc;color:#64748b;flex-shrink:0;" x-text="(glData.draft_mrs||0)+' draft'"></span>
+            <span class="stat-chip indigo" style="flex-shrink:0;" x-text="(glData.authors||[]).length+' contributors'"></span>
+            <span class="stat-chip blue" style="flex-shrink:0;" x-text="(glData.projects||[]).length+' projects'"></span>
+            <span style="margin-left:auto;color:var(--text-3);font-size:10px;flex-shrink:0;"
               x-text="glData.last_fetched ? 'Updated ' + new Date(glData.last_fetched+'Z').toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : ''"></span>
           </div>
 
