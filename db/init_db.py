@@ -1,3 +1,15 @@
+"""
+Database initialization and migration system.
+
+CRITICAL PRINCIPLE: All database changes must be NON-DESTRUCTIVE.
+- Never drop tables or delete existing data
+- Always check if columns/tables exist before modifying
+- Extract existing data → apply changes → reinsert data
+- Use IF NOT EXISTS / IF EXISTS checks
+- Use try/except for schema changes that may already be applied
+
+This ensures data preservation across schema updates.
+"""
 from .base import engine, SessionLocal
 from . import models  # noqa: F401 — ensures all ORM classes are registered
 from datetime import datetime, timedelta

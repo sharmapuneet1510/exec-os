@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
 Migration: Add reminders table and update schema
-- Creates reminders table (if not exists)
-- Adds application_id column to releases (if not exists)
-- Adds reminder_priority_filter column to email_config (if not exists)
+
+NON-DESTRUCTIVE MIGRATION PATTERN:
+All operations check IF NOT EXISTS to avoid dropping data or re-creating tables.
+- Creates reminders table (if not exists) — preserves data if table already created
+- Adds application_id column to releases (if not exists) — idempotent
+- Adds reminder_priority_filter column to email_config (if not exists) — safe to re-run
+
+Never delete or overwrite existing data. Always verify existence first.
 """
 
 import sqlite3
