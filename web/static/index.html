@@ -6394,9 +6394,11 @@ function app() {
     // ── Team Member Management ────────────────────────────────────────────────
     async loadAllMembers() {
       try {
-        this.allMembers = await fetch('/api/workload/team/members').then(r => r.json());
+        const r = await fetch('/api/workload/team/members');
+        if (!r.ok) throw new Error(`Failed to load members: ${r.status}`);
+        this.allMembers = await r.json();
       } catch(e) {
-        this.addToast('Failed to load members', 'error');
+        this.addToast(`Failed to load members: ${e.message}`, 'error');
       }
     },
     openMemberEditor(member) {

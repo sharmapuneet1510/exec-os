@@ -318,6 +318,8 @@ def update_team_member(member_id: str, body: TeamMemberUpdate, db: Session = Dep
         member.email = body.email
     if body.role is not None:
         member.role = body.role
+    if body.gitlab_username is not None:
+        member.gitlab_username = body.gitlab_username
     if body.max_concurrent_tasks is not None:
         member.max_concurrent_tasks = body.max_concurrent_tasks
     if body.is_active is not None:
