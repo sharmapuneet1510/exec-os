@@ -11,6 +11,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     /* ── Reset & Base ── */
+    html { width: 100%; overflow-x: hidden; }
+    body { width: 100%; overflow-x: hidden; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --font: 'Figtree', system-ui, sans-serif;
@@ -421,7 +423,7 @@
 </head>
 <body style="background:var(--bg);min-height:100vh;">
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex h-screen overflow-hidden" style="width:100vw;max-width:100%;">
 
   <!-- ══ SIDEBAR ══ -->
   <aside style="width:240px;flex-shrink:0;background:var(--sidebar);display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,0.05);">
@@ -3607,9 +3609,16 @@
         <!-- Not configured state -->
         <div x-show="!myHubData && !myHubLoading" style="text-align:center;padding:60px;color:var(--text-3);">
           <div style="font-size:48px;margin-bottom:12px;">🔌</div>
-          <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Not configured yet</div>
-          <div style="font-size:13px;margin-bottom:16px;">Set your Jira email and GitLab username in Sprint Settings (Admin → Sprint Config)</div>
-          <button @click="loadMyHub()" class="btn-primary">Load My Hub</button>
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px;">My Hub requires configuration</div>
+          <div style="font-size:13px;margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;">
+            <div style="margin-bottom:12px;">To see your assigned Jira issues and MRs needing review, please configure:</div>
+            <div style="background:var(--bg);padding:12px 16px;border-radius:10px;border:1px solid var(--border);font-size:12px;text-align:left;color:var(--text-1);">
+              <div style="margin-bottom:8px;">✓ Your Jira Email</div>
+              <div style="margin-bottom:8px;">✓ Your GitLab Username</div>
+              <div>✓ Primary Sprint Details</div>
+            </div>
+          </div>
+          <button @click="nav('admin');setTimeout(()=>{document.querySelector('[x-show*=settingsApp]')?.scrollIntoView()},100)" class="btn-primary">⚙ Go to Settings</button>
         </div>
 
         <!-- Error state -->
@@ -4262,36 +4271,55 @@
               <div style="border-top:1px solid var(--border);padding-top:18px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
                   <div style="width:28px;height:28px;border-radius:8px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:14px;">🏃</div>
-                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprints & Personal Setup</div>
+                  <div style="margin-left:auto;font-size:11px;color:var(--text-3);">Personalize sprint tracking</div>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+                <!-- Info box -->
+                <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:9px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text-2);">
+                  <div style="font-weight:600;color:#2563eb;margin-bottom:4px;">👤 Your Personal Info</div>
+                  <div>These settings are used in "My Hub" to show your assigned Jira issues and MRs awaiting review.</div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
                   <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">My Jira Email</label>
-                    <input x-model="settingsAppCfg.sprint.my_jira_email" type="email" placeholder="you@company.com"
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Your Jira Email <span style="color:#ef4444;">*</span></label>
+                    <input x-model="settingsAppCfg.sprint.my_jira_email" type="email" placeholder="your.name@company.com"
                       style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
                   </div>
                   <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">My GitLab Username</label>
-                    <input x-model="settingsAppCfg.sprint.my_gitlab_username" type="text" placeholder="gitlab-username"
-                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                  </div>
-                  <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Board ID</label>
-                    <input x-model="settingsAppCfg.sprint.board_id" type="text" placeholder="e.g. 42"
-                      style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                  </div>
-                  <div>
-                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Sprint ID</label>
-                    <input x-model="settingsAppCfg.sprint.sprint_id" type="text" placeholder="e.g. 123"
+                    <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Your GitLab Username <span style="color:#ef4444;">*</span></label>
+                    <input x-model="settingsAppCfg.sprint.my_gitlab_username" type="text" placeholder="your-gitlab-handle"
                       style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
                   </div>
                 </div>
-                <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                  <button @click="saveSettingsSprint()" class="btn-primary" style="font-size:13px;">Save Sprint</button>
+
+                <!-- Primary Sprint -->
+                <div style="background:var(--bg);padding:12px;border-radius:9px;margin-bottom:12px;">
+                  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:8px;">Primary Sprint</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div>
+                      <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:4px;">Board ID</label>
+                      <input x-model="settingsAppCfg.sprint.board_id" type="text" placeholder="e.g. 42"
+                        style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                    </div>
+                    <div>
+                      <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:4px;">Sprint ID</label>
+                      <input x-model="settingsAppCfg.sprint.sprint_id" type="text" placeholder="e.g. 123"
+                        style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Additional Sprints Note -->
+                <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text-2);">
+                  <div style="font-weight:600;color:var(--accent);margin-bottom:4px;">💡 Multiple Sprints</div>
+                  <div>Add additional sprints by configuring them in your Jira board settings. This dashboard tracks your primary sprint.</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button @click="saveSettingsSprint()" class="btn-primary" style="font-size:13px;">Save Sprint Config</button>
                   <span x-show="settingsSprintMsg" style="font-size:12px;font-weight:600;" :style="settingsSprintOk?'color:#16a34a':'color:#ef4444'" x-text="settingsSprintMsg"></span>
-                </div>
-                <div x-show="settingsAppCfg.sprint.sprint_id" style="margin-top:8px;font-size:11.5px;color:var(--text-3);">
-                  Active sprint: <span style="color:var(--accent);font-weight:600;" x-text="settingsAppCfg.sprint.sprint_name||settingsAppCfg.sprint.sprint_id"></span>
                 </div>
               </div>
 
@@ -5099,7 +5127,15 @@ function app() {
       try { this.estimations=await fetch('/api/estimations').then(r=>r.json()); } catch(e) {}
     },
     async loadApplications() {
-      try { this.applications=await fetch('/api/applications').then(r=>r.json()); } catch(e) {}
+      try {
+        const resp = await fetch('/api/applications');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        this.applications = await resp.json();
+        console.log(`Loaded ${this.applications.length} applications`);
+      } catch(e) {
+        console.error('Failed to load applications:', e);
+        this.applications = [];
+      }
     },
     applicationName(id) { const a=this.applications.find(a=>a.application_id===id); return a?a.name:''; },
     openApplicationModal(app) {
@@ -5128,6 +5164,16 @@ function app() {
         }
         this.applicationModal.open=false;
         await this.loadApplications();
+        // Auto-select first application after loading (new or updated)
+        if(this.applications?.length && !this.applicationModal.editing) {
+          const newApp = this.applications[this.applications.length - 1];
+          setTimeout(() => {
+            if(this.view==='applications') {
+              this.selApp = newApp;
+              this.appTab = 'overview';
+            }
+          }, 100);
+        }
       } catch(e) {
         this.addToast('Error saving application: '+e.message,'error');
       }
@@ -5937,10 +5983,16 @@ function app() {
       this.workloadError = null;
       try {
         const response = await fetch("/api/workload/team?app_id=default");
-        if (!response.ok) throw new Error("Failed to load workload");
-        this.workloadData = await response.json();
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        this.workloadData = data;
+        console.log('Team workload loaded:', data);
       } catch (err) {
-        this.workloadError = err.message;
+        this.workloadError = err.message || 'Failed to load team workload';
+        console.error('Team workload error:', err);
       } finally {
         this.workloadLoading = false;
       }
