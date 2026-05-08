@@ -1020,210 +1020,227 @@
             this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
           },
         }"
-        x-init="if($root.applications?.length) selectApp($root.applications[0])">
+        x-init="">
 
-        <!-- Master-detail layout -->
-        <div style="display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start;">
+        <!-- SECTION 1: Applications Table -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <h2 style="font-size:20px;font-weight:700;color:var(--text-1);">Applications</h2>
+            <span class="chip" style="background:#f3f4f6;color:var(--text-2);font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;" x-text="$root.applications.length + ' apps'"></span>
+          </div>
+          <button @click="$root.openApplicationModal()" class="btn-primary">+ New Application</button>
+        </div>
 
-          <!-- ─ Left panel: app list ─ -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);">Applications</div>
-              <button @click="openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
+        <!-- Empty state -->
+        <div x-show="!$root.applications.length" style="text-align:center;padding:80px;color:var(--text-3);">
+          No applications yet. Create your first application.
+        </div>
+
+        <!-- Table -->
+        <div x-show="$root.applications.length" class="card" style="padding:0;overflow:hidden;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);">
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Name</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Code</th>
+                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Description</th>
+                <th style="padding:12px 16px;text-align:right;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="app in $root.applications" :key="app.application_id">
+                <tr style="border-bottom:1px solid var(--border);transition:background .15s;" @mouseenter="$el.style.background='var(--bg-2)'" @mouseleave="$el.style.background=''">
+                  <td style="padding:12px 16px;">
+                    <div style="font-weight:600;color:var(--text-1);" x-text="app.name"></div>
+                  </td>
+                  <td style="padding:12px 16px;">
+                    <span x-show="app.code" class="chip" style="background:#e0e7ff;color:#4f46e5;font-size:12px;font-weight:600;padding:4px 8px;border-radius:4px;" x-text="app.code"></span>
+                    <span x-show="!app.code" style="color:var(--text-3);font-size:12px;">—</span>
+                  </td>
+                  <td style="padding:12px 16px;color:var(--text-2);font-size:13px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="app.description || '—'"></td>
+                  <td style="padding:12px 16px;text-align:right;">
+                    <div style="display:flex;gap:8px;justify-content:flex-end;">
+                      <button @click.stop="$root.openApplicationModal(app)" class="btn-secondary" style="padding:4px 10px;font-size:12px;">Edit</button>
+                      <button @click.stop="$root.deleteApplication(app.application_id)" style="padding:4px 10px;font-size:12px;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;background:transparent;cursor:pointer;font-weight:500;transition:all .15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">Delete</button>
+                      <button @click.stop="selectApp(app)" class="btn-secondary" style="padding:4px 10px;font-size:12px;">⚙ Integrations</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SECTION 2: Integration Panel -->
+        <div x-show="selApp" style="display:flex;flex-direction:column;">
+
+          <!-- Integration header -->
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:18px;">
+            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="selApp?.code||selApp?.name?.slice(0,3).toUpperCase()"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:17px;font-weight:800;color:var(--text-1);">Integration Settings</div>
+              <div style="font-size:12.5px;color:var(--text-2);margin-top:2px;" x-text="selApp?.name"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+              <button @click="selApp=null" class="btn-secondary" style="font-size:12px;">✕ Close</button>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div style="display:flex;gap:2px;background:var(--bg);border-radius:12px;padding:3px;border:1px solid var(--border);margin-bottom:18px;width:fit-content;">
+            <template x-for="t in [{id:'overview',label:'📊 Overview'},{id:'jira',label:'🔵 Jira'},{id:'gitlab',label:'🦊 GitLab'},{id:'sprint',label:'🏃 Sprint'}]" :key="t.id">
+              <button @click="appTab=t.id; cfgMsg=''"
+                :style="appTab===t.id?'background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);color:var(--text-1);':'color:var(--text-3);'"
+                style="padding:6px 16px;border-radius:9px;border:none;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;"
+                x-text="t.label"></button>
+            </template>
+          </div>
+
+          <!-- Save message -->
+          <div x-show="cfgMsg" style="padding:10px 14px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;font-size:13px;font-weight:500;margin-bottom:14px;" x-text="cfgMsg"></div>
+
+          <!-- ── Overview tab ── -->
+          <div x-show="appTab==='overview'">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+              <div class="card" style="text-align:center;padding:18px;">
+                <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id).length"></div>
+                <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Projects</div>
+              </div>
+              <div class="card" style="text-align:center;padding:18px;">
+                <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id&&p.status==='active').length"></div>
+                <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Active</div>
+              </div>
             </div>
 
-            <div x-show="!$root.applications.length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
-
-            <div style="display:flex;flex-direction:column;gap:6px;">
-              <template x-for="app in $root.applications" :key="app.application_id">
-                <div @click="selectApp(app)"
-                  style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;"
-                  :style="selApp?.application_id===app.application_id ? 'border-color:#6366f1;background:#f5f3ff;' : ''">
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="app.code||app.name.slice(0,3).toUpperCase()"></div>
-                    <div style="min-width:0;">
-                      <div style="font-size:13px;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="app.name"></div>
-                      <div style="font-size:11px;color:var(--text-3);" x-text="$root.projects.filter(p=>p.application_id===app.application_id).length + ' projects'"></div>
-                    </div>
-                  </div>
+            <div class="card" style="margin-bottom:14px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Linked Projects</div>
+              <div x-show="!$root.projects.filter(p=>p.application_id===selApp?.application_id).length" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
+              <template x-for="p in $root.projects.filter(p=>p.application_id===selApp?.application_id)" :key="p.project_id">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                  <div :class="'dot-'+(p.health||'grey')" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
+                  <span style="flex:1;font-size:13px;font-weight:500;" x-text="p.name"></span>
+                  <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);color:var(--text-2);border:1px solid var(--border);" x-text="p.status.replace('_',' ')"></span>
+                  <span x-show="p.owner" style="font-size:11.5px;color:var(--text-3);" x-text="'👤 '+p.owner"></span>
                 </div>
               </template>
             </div>
           </div>
 
-          <!-- ─ Right panel: detail ─ -->
-          <div x-show="selApp">
-
-            <!-- App header -->
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:18px;">
-              <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="selApp?.code||selApp?.name?.slice(0,3).toUpperCase()"></div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:17px;font-weight:800;color:var(--text-1);" x-text="selApp?.name"></div>
-                <div style="font-size:12.5px;color:var(--text-2);margin-top:2px;" x-text="selApp?.description||'No description'"></div>
-              </div>
-              <div style="display:flex;gap:8px;flex-shrink:0;">
-                <button @click="openApplicationModal(selApp)" class="btn-secondary" style="font-size:12px;">✏️ Edit</button>
-                <button @click="deleteApplication(selApp.application_id)"
-                  style="padding:7px 12px;border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">🗑</button>
-              </div>
-            </div>
-
-            <!-- Tabs -->
-            <div style="display:flex;gap:2px;background:var(--bg);border-radius:12px;padding:3px;border:1px solid var(--border);margin-bottom:18px;width:fit-content;">
-              <template x-for="t in [{id:'overview',label:'📊 Overview'},{id:'jira',label:'🔵 Jira'},{id:'gitlab',label:'🦊 GitLab'},{id:'sprint',label:'🏃 Sprint'}]" :key="t.id">
-                <button @click="appTab=t.id; cfgMsg=''"
-                  :style="appTab===t.id?'background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);color:var(--text-1);':'color:var(--text-3);'"
-                  style="padding:6px 16px;border-radius:9px;border:none;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;"
-                  x-text="t.label"></button>
-              </template>
-            </div>
-
-            <!-- Save message -->
-            <div x-show="cfgMsg" style="padding:10px 14px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;font-size:13px;font-weight:500;margin-bottom:14px;" x-text="cfgMsg"></div>
-
-            <!-- ── Overview tab ── -->
-            <div x-show="appTab==='overview'">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
-                <div class="card" style="text-align:center;padding:18px;">
-                  <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id).length"></div>
-                  <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Projects</div>
+          <!-- ── Jira tab ── -->
+          <div x-show="appTab==='jira'">
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:18px;">🔵</div>
+                <div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Jira Integration</div>
+                  <div style="font-size:12px;color:var(--text-3);">Per-app Jira credentials for this application.</div>
                 </div>
-                <div class="card" style="text-align:center;padding:18px;">
-                  <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id&&p.status==='active').length"></div>
-                  <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Active</div>
+                <div style="margin-left:auto;">
+                  <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+                    <input type="checkbox" x-model="appCfg.jira.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
+                    <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
+                  </label>
                 </div>
               </div>
-
-              <div class="card" style="margin-bottom:14px;">
-                <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Linked Projects</div>
-                <div x-show="!$root.projects.filter(p=>p.application_id===selApp?.application_id).length" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
-                <template x-for="p in $root.projects.filter(p=>p.application_id===selApp?.application_id)" :key="p.project_id">
-                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-                    <div :class="'dot-'+(p.health||'grey')" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
-                    <span style="flex:1;font-size:13px;font-weight:500;" x-text="p.name"></span>
-                    <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);color:var(--text-2);border:1px solid var(--border);" x-text="p.status.replace('_',' ')"></span>
-                    <span x-show="p.owner" style="font-size:11.5px;color:var(--text-3);" x-text="'👤 '+p.owner"></span>
-                  </div>
-                </template>
-              </div>
-            </div>
-
-            <!-- ── Jira tab ── -->
-            <div x-show="appTab==='jira'">
-              <div class="card">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                  <div style="width:36px;height:36px;border-radius:10px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:18px;">🔵</div>
-                  <div>
-                    <div style="font-size:14px;font-weight:700;color:var(--text-1);">Jira Integration</div>
-                    <div style="font-size:12px;color:var(--text-3);">Per-app Jira credentials for this application.</div>
-                  </div>
-                  <div style="margin-left:auto;">
-                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
-                      <input type="checkbox" x-model="appCfg.jira.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
-                      <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
-                    </label>
-                  </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Base URL</label>
+                  <input x-model="appCfg.jira.base_url" class="input" placeholder="https://yourcompany.atlassian.net" />
                 </div>
-                <div style="display:flex;flex-direction:column;gap:12px;">
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Base URL</label>
-                    <input x-model="appCfg.jira.base_url" class="input" placeholder="https://yourcompany.atlassian.net" />
-                  </div>
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token (PAT)</label>
-                    <input type="password" x-model="appCfg.jira.pat" class="input" placeholder="Your Jira Personal Access Token" />
-                  </div>
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">(one per line, e.g. EXEC)</span></label>
-                    <textarea x-model="appCfg.jira.project_keys_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="EXEC&#10;INFRA"></textarea>
-                  </div>
-                  <div style="display:flex;gap:8px;padding-top:4px;">
-                    <button @click="saveJira()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
-                  </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token (PAT)</label>
+                  <input type="password" x-model="appCfg.jira.pat" class="input" placeholder="Your Jira Personal Access Token" />
+                </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">(one per line, e.g. EXEC)</span></label>
+                  <textarea x-model="appCfg.jira.project_keys_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="EXEC&#10;INFRA"></textarea>
+                </div>
+                <div style="display:flex;gap:8px;padding-top:4px;">
+                  <button @click="saveJira()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- ── GitLab tab ── -->
-            <div x-show="appTab==='gitlab'">
-              <div class="card">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                  <div style="width:36px;height:36px;border-radius:10px;background:#fff0e8;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
-                  <div>
-                    <div style="font-size:14px;font-weight:700;color:var(--text-1);">GitLab Integration</div>
-                    <div style="font-size:12px;color:var(--text-3);">Per-app GitLab credentials for this application.</div>
-                  </div>
-                  <div style="margin-left:auto;">
-                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
-                      <input type="checkbox" x-model="appCfg.gitlab.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
-                      <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
-                    </label>
-                  </div>
+          <!-- ── GitLab tab ── -->
+          <div x-show="appTab==='gitlab'">
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#fff0e8;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
+                <div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">GitLab Integration</div>
+                  <div style="font-size:12px;color:var(--text-3);">Per-app GitLab credentials for this application.</div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:12px;">
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">GitLab Base URL</label>
-                    <input x-model="appCfg.gitlab.base_url" class="input" placeholder="https://gitlab.com" />
-                  </div>
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token</label>
-                    <input type="password" x-model="appCfg.gitlab.access_token" class="input" placeholder="Leave blank to keep existing" />
-                  </div>
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project IDs / Paths <span style="font-weight:400;color:var(--text-3);">(one per line)</span></label>
-                    <textarea x-model="appCfg.gitlab.project_ids_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="group/execos&#10;group/mobile-app"></textarea>
-                  </div>
-                  <div style="display:flex;gap:8px;padding-top:4px;">
-                    <button @click="saveGitLab()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
-                  </div>
+                <div style="margin-left:auto;">
+                  <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+                    <input type="checkbox" x-model="appCfg.gitlab.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
+                    <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
+                  </label>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">GitLab Base URL</label>
+                  <input x-model="appCfg.gitlab.base_url" class="input" placeholder="https://gitlab.com" />
+                </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token</label>
+                  <input type="password" x-model="appCfg.gitlab.access_token" class="input" placeholder="Leave blank to keep existing" />
+                </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project IDs / Paths <span style="font-weight:400;color:var(--text-3);">(one per line)</span></label>
+                  <textarea x-model="appCfg.gitlab.project_ids_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="group/execos&#10;group/mobile-app"></textarea>
+                </div>
+                <div style="display:flex;gap:8px;padding-top:4px;">
+                  <button @click="saveGitLab()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- ── Sprint tab ── -->
-            <div x-show="appTab==='sprint'">
-              <div class="card">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                  <div style="width:36px;height:36px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🏃</div>
+          <!-- ── Sprint tab ── -->
+          <div x-show="appTab==='sprint'">
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🏃</div>
+                <div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint Configuration</div>
+                  <div style="font-size:12px;color:var(--text-3);">Board, sprint and identity for this application.</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                   <div>
-                    <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint Configuration</div>
-                    <div style="font-size:12px;color:var(--text-3);">Board, sprint and identity for this application.</div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Board ID</label>
+                    <input x-model="appCfg.sprint.board_id" class="input" placeholder="e.g. 42" />
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Active Sprint ID</label>
+                    <input x-model="appCfg.sprint.sprint_id" class="input" placeholder="e.g. 128" />
                   </div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:12px;">
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Board ID</label>
-                      <input x-model="appCfg.sprint.board_id" class="input" placeholder="e.g. 42" />
-                    </div>
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Active Sprint ID</label>
-                      <input x-model="appCfg.sprint.sprint_id" class="input" placeholder="e.g. 128" />
-                    </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Sprint Name</label>
+                  <input x-model="appCfg.sprint.sprint_name" class="input" placeholder="e.g. Sprint 24 — May" />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My Jira Email</label>
+                    <input x-model="appCfg.sprint.my_jira_email" class="input" placeholder="you@company.com" />
                   </div>
                   <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Sprint Name</label>
-                    <input x-model="appCfg.sprint.sprint_name" class="input" placeholder="e.g. Sprint 24 — May" />
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My GitLab Username</label>
+                    <input x-model="appCfg.sprint.my_gitlab_username" class="input" placeholder="@your-handle" />
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My Jira Email</label>
-                      <input x-model="appCfg.sprint.my_jira_email" class="input" placeholder="you@company.com" />
-                    </div>
-                    <div>
-                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My GitLab Username</label>
-                      <input x-model="appCfg.sprint.my_gitlab_username" class="input" placeholder="@your-handle" />
-                    </div>
-                  </div>
-                  <div style="display:flex;gap:8px;padding-top:4px;">
-                    <button @click="saveSprint()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
-                  </div>
+                </div>
+                <div style="display:flex;gap:8px;padding-top:4px;">
+                  <button @click="saveSprint()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
                 </div>
               </div>
             </div>
+          </div>
 
-          </div><!-- end right panel -->
-        </div><!-- end master-detail grid -->
+        </div><!-- end integration panel -->
       </div>
 
       <!-- ══ PROJECT TRACKER ══ -->
