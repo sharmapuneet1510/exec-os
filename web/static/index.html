@@ -4,11 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ExecOS — Command Center</title>
+  <script>
+    // Placeholder app() function - will delegate to real one when available
+    window._realAppFn = null;
+    window.app = function() {
+      if (window._realAppFn) return window._realAppFn();
+      return { view: 'dashboard', loading: true, init: () => {} };
+    };
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     /* ── Reset & Base ── */
     html { width: 100%; overflow-x: hidden; }
@@ -956,9 +963,7 @@
       </div>
 
       <!-- ══ APPLICATIONS ══ -->
-      <div x-show="view==='applications'" x-cloak
-        x-data="{ selApp: null, appTab: 'overview', appCfg: { jira:{}, gitlab:{}, sprint:{} }, cfgSaving: false, cfgMsg: '' }"
-        x-init="">
+      <div x-show="view==='applications'" x-cloak>
 
         <!-- SECTION 1: Applications Table -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
@@ -1000,7 +1005,7 @@
                     <div style="display:flex;gap:8px;justify-content:flex-end;">
                       <button @click.stop="$root.openApplicationModal(app)" class="btn-secondary" style="padding:4px 10px;font-size:12px;">Edit</button>
                       <button @click.stop="$root.deleteApplication(app.application_id)" style="padding:4px 10px;font-size:12px;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;background:transparent;cursor:pointer;font-weight:500;transition:all .15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">Delete</button>
-                      <button @click.stop="selectApp(app)" class="btn-secondary" style="padding:4px 10px;font-size:12px;">⚙ Integrations</button>
+                      <button @click.stop="selApp=app; appTab='overview'; loadAppCfg()" class="btn-secondary" style="padding:4px 10px;font-size:12px;">⚙ Integrations</button>
                     </div>
                   </td>
                 </tr>
@@ -4853,7 +4858,7 @@
 <!-- ══ APP SCRIPT ══ -->
 <script>
 function app() {
-  return {
+  const data = {
     view: 'dashboard',
     loading: false,
     today: new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),
@@ -4946,6 +4951,11 @@ function app() {
 
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
+    selApp: null,
+    appTab: 'overview',
+    appCfg: { jira:{enabled:false,base_url:'',pat:'',project_keys_raw:''}, gitlab:{enabled:false,base_url:'https://gitlab.com',access_token:'',project_ids_raw:''}, sprint:{board_id:'',sprint_id:'',sprint_name:'',my_jira_email:'',my_gitlab_username:''} },
+    cfgSaving: false,
+    cfgMsg: '',
 
     taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
@@ -5205,6 +5215,106 @@ function app() {
       await fetch(`/api/applications/${id}`,{method:'DELETE'});
       this.addToast('Application deleted','info');
       await this.loadApplications(); await this.loadProjects();
+    },
+
+    async loadAppCfg() {
+      if(!this.selApp) return;
+      try {
+        const resp = await fetch(`/api/applications/${this.selApp.application_id}/config`);
+        if(resp.ok) {
+          const cfg = await resp.json();
+          this.appCfg = {
+            jira: { enabled: cfg.jira_enabled||false, base_url: cfg.jira_base_url||'', pat: cfg.jira_pat||'', project_keys_raw: (cfg.jira_project_keys||[]).join('\n') },
+            gitlab: { enabled: cfg.gitlab_enabled||false, base_url: cfg.gitlab_base_url||'https://gitlab.com', access_token: cfg.gitlab_access_token||'', project_ids_raw: (cfg.gitlab_project_ids||[]).join('\n') },
+            sprint: { board_id: cfg.sprint_board_id||'', sprint_id: cfg.sprint_sprint_id||'', sprint_name: cfg.sprint_sprint_name||'', my_jira_email: cfg.sprint_my_jira_email||'', my_gitlab_username: cfg.sprint_my_gitlab_username||'' },
+          };
+        }
+      } catch(e) {}
+    },
+    async saveJira() {
+      if(!this.selApp) return;
+      this.cfgSaving = true;
+      try {
+        const payload = {
+          application_id: this.selApp.application_id,
+          jira_enabled: this.appCfg.jira.enabled,
+          jira_base_url: this.appCfg.jira.base_url,
+          jira_pat: this.appCfg.jira.pat,
+          jira_project_keys: this.appCfg.jira.project_keys_raw.split('\n').filter(k=>k.trim()),
+        };
+        const resp = await fetch('/api/applications/jira/save', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        if(resp.ok) {
+          this.cfgMsg = '✓ Jira config saved';
+          setTimeout(() => this.cfgMsg = '', 3000);
+        } else {
+          this.cfgMsg = '✗ Failed to save';
+        }
+      } catch(e) {
+        this.cfgMsg = 'Error: ' + e.message;
+      } finally {
+        this.cfgSaving = false;
+      }
+    },
+    async saveGitLab() {
+      if(!this.selApp) return;
+      this.cfgSaving = true;
+      try {
+        const payload = {
+          application_id: this.selApp.application_id,
+          gitlab_enabled: this.appCfg.gitlab.enabled,
+          gitlab_base_url: this.appCfg.gitlab.base_url,
+          gitlab_access_token: this.appCfg.gitlab.access_token,
+          gitlab_project_ids: this.appCfg.gitlab.project_ids_raw.split('\n').filter(p=>p.trim()),
+        };
+        const resp = await fetch('/api/applications/gitlab/save', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        if(resp.ok) {
+          this.cfgMsg = '✓ GitLab config saved';
+          setTimeout(() => this.cfgMsg = '', 3000);
+        } else {
+          this.cfgMsg = '✗ Failed to save';
+        }
+      } catch(e) {
+        this.cfgMsg = 'Error: ' + e.message;
+      } finally {
+        this.cfgSaving = false;
+      }
+    },
+    async saveSprint() {
+      if(!this.selApp) return;
+      this.cfgSaving = true;
+      try {
+        const payload = {
+          application_id: this.selApp.application_id,
+          sprint_board_id: this.appCfg.sprint.board_id,
+          sprint_sprint_id: this.appCfg.sprint.sprint_id,
+          sprint_sprint_name: this.appCfg.sprint.sprint_name,
+          sprint_my_jira_email: this.appCfg.sprint.my_jira_email,
+          sprint_my_gitlab_username: this.appCfg.sprint.my_gitlab_username,
+        };
+        const resp = await fetch('/api/applications/sprint/save', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        if(resp.ok) {
+          this.cfgMsg = '✓ Sprint config saved';
+          setTimeout(() => this.cfgMsg = '', 3000);
+        } else {
+          this.cfgMsg = '✗ Failed to save';
+        }
+      } catch(e) {
+        this.cfgMsg = 'Error: ' + e.message;
+      } finally {
+        this.cfgSaving = false;
+      }
     },
 
     filterTasks() {
@@ -6225,7 +6335,12 @@ function app() {
     integrationLabel(v)   { return {none:'None',simple:'Simple',moderate:'Moderate',complex:'Complex'}[v]||v; },
     confidenceColor(n)    { return n>=75?'linear-gradient(90deg,#10b981,#34d399)':n>=55?'linear-gradient(90deg,#f59e0b,#fcd34d)':'linear-gradient(90deg,#ef4444,#fb7185)'; },
   };
+  return data;
 }
+// Wire up the real app() function to the placeholder's delegation
+window._realAppFn = app;
 </script>
+<!-- Alpine loads AFTER real app() is defined -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
