@@ -4025,6 +4025,7 @@
           <h2 class="text-2xl font-bold">Resourcing</h2>
           <div class="flex gap-2">
             <button @click="resourcingModal.open = true; resourcingModal.allocation_id = null; resourcingModal.member_id = ''; resourcingModal.project_id = ''; resourcingModal.start_date = ''; resourcingModal.end_date = ''; resourcingModal.allocation_pct = 100; resourcingModal.role = ''; resourcingModal.notes = ''" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ Add Allocation</button>
+            <button @click="editingMemberId = null; selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true }; showMemberModal = true; loadAllMembers()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">&#128101; Manage Members</button>
             <div class="flex gap-1 bg-gray-200 rounded p-1">
               <button @click="resourcingView = 'project'" :class="resourcingView === 'project' ? 'bg-white text-black' : 'text-gray-600'" class="px-3 py-1 rounded text-sm font-medium">By Project</button>
               <button @click="resourcingView = 'member'" :class="resourcingView === 'member' ? 'bg-white text-black' : 'text-gray-600'" class="px-3 py-1 rounded text-sm font-medium">By Member</button>
@@ -4170,6 +4171,83 @@
           </div>
         </div>
       </div><!-- end resourcing modal -->
+
+      <!-- Team Member Modal -->
+      <div x-show="showMemberModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded shadow-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
+          <h3 class="text-lg font-bold mb-4">&#128101; Manage Team Members</h3>
+
+          <!-- Member list (click to edit) -->
+          <div class="mb-5 border rounded overflow-hidden">
+            <div class="text-sm font-medium px-3 py-2 bg-gray-50 border-b text-gray-600">Existing members — click to edit</div>
+            <div class="max-h-40 overflow-y-auto">
+              <template x-for="member in allMembers" :key="member.member_id">
+                <div @click="openMemberEditor(member)"
+                     :class="editingMemberId === member.member_id ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'"
+                     class="px-3 py-2 border-b cursor-pointer text-sm flex items-center justify-between">
+                  <span>
+                    <strong x-text="member.name"></strong>
+                    <span class="text-gray-500 ml-1" x-text="member.role ? '(' + member.role + ')' : '(no role)'"></span>
+                    <span x-show="!member.is_active" class="ml-1 text-xs text-red-500 font-medium">[inactive]</span>
+                  </span>
+                  <span class="text-xs text-gray-400" x-text="member.email || ''"></span>
+                </div>
+              </template>
+              <div x-show="!allMembers.length" class="px-3 py-3 text-sm text-gray-400 italic">No members yet.</div>
+            </div>
+          </div>
+
+          <!-- Form -->
+          <h4 class="text-sm font-semibold text-gray-700 mb-3">
+            <span x-show="!editingMemberId">New Team Member</span>
+            <span x-show="editingMemberId">Edit: <span x-text="selectedMember.name"></span></span>
+          </h4>
+
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium">Name *</label>
+                <input x-model="selectedMember.name" type="text" placeholder="e.g., Alice Chen" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Email</label>
+                <input x-model="selectedMember.email" type="email" placeholder="alice@example.com" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium">Role</label>
+                <input x-model="selectedMember.role" type="text" placeholder="e.g., Senior Engineer" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium">GitLab Username</label>
+                <input x-model="selectedMember.gitlab_username" type="text" placeholder="alice.chen" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium">Max Concurrent Tasks</label>
+                <input x-model.number="selectedMember.max_concurrent_tasks" type="number" min="1" max="20" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div class="flex items-end pb-1">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input x-model="selectedMember.is_active" type="checkbox" class="w-4 h-4">
+                  <span class="text-sm font-medium">Active</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-6">
+            <button x-show="!editingMemberId" @click="createMember()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+            <button x-show="editingMemberId" @click="saveMember()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Changes</button>
+            <button x-show="editingMemberId" @click="editingMemberId = null; selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true }" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">+ New</button>
+            <button @click="showMemberModal = false" class="flex-1 px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Close</button>
+          </div>
+        </div>
+      </div><!-- end team member modal -->
 
 
       <!-- ══ ADMIN / SETTINGS ══ -->
@@ -5168,6 +5246,9 @@ function app() {
     resourcingModal: { open: false, allocation_id: null, member_id: '', project_id: '', start_date: '', end_date: '', allocation_pct: 100, role: '', notes: '' },
     allMembers: [],
     allProjects: [],
+    showMemberModal: false,
+    editingMemberId: null,
+    selectedMember: { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true },
 
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
@@ -6307,6 +6388,73 @@ function app() {
         await this.loadResourcing();
       } catch(e) {
         this.addToast('Failed to delete allocation', 'error');
+      }
+    },
+
+    // ── Team Member Management ────────────────────────────────────────────────
+    async loadAllMembers() {
+      try {
+        this.allMembers = await fetch('/api/workload/team/members').then(r => r.json());
+      } catch(e) {
+        this.addToast('Failed to load members', 'error');
+      }
+    },
+    openMemberEditor(member) {
+      this.editingMemberId = member.member_id;
+      this.selectedMember = JSON.parse(JSON.stringify(member));  // deep copy
+    },
+    async saveMember() {
+      if (!this.selectedMember.name) {
+        this.addToast('Name is required', 'warning');
+        return;
+      }
+      const payload = {
+        name: this.selectedMember.name,
+        email: this.selectedMember.email,
+        role: this.selectedMember.role,
+        gitlab_username: this.selectedMember.gitlab_username,
+        max_concurrent_tasks: this.selectedMember.max_concurrent_tasks,
+        is_active: this.selectedMember.is_active,
+      };
+      try {
+        const r = await fetch(`/api/workload/team/members/${this.editingMemberId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        this.editingMemberId = null;
+        this.selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true };
+        await this.loadAllMembers();
+        this.addToast('Member updated', 'success');
+      } catch(e) {
+        this.addToast(`Failed to save member: ${e.message}`, 'error');
+      }
+    },
+    async createMember() {
+      if (!this.selectedMember.name) {
+        this.addToast('Name is required', 'warning');
+        return;
+      }
+      const payload = {
+        name: this.selectedMember.name,
+        email: this.selectedMember.email,
+        gitlab_username: this.selectedMember.gitlab_username,
+        role: this.selectedMember.role,
+        max_concurrent_tasks: this.selectedMember.max_concurrent_tasks,
+      };
+      try {
+        const r = await fetch('/api/workload/team/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        this.selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true };
+        await this.loadAllMembers();
+        this.addToast('Member created', 'success');
+      } catch(e) {
+        this.addToast(`Failed to create member: ${e.message}`, 'error');
       }
     },
 
