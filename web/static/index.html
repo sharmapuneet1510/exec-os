@@ -472,6 +472,9 @@
       <div @click="nav('team-workload')"   :class="navCls('team-workload')">
         <div class="nav-icon">👥</div><span style="flex:1">Team Workload</span>
       </div>
+      <div @click="nav('resourcing')" :class="navCls('resourcing')">
+        <div class="nav-icon">📊</div><span style="flex:1">Resourcing</span>
+      </div>
 
       <div class="nav-group-label" style="margin-top:4px;">Debug</div>
       <div @click="nav('activity-log')"     :class="navCls('activity-log')">     <div class="nav-icon">📜</div><span style="flex:1">Activity Log</span></div>
@@ -956,227 +959,274 @@
       </div>
 
       <!-- ══ APPLICATIONS ══ -->
-      <div x-show="view==='applications'" x-cloak>
+      <div x-show="view==='applications'" x-cloak
+        x-data="{
+          selApp: null,
+          appTab: 'overview',
+          appCfg: { jira:{}, gitlab:{}, sprint:{} },
+          cfgSaving: false,
+          cfgMsg: '',
+          async selectApp(app) {
+            this.selApp = app;
+            this.appTab = 'overview';
+            this.cfgMsg = '';
+            await this.loadAppCfg(app.application_id);
+          },
+          async loadAppCfg(aid) {
+            const [j,g,s] = await Promise.all([
+              fetch('/api/applications/'+aid+'/integrations/jira').then(r=>r.json()).catch(()=>({})),
+              fetch('/api/applications/'+aid+'/integrations/gitlab').then(r=>r.json()).catch(()=>({})),
+              fetch('/api/applications/'+aid+'/integrations/sprint').then(r=>r.json()).catch(()=>({})),
+            ]);
+            this.appCfg = {
+              jira: { base_url:j.base_url||'', pat:j.pat||'', project_keys_raw:(j.project_keys||[]).join('\n'), enabled:j.enabled||false },
+              gitlab: { base_url:g.base_url||'https://gitlab.com', access_token:g.access_token||'', project_ids_raw:(g.project_ids||[]).join('\n'), enabled:g.enabled||false },
+              sprint: { board_id:s.board_id||'', sprint_id:s.sprint_id||'', sprint_name:s.sprint_name||'', my_jira_email:s.my_jira_email||'', my_gitlab_username:s.my_gitlab_username||'' },
+            };
+          },
+          async saveJira() {
+            this.cfgSaving=true; this.cfgMsg='';
+            try {
+              const c=this.appCfg.jira;
+              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,pat:c.pat,project_keys:c.project_keys_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
+              if(!resp.ok) {
+                const err=await resp.text();
+                throw new Error(err||resp.statusText);
+              }
+              await resp.json();
+              this.cfgMsg='Jira config saved ✓';
+            } catch(e) {
+              this.cfgMsg='Error: '+e.message;
+            }
+            this.cfgSaving=false;
+          },
+          async saveGitLab() {
+            this.cfgSaving=true; this.cfgMsg='';
+            try {
+              const c=this.appCfg.gitlab;
+              const resp=await fetch('/api/applications/'+this.selApp.application_id+'/integrations/gitlab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:c.base_url,access_token:c.access_token,project_ids:c.project_ids_raw.split('\n').map(s=>s.trim()).filter(Boolean),enabled:c.enabled})});
+              if(!resp.ok) {
+                const err=await resp.text();
+                throw new Error(err||resp.statusText);
+              }
+              await resp.json();
+              this.cfgMsg='GitLab config saved ✓';
+            } catch(e) {
+              this.cfgMsg='Error: '+e.message;
+            }
+            this.cfgSaving=false;
+          },
+          async saveSprint() {
+            this.cfgSaving=true; this.cfgMsg='';
+            const c=this.appCfg.sprint;
+            await fetch('/api/applications/'+this.selApp.application_id+'/integrations/sprint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});
+            this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
+          },
+        }"
+        x-init="if($root.applications?.length) selectApp($root.applications[0])">
 
-        <!-- SECTION 1: Applications Table -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <h2 style="font-size:20px;font-weight:700;color:var(--text-1);">Applications</h2>
-            <span class="chip" style="background:#f3f4f6;color:var(--text-2);font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;" x-text="($root?.applications?.length ?? 0) + ' apps'"></span>
-          </div>
-          <button @click="openApplicationModal()" class="btn-primary">+ New Application</button>
-        </div>
+        <!-- Master-detail layout -->
+        <div style="display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start;">
 
-        <!-- Empty state -->
-        <div x-show="!($root?.applications?.length)" style="text-align:center;padding:80px;color:var(--text-3);">
-          No applications yet. Create your first application.
-        </div>
+          <!-- ─ Left panel: app list ─ -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);">Applications</div>
+              <button @click="openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
+            </div>
 
-        <!-- Table -->
-        <div x-show="$root?.applications?.length" class="card" style="padding:0;overflow:hidden;margin-bottom:24px;">
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="border-bottom:1px solid var(--border);">
-                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Name</th>
-                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Code</th>
-                <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Description</th>
-                <th style="padding:12px 16px;text-align:right;font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template x-for="app in ($root?.applications || [])" :key="app.application_id">
-                <tr style="border-bottom:1px solid var(--border);transition:background .15s;" @mouseenter="$el.style.background='var(--bg-2)'" @mouseleave="$el.style.background=''">
-                  <td style="padding:12px 16px;">
-                    <div style="font-weight:600;color:var(--text-1);" x-text="app.name"></div>
-                  </td>
-                  <td style="padding:12px 16px;">
-                    <span x-show="app.code" class="chip" style="background:#e0e7ff;color:#4f46e5;font-size:12px;font-weight:600;padding:4px 8px;border-radius:4px;" x-text="app.code"></span>
-                    <span x-show="!app.code" style="color:var(--text-3);font-size:12px;">—</span>
-                  </td>
-                  <td style="padding:12px 16px;color:var(--text-2);font-size:13px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="app.description || '—'"></td>
-                  <td style="padding:12px 16px;text-align:right;">
-                    <div style="display:flex;gap:8px;justify-content:flex-end;">
-                      <button @click.stop="$root.openApplicationModal(app)" class="btn-secondary" style="padding:4px 10px;font-size:12px;">Edit</button>
-                      <button @click.stop="$root.deleteApplication(app.application_id)" style="padding:4px 10px;font-size:12px;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;background:transparent;cursor:pointer;font-weight:500;transition:all .15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">Delete</button>
-                      <button @click.stop="selApp=app; appTab='overview'; loadAppCfg()" class="btn-secondary" style="padding:4px 10px;font-size:12px;">⚙ Integrations</button>
+            <div x-show="!$root.applications.length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <template x-for="app in $root.applications" :key="app.application_id">
+                <div @click="selectApp(app)"
+                  style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;"
+                  :style="selApp?.application_id===app.application_id ? 'border-color:#6366f1;background:#f5f3ff;' : ''">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="app.code||app.name.slice(0,3).toUpperCase()"></div>
+                    <div style="min-width:0;">
+                      <div style="font-size:13px;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="app.name"></div>
+                      <div style="font-size:11px;color:var(--text-3);" x-text="$root.projects.filter(p=>p.application_id===app.application_id).length + ' projects'"></div>
                     </div>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- SECTION 2: Integration Panel -->
-        <div x-show="selApp" style="display:flex;flex-direction:column;">
-
-          <!-- Integration header -->
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:18px;">
-            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="selApp?.code||selApp?.name?.slice(0,3).toUpperCase()"></div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:17px;font-weight:800;color:var(--text-1);">Integration Settings</div>
-              <div style="font-size:12.5px;color:var(--text-2);margin-top:2px;" x-text="selApp?.name"></div>
-            </div>
-            <div style="display:flex;gap:8px;flex-shrink:0;">
-              <button @click="selApp=null" class="btn-secondary" style="font-size:12px;">✕ Close</button>
-            </div>
-          </div>
-
-          <!-- Tabs -->
-          <div style="display:flex;gap:2px;background:var(--bg);border-radius:12px;padding:3px;border:1px solid var(--border);margin-bottom:18px;width:fit-content;">
-            <template x-for="t in [{id:'overview',label:'📊 Overview'},{id:'jira',label:'🔵 Jira'},{id:'gitlab',label:'🦊 GitLab'},{id:'sprint',label:'🏃 Sprint'}]" :key="t.id">
-              <button @click="appTab=t.id; cfgMsg=''"
-                :style="appTab===t.id?'background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);color:var(--text-1);':'color:var(--text-3);'"
-                style="padding:6px 16px;border-radius:9px;border:none;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;"
-                x-text="t.label"></button>
-            </template>
-          </div>
-
-          <!-- Save message -->
-          <div x-show="cfgMsg" style="padding:10px 14px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;font-size:13px;font-weight:500;margin-bottom:14px;" x-text="cfgMsg"></div>
-
-          <!-- ── Overview tab ── -->
-          <div x-show="appTab==='overview'">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
-              <div class="card" style="text-align:center;padding:18px;">
-                <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="($root?.projects?.filter(p=>p.application_id===selApp?.application_id)?.length ?? 0)"></div>
-                <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Projects</div>
-              </div>
-              <div class="card" style="text-align:center;padding:18px;">
-                <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="($root?.projects?.filter(p=>p.application_id===selApp?.application_id&&p.status==='active')?.length ?? 0)"></div>
-                <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Active</div>
-              </div>
-            </div>
-
-            <div class="card" style="margin-bottom:14px;">
-              <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Linked Projects</div>
-              <div x-show="!($root?.projects?.filter(p=>p.application_id===selApp?.application_id)?.length)" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
-              <template x-for="p in ($root?.projects?.filter(p=>p.application_id===selApp?.application_id) || [])" :key="p.project_id">
-                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-                  <div :class="'dot-'+(p.health||'grey')" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
-                  <span style="flex:1;font-size:13px;font-weight:500;" x-text="p.name"></span>
-                  <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);color:var(--text-2);border:1px solid var(--border);" x-text="p.status.replace('_',' ')"></span>
-                  <span x-show="p.owner" style="font-size:11.5px;color:var(--text-3);" x-text="'👤 '+p.owner"></span>
+                  </div>
                 </div>
               </template>
             </div>
           </div>
 
-          <!-- ── Jira tab ── -->
-          <div x-show="appTab==='jira'">
-            <div class="card">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                <div style="width:36px;height:36px;border-radius:10px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:18px;">🔵</div>
-                <div>
-                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Jira Integration</div>
-                  <div style="font-size:12px;color:var(--text-3);">Per-app Jira credentials for this application.</div>
+          <!-- ─ Right panel: detail ─ -->
+          <div x-show="selApp">
+
+            <!-- App header -->
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:18px;">
+              <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="selApp?.code||selApp?.name?.slice(0,3).toUpperCase()"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:17px;font-weight:800;color:var(--text-1);" x-text="selApp?.name"></div>
+                <div style="font-size:12.5px;color:var(--text-2);margin-top:2px;" x-text="selApp?.description||'No description'"></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-shrink:0;">
+                <button @click="openApplicationModal(selApp)" class="btn-secondary" style="font-size:12px;">✏️ Edit</button>
+                <button @click="deleteApplication(selApp.application_id)"
+                  style="padding:7px 12px;border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">🗑</button>
+              </div>
+            </div>
+
+            <!-- Tabs -->
+            <div style="display:flex;gap:2px;background:var(--bg);border-radius:12px;padding:3px;border:1px solid var(--border);margin-bottom:18px;width:fit-content;">
+              <template x-for="t in [{id:'overview',label:'📊 Overview'},{id:'jira',label:'🔵 Jira'},{id:'gitlab',label:'🦊 GitLab'},{id:'sprint',label:'🏃 Sprint'}]" :key="t.id">
+                <button @click="appTab=t.id; cfgMsg=''"
+                  :style="appTab===t.id?'background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);color:var(--text-1);':'color:var(--text-3);'"
+                  style="padding:6px 16px;border-radius:9px;border:none;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;"
+                  x-text="t.label"></button>
+              </template>
+            </div>
+
+            <!-- Save message -->
+            <div x-show="cfgMsg" style="padding:10px 14px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;font-size:13px;font-weight:500;margin-bottom:14px;" x-text="cfgMsg"></div>
+
+            <!-- ── Overview tab ── -->
+            <div x-show="appTab==='overview'">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+                <div class="card" style="text-align:center;padding:18px;">
+                  <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id).length"></div>
+                  <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Projects</div>
                 </div>
-                <div style="margin-left:auto;">
-                  <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
-                    <input type="checkbox" x-model="appCfg.jira.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
-                    <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
-                  </label>
+                <div class="card" style="text-align:center;padding:18px;">
+                  <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id&&p.status==='active').length"></div>
+                  <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Active</div>
                 </div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:12px;">
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Base URL</label>
-                  <input x-model="appCfg.jira.base_url" class="input" placeholder="https://yourcompany.atlassian.net" />
+
+              <div class="card" style="margin-bottom:14px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Linked Projects</div>
+                <div x-show="!$root.projects.filter(p=>p.application_id===selApp?.application_id).length" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
+                <template x-for="p in $root.projects.filter(p=>p.application_id===selApp?.application_id)" :key="p.project_id">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                    <div :class="'dot-'+(p.health||'grey')" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
+                    <span style="flex:1;font-size:13px;font-weight:500;" x-text="p.name"></span>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);color:var(--text-2);border:1px solid var(--border);" x-text="p.status.replace('_',' ')"></span>
+                    <span x-show="p.owner" style="font-size:11.5px;color:var(--text-3);" x-text="'👤 '+p.owner"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- ── Jira tab ── -->
+            <div x-show="appTab==='jira'">
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                  <div style="width:36px;height:36px;border-radius:10px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:18px;">🔵</div>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text-1);">Jira Integration</div>
+                    <div style="font-size:12px;color:var(--text-3);">Per-app Jira credentials for this application.</div>
+                  </div>
+                  <div style="margin-left:auto;">
+                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+                      <input type="checkbox" x-model="appCfg.jira.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
+                      <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token (PAT)</label>
-                  <input type="password" x-model="appCfg.jira.pat" class="input" placeholder="Your Jira Personal Access Token" />
-                </div>
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">(one per line, e.g. EXEC)</span></label>
-                  <textarea x-model="appCfg.jira.project_keys_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="EXEC&#10;INFRA"></textarea>
-                </div>
-                <div style="display:flex;gap:8px;padding-top:4px;">
-                  <button @click="saveJira()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Base URL</label>
+                    <input x-model="appCfg.jira.base_url" class="input" placeholder="https://yourcompany.atlassian.net" />
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token (PAT)</label>
+                    <input type="password" x-model="appCfg.jira.pat" class="input" placeholder="Your Jira Personal Access Token" />
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project Keys <span style="font-weight:400;color:var(--text-3);">(one per line, e.g. EXEC)</span></label>
+                    <textarea x-model="appCfg.jira.project_keys_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="EXEC&#10;INFRA"></textarea>
+                  </div>
+                  <div style="display:flex;gap:8px;padding-top:4px;">
+                    <button @click="saveJira()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- ── GitLab tab ── -->
-          <div x-show="appTab==='gitlab'">
-            <div class="card">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                <div style="width:36px;height:36px;border-radius:10px;background:#fff0e8;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
-                <div>
-                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">GitLab Integration</div>
-                  <div style="font-size:12px;color:var(--text-3);">Per-app GitLab credentials for this application.</div>
+            <!-- ── GitLab tab ── -->
+            <div x-show="appTab==='gitlab'">
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                  <div style="width:36px;height:36px;border-radius:10px;background:#fff0e8;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text-1);">GitLab Integration</div>
+                    <div style="font-size:12px;color:var(--text-3);">Per-app GitLab credentials for this application.</div>
+                  </div>
+                  <div style="margin-left:auto;">
+                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+                      <input type="checkbox" x-model="appCfg.gitlab.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
+                      <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
+                    </label>
+                  </div>
                 </div>
-                <div style="margin-left:auto;">
-                  <label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
-                    <input type="checkbox" x-model="appCfg.gitlab.enabled" style="width:15px;height:15px;accent-color:#6366f1;" />
-                    <span style="font-size:12px;font-weight:600;color:var(--text-2);">Enabled</span>
-                  </label>
-                </div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:12px;">
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">GitLab Base URL</label>
-                  <input x-model="appCfg.gitlab.base_url" class="input" placeholder="https://gitlab.com" />
-                </div>
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token</label>
-                  <input type="password" x-model="appCfg.gitlab.access_token" class="input" placeholder="Leave blank to keep existing" />
-                </div>
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project IDs / Paths <span style="font-weight:400;color:var(--text-3);">(one per line)</span></label>
-                  <textarea x-model="appCfg.gitlab.project_ids_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="group/execos&#10;group/mobile-app"></textarea>
-                </div>
-                <div style="display:flex;gap:8px;padding-top:4px;">
-                  <button @click="saveGitLab()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">GitLab Base URL</label>
+                    <input x-model="appCfg.gitlab.base_url" class="input" placeholder="https://gitlab.com" />
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Personal Access Token</label>
+                    <input type="password" x-model="appCfg.gitlab.access_token" class="input" placeholder="Leave blank to keep existing" />
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Project IDs / Paths <span style="font-weight:400;color:var(--text-3);">(one per line)</span></label>
+                    <textarea x-model="appCfg.gitlab.project_ids_raw" class="input" style="height:70px;font-family:monospace;font-size:12px;" placeholder="group/execos&#10;group/mobile-app"></textarea>
+                  </div>
+                  <div style="display:flex;gap:8px;padding-top:4px;">
+                    <button @click="saveGitLab()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- ── Sprint tab ── -->
-          <div x-show="appTab==='sprint'">
-            <div class="card">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-                <div style="width:36px;height:36px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🏃</div>
-                <div>
-                  <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint Configuration</div>
-                  <div style="font-size:12px;color:var(--text-3);">Board, sprint and identity for this application.</div>
-                </div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:12px;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <!-- ── Sprint tab ── -->
+            <div x-show="appTab==='sprint'">
+              <div class="card">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                  <div style="width:36px;height:36px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🏃</div>
                   <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Board ID</label>
-                    <input x-model="appCfg.sprint.board_id" class="input" placeholder="e.g. 42" />
-                  </div>
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Active Sprint ID</label>
-                    <input x-model="appCfg.sprint.sprint_id" class="input" placeholder="e.g. 128" />
+                    <div style="font-size:14px;font-weight:700;color:var(--text-1);">Sprint Configuration</div>
+                    <div style="font-size:12px;color:var(--text-3);">Board, sprint and identity for this application.</div>
                   </div>
                 </div>
-                <div>
-                  <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Sprint Name</label>
-                  <input x-model="appCfg.sprint.sprint_name" class="input" placeholder="e.g. Sprint 24 — May" />
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                  <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My Jira Email</label>
-                    <input x-model="appCfg.sprint.my_jira_email" class="input" placeholder="you@company.com" />
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Jira Board ID</label>
+                      <input x-model="appCfg.sprint.board_id" class="input" placeholder="e.g. 42" />
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Active Sprint ID</label>
+                      <input x-model="appCfg.sprint.sprint_id" class="input" placeholder="e.g. 128" />
+                    </div>
                   </div>
                   <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My GitLab Username</label>
-                    <input x-model="appCfg.sprint.my_gitlab_username" class="input" placeholder="@your-handle" />
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">Sprint Name</label>
+                    <input x-model="appCfg.sprint.sprint_name" class="input" placeholder="e.g. Sprint 24 — May" />
                   </div>
-                </div>
-                <div style="display:flex;gap:8px;padding-top:4px;">
-                  <button @click="saveSprint()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My Jira Email</label>
+                      <input x-model="appCfg.sprint.my_jira_email" class="input" placeholder="you@company.com" />
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;">My GitLab Username</label>
+                      <input x-model="appCfg.sprint.my_gitlab_username" class="input" placeholder="@your-handle" />
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;padding-top:4px;">
+                    <button @click="saveSprint()" class="btn-primary" style="flex:1;" :disabled="cfgSaving">💾 Save Config</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-        </div><!-- end integration panel -->
+          </div><!-- end right panel -->
+        </div><!-- end master-detail grid -->
       </div>
 
       <!-- ══ PROJECT TRACKER ══ -->
@@ -3103,24 +3153,19 @@
 
           <div x-show="glError" style="padding:14px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="glError"></div>
 
-          <!-- Stats -->
-          <div x-show="glData.total_mrs >= 0" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px;">
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:#fc6d26;" x-text="glData.total_mrs||0"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Open MRs</div>
-            </div>
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:#10b981;" x-text="glData.ready_mrs||0"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Ready to Merge</div>
-            </div>
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:var(--text-3);" x-text="glData.draft_mrs||0"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Draft</div>
-            </div>
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:#6366f1;" x-text="(glData.authors||[]).length"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Contributors</div>
-            </div>
+          <!-- Summary Strip -->
+          <div x-show="glData.total_mrs >= 0"
+            style="display:flex;align-items:center;gap:4px;margin-bottom:16px;
+                   padding:8px 12px;background:var(--surface);border:1px solid var(--border);
+                   border-radius:10px;font-size:11px;white-space:nowrap;overflow-x:auto;">
+            <span style="color:var(--text-3);font-weight:700;margin-right:2px;flex-shrink:0;">GITLAB</span>
+            <span class="stat-chip" style="background:#fff7f3;color:#c2410c;flex-shrink:0;" x-text="(glData.total_mrs||0)+' open'"></span>
+            <span class="stat-chip green" style="flex-shrink:0;" x-text="(glData.ready_mrs||0)+' ready'"></span>
+            <span class="stat-chip" style="background:#f8fafc;color:#64748b;flex-shrink:0;" x-text="(glData.draft_mrs||0)+' draft'"></span>
+            <span class="stat-chip indigo" style="flex-shrink:0;" x-text="(glData.authors||[]).length+' contributors'"></span>
+            <span class="stat-chip blue" style="flex-shrink:0;" x-text="(glData.projects||[]).length+' projects'"></span>
+            <span style="margin-left:auto;color:var(--text-3);font-size:10px;flex-shrink:0;"
+              x-text="glData.last_fetched ? 'Updated ' + new Date(glData.last_fetched+'Z').toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : ''"></span>
           </div>
 
           <!-- BY MR LIST -->
@@ -3153,42 +3198,70 @@
 
           <!-- BY AUTHOR -->
           <div x-show="glView==='author'">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;">
-              <template x-for="author in (glData.authors||[]).filter(a=>!glFilter||a.name.toLowerCase().includes(glFilter.toLowerCase()))" :key="author.name">
-                <div class="card" style="padding:0;overflow:hidden;">
-                  <div style="padding:12px 14px;background:linear-gradient(135deg,#fff7f3,#fff3ee);border-bottom:1px solid #fde8d8;display:flex;align-items:center;gap:10px;">
-                    <template x-if="author.avatar">
-                      <img :src="author.avatar" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex-shrink:0;">
-                    </template>
-                    <template x-if="!author.avatar">
-                      <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#fc6d26,#e24329);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;"
-                        x-text="author.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()"></div>
-                    </template>
-                    <div style="flex:1;">
-                      <div style="font-size:13.5px;font-weight:700;color:var(--text-1);" x-text="author.name"></div>
-                      <div style="font-size:11.5px;color:var(--text-2);" x-text="author.total+' MR'+(author.total!==1?'s':'')+' · '+author.ready+' ready · '+author.draft+' draft'"></div>
-                    </div>
-                  </div>
-                  <div style="padding:8px 14px 12px;display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;">
-                    <template x-for="mr in author.mrs" :key="mr.web_url">
-                      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 9px;border-radius:7px;background:var(--bg);">
-                        <div :style="'width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0;background:'+(mr.draft?'#94a3b8':mr.has_conflicts?'#ef4444':'#10b981')"></div>
-                        <div style="flex:1;min-width:0;">
-                          <a :href="mr.web_url" target="_blank"
-                            style="font-size:12px;font-weight:600;color:var(--text-1);text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                            x-text="mr.title"></a>
-                          <div style="font-size:10.5px;color:var(--text-3);margin-top:2px;">
-                            <span style="color:#fc6d26;font-weight:600;" x-text="mr.project_name"></span>
-                            · <span x-text="mr.source_branch"></span>
-                            <span x-show="mr.has_conflicts" style="color:#ef4444;font-weight:700;margin-left:4px;">⚠ conflicts</span>
-                          </div>
-                        </div>
+            <table class="wl-table">
+              <thead>
+                <tr>
+                  <th>Author</th>
+                  <th style="text-align:center;">Open</th>
+                  <th style="text-align:center;">Ready</th>
+                  <th style="text-align:center;">Draft</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="author in (glData.authors||[]).filter(a=>!glFilter||a.name.toLowerCase().includes(glFilter.toLowerCase()))" :key="author.name">
+                  <!-- Author row (header) -->
+                  <tr x-data="{open:false}" class="wl-row-header" @click="open=!open">
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <template x-if="author.avatar">
+                          <img :src="author.avatar" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+                        </template>
+                        <template x-if="!author.avatar">
+                          <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#fc6d26,#e24329);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;"
+                            x-text="author.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()"></div>
+                        </template>
+                        <span style="font-weight:600;" x-text="author.name"></span>
                       </div>
-                    </template>
-                  </div>
-                </div>
-              </template>
-            </div>
+                    </td>
+                    <td style="text-align:center;font-weight:700;color:#fc6d26;" x-text="author.total"></td>
+                    <td style="text-align:center;font-weight:700;color:#10b981;" x-text="author.ready"></td>
+                    <td style="text-align:center;color:var(--text-3);" x-text="author.draft"></td>
+                    <td style="text-align:right;color:var(--text-3);font-size:14px;" x-text="open?'▼':'▶'"></td>
+                  </tr>
+                  <!-- Author details (expanded) -->
+                  <tr x-show="open">
+                    <td colspan="5" style="padding:0 0 8px 40px;background:var(--bg);">
+                      <table class="wl-sub-table">
+                        <thead><tr>
+                          <th>!MR</th><th>Title</th><th>Project</th><th>Status</th><th>Updated</th>
+                        </tr></thead>
+                        <tbody>
+                          <template x-for="mr in author.mrs" :key="mr.web_url">
+                            <tr>
+                              <td style="white-space:nowrap;color:var(--text-3);" x-text="'!'+mr.id"></td>
+                              <td>
+                                <a :href="mr.web_url" target="_blank" @click.stop
+                                  style="color:var(--text-1);font-weight:600;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;"
+                                  x-text="mr.title"></a>
+                                <span x-show="mr.has_conflicts" style="font-size:10px;color:#ef4444;font-weight:700;">⚠ conflicts</span>
+                              </td>
+                              <td style="color:#fc6d26;font-weight:600;white-space:nowrap;" x-text="mr.project_name"></td>
+                              <td>
+                                <span :style="mr.draft?'background:#f1f5f9;color:#64748b':mr.has_conflicts?'background:#fff1f2;color:#ef4444':'background:#f0fdf4;color:#15803d'"
+                                  style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;"
+                                  x-text="mr.draft?'Draft':mr.has_conflicts?'Conflicts':'Ready'"></span>
+                              </td>
+                              <td style="white-space:nowrap;color:var(--text-3);" x-text="mr.updated_at"></td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
           </div>
 
           <!-- BY PROJECT -->
@@ -3943,6 +4016,238 @@
         </div>
 
       </div><!-- end sprint-board -->
+
+
+      <!-- ══ RESOURCING ══ -->
+      <div x-show="view==='resourcing'" x-cloak class="p-4 space-y-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold">Resourcing</h2>
+          <div class="flex gap-2">
+            <button @click="resourcingModal.open = true; resourcingModal.allocation_id = null; resourcingModal.member_id = ''; resourcingModal.project_id = ''; resourcingModal.start_date = ''; resourcingModal.end_date = ''; resourcingModal.allocation_pct = 100; resourcingModal.role = ''; resourcingModal.notes = ''" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ Add Allocation</button>
+            <button @click="editingMemberId = null; selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true }; showMemberModal = true; loadAllMembers()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">&#128101; Manage Members</button>
+            <div class="flex gap-1 bg-gray-200 rounded p-1">
+              <button @click="resourcingView = 'project'" :class="resourcingView === 'project' ? 'bg-white text-black' : 'text-gray-600'" class="px-3 py-1 rounded text-sm font-medium">By Project</button>
+              <button @click="resourcingView = 'member'" :class="resourcingView === 'member' ? 'bg-white text-black' : 'text-gray-600'" class="px-3 py-1 rounded text-sm font-medium">By Member</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary strip -->
+        <div class="flex gap-2 flex-wrap">
+          <div class="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm"><strong x-text="(resourcingData.by_project || []).length + (resourcingData.by_member || []).length"></strong> allocations</div>
+          <div class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm"><strong x-text="(resourcingData.by_member || []).filter(m => Object.values(m.months || {}).some(mo => mo.over)).length"></strong> over-allocated</div>
+          <div class="px-3 py-1 bg-gray-100 text-gray-800 rounded text-sm"><strong x-text="(resourcingData.months || []).length"></strong> months</div>
+        </div>
+
+        <!-- Heat map table -->
+        <div class="overflow-x-auto border rounded">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-100 border-b">
+                <th class="px-4 py-2 text-left font-bold">Name</th>
+                <template x-for="month in resourcingData.months" :key="month">
+                  <th class="px-2 py-2 text-center text-xs font-medium" x-text="month"></th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- By Project view -->
+              <template x-show="resourcingView === 'project'" x-for="project in resourcingData.by_project" :key="project.project_id">
+                <tr class="border-b hover:bg-gray-50">
+                  <td class="px-4 py-2 font-medium" x-text="project.name"></td>
+                  <template x-for="month in resourcingData.months" :key="month">
+                    <td class="px-2 py-2 text-center text-sm" :style="`background-color: ${
+                      project.months[month].total_pct === 0 ? '#f3f4f6' :
+                      project.months[month].total_pct <= 75 ? '#f0fdf4' :
+                      project.months[month].total_pct <= 100 ? '#fffbeb' :
+                      '#fff1f2'
+                    }`">
+                      <div :style="`color: ${
+                        project.months[month].total_pct === 0 ? '#9ca3af' :
+                        project.months[month].total_pct <= 75 ? '#15803d' :
+                        project.months[month].total_pct <= 100 ? '#b45309' :
+                        '#be123c'
+                      }`" class="font-semibold">
+                        <span x-show="project.months[month].total_pct > 0" x-text="`${project.months[month].total_pct}%`"></span>
+                        <span x-show="project.months[month].total_pct > 0" class="text-xs block" x-text="`${project.months[month].member_count}p`"></span>
+                      </div>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+
+              <!-- By Member view -->
+              <template x-show="resourcingView === 'member'" x-for="member in resourcingData.by_member" :key="member.member_id">
+                <tr class="border-b hover:bg-gray-50">
+                  <td class="px-4 py-2 font-medium" x-text="member.name"></td>
+                  <template x-for="month in resourcingData.months" :key="month">
+                    <td class="px-2 py-2 text-center text-sm" :style="`background-color: ${
+                      member.months[month].total_pct === 0 ? '#f3f4f6' :
+                      member.months[month].total_pct <= 75 ? '#f0fdf4' :
+                      member.months[month].total_pct <= 100 ? '#fffbeb' :
+                      '#fff1f2'
+                    }`">
+                      <div :style="`color: ${
+                        member.months[month].total_pct === 0 ? '#9ca3af' :
+                        member.months[month].total_pct <= 75 ? '#15803d' :
+                        member.months[month].total_pct <= 100 ? '#b45309' :
+                        '#be123c'
+                      }`" class="font-semibold">
+                        <span x-show="member.months[month].total_pct > 0" x-text="`${member.months[month].total_pct}%`"></span>
+                        <span x-show="member.months[month].total_pct > 0" class="text-xs block" x-text="`${member.months[month].project_count}p`"></span>
+                      </div>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+
+              <!-- Empty state -->
+              <tr x-show="resourcingData.months.length === 0">
+                <td colspan="99" class="px-4 py-12 text-center text-gray-400">
+                  <div style="font-size:40px;margin-bottom:12px;">📊</div>
+                  <div style="font-size:15px;font-weight:600;">No allocations yet</div>
+                  <div style="font-size:12px;margin-top:6px;">Click "+ Add Allocation" to get started</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- end resourcing -->
+
+      <!-- Resourcing Modal -->
+      <div x-show="resourcingModal.open" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded shadow-lg p-6 w-96">
+          <h3 class="text-lg font-bold mb-4">
+            <span x-show="!resourcingModal.allocation_id">New Allocation</span>
+            <span x-show="resourcingModal.allocation_id">Edit Allocation</span>
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium">Member</label>
+              <select x-model="resourcingModal.member_id" class="w-full px-3 py-2 border rounded">
+                <option value="">-- Select Member --</option>
+                <template x-for="member in allMembers || []" :key="member.member_id">
+                  <option :value="member.member_id" x-text="member.name"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Project</label>
+              <select x-model="resourcingModal.project_id" class="w-full px-3 py-2 border rounded">
+                <option value="">-- Select Project --</option>
+                <template x-for="project in allProjects || []" :key="project.project_id">
+                  <option :value="project.project_id" x-text="project.name"></option>
+                </template>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-sm font-medium">Start Date</label>
+                <input x-model="resourcingModal.start_date" type="date" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium">End Date</label>
+                <input x-model="resourcingModal.end_date" type="date" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Allocation % (0-200)</label>
+              <input x-model.number="resourcingModal.allocation_pct" type="number" min="0" max="200" class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Role (optional)</label>
+              <input x-model="resourcingModal.role" type="text" placeholder="e.g., Lead Developer" class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Notes</label>
+              <textarea x-model="resourcingModal.notes" rows="3" class="w-full px-3 py-2 border rounded"></textarea>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-6">
+            <button @click="saveAllocation()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+            <button @click="resourcingModal.open = false" class="flex-1 px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Cancel</button>
+            <button x-show="resourcingModal.allocation_id" @click="deleteAllocation(resourcingModal.allocation_id)" class="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+          </div>
+        </div>
+      </div><!-- end resourcing modal -->
+
+      <!-- Team Member Modal -->
+      <div x-show="showMemberModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded shadow-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
+          <h3 class="text-lg font-bold mb-4">&#128101; Manage Team Members</h3>
+
+          <!-- Member list (click to edit) -->
+          <div class="mb-5 border rounded overflow-hidden">
+            <div class="text-sm font-medium px-3 py-2 bg-gray-50 border-b text-gray-600">Existing members — click to edit</div>
+            <div class="max-h-40 overflow-y-auto">
+              <template x-for="member in allMembers" :key="member.member_id">
+                <div @click="openMemberEditor(member)"
+                     :class="editingMemberId === member.member_id ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'"
+                     class="px-3 py-2 border-b cursor-pointer text-sm flex items-center justify-between">
+                  <span>
+                    <strong x-text="member.name"></strong>
+                    <span class="text-gray-500 ml-1" x-text="member.role ? '(' + member.role + ')' : '(no role)'"></span>
+                    <span x-show="!member.is_active" class="ml-1 text-xs text-red-500 font-medium">[inactive]</span>
+                  </span>
+                  <span class="text-xs text-gray-400" x-text="member.email || ''"></span>
+                </div>
+              </template>
+              <div x-show="!allMembers.length" class="px-3 py-3 text-sm text-gray-400 italic">No members yet.</div>
+            </div>
+          </div>
+
+          <!-- Form -->
+          <h4 class="text-sm font-semibold text-gray-700 mb-3">
+            <span x-show="!editingMemberId">New Team Member</span>
+            <span x-show="editingMemberId">Edit: <span x-text="selectedMember.name"></span></span>
+          </h4>
+
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium">Name *</label>
+                <input x-model="selectedMember.name" type="text" placeholder="e.g., Alice Chen" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Email</label>
+                <input x-model="selectedMember.email" type="email" placeholder="alice@example.com" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium">Role</label>
+                <input x-model="selectedMember.role" type="text" placeholder="e.g., Senior Engineer" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium">GitLab Username</label>
+                <input x-model="selectedMember.gitlab_username" type="text" placeholder="alice.chen" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium">Max Concurrent Tasks</label>
+                <input x-model.number="selectedMember.max_concurrent_tasks" type="number" min="1" max="20" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div class="flex items-end pb-1">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input x-model="selectedMember.is_active" type="checkbox" class="w-4 h-4">
+                  <span class="text-sm font-medium">Active</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-6">
+            <button x-show="!editingMemberId" @click="createMember()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+            <button x-show="editingMemberId" @click="saveMember()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Changes</button>
+            <button x-show="editingMemberId" @click="editingMemberId = null; selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true }" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">+ New</button>
+            <button @click="showMemberModal = false" class="flex-1 px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Close</button>
+          </div>
+        </div>
+      </div><!-- end team member modal -->
 
 
       <!-- ══ ADMIN / SETTINGS ══ -->
@@ -4936,19 +5241,17 @@ function app() {
     workloadError: null,
     workloadFilter: "",
 
-    resourcingData: { months:[], by_project:[], by_member:[] },
-    resourcingLoading: false,
-    resourcingError: null,
+    resourcingData: { months: [], by_project: [], by_member: [] },
     resourcingView: 'project',
-    resourcingModal: { open:false, allocation_id:null, member_id:'', project_id:'', start_date:'', end_date:'', allocation_pct:100, role:'', notes:'' },
+    resourcingModal: { open: false, allocation_id: null, member_id: '', project_id: '', start_date: '', end_date: '', allocation_pct: 100, role: '', notes: '' },
+    allMembers: [],
+    allProjects: [],
+    showMemberModal: false,
+    editingMemberId: null,
+    selectedMember: { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true },
 
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
-    selApp: null,
-    appTab: 'overview',
-    appCfg: { jira:{enabled:false,base_url:'',pat:'',project_keys_raw:''}, gitlab:{enabled:false,base_url:'https://gitlab.com',access_token:'',project_ids_raw:''}, sprint:{board_id:'',sprint_id:'',sprint_name:'',my_jira_email:'',my_gitlab_username:''} },
-    cfgSaving: false,
-    cfgMsg: '',
 
     taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
@@ -4964,7 +5267,7 @@ function app() {
         tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
         releases:'Releases', commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
-        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
+        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', resourcing:'Resourcing', admin:'Settings',
         planner:'Day Planner', 'my-hub':'My Hub', 'sprint-board':'Sprint Board',
         'proj-planner':'Project Planner', delivery:'Release Tracker',
         applications:'Applications' }[this.view] || 'ExecOS';
@@ -4987,7 +5290,8 @@ function app() {
         'sprint-board':'Sprint items · Jira + GitLab correlation · MR review status',
         'proj-planner':'Hierarchy: Milestones → Tasks · Sequential & parallel · Real-time dates',
         delivery:'Releases · Templates · Pre/release/post checklists',
-        applications:'Portfolio of applications — manage apps, link projects & releases' }[this.view] || '';
+        applications:'Portfolio of applications — manage apps, link projects & releases',
+        resourcing:'Heat-map of team capacity · By project or member · Monthly view' }[this.view] || '';
     },
 
     get filteredReleases() {
@@ -5094,11 +5398,14 @@ function app() {
     async refreshData() { this.loading=true; await this.loadAll(); this.loading=false; },
     nav(id) {
       this.view=id;
-      if(id==='resourcing' && !this.resourcingData.months.length) this.loadResourcing();
       if(id==='jira-team' && this.jiraAppId && !this.jiraData.team.length) this.onJiraAppChange();
       if(id==='gitlab-mrs' && this.gitlabAppId && !this.glData.all_mrs.length) this.onGitLabAppChange();
       if(id==='my-hub' && !this.myHubData) this.loadMyHub();
       if(id==='team-workload' && !Object.keys(this.workloadData).length) this.loadTeamWorkload();
+      if(id==='resourcing') {
+        if(!this.resourcingData.months.length) this.loadResourcing();
+        if(!this.allMembers.length) this.loadResourcingLists();
+      }
       if(id==='sprint-board' && this.sprintAppId && !this.sprintData) this.onSprintAppChange();
       if(id==='admin') {
         this.loadEmailConfig(); this.loadOutlookConfig();
@@ -5208,106 +5515,6 @@ function app() {
       await fetch(`/api/applications/${id}`,{method:'DELETE'});
       this.addToast('Application deleted','info');
       await this.loadApplications(); await this.loadProjects();
-    },
-
-    async loadAppCfg() {
-      if(!this.selApp) return;
-      try {
-        const resp = await fetch(`/api/applications/${this.selApp.application_id}/config`);
-        if(resp.ok) {
-          const cfg = await resp.json();
-          this.appCfg = {
-            jira: { enabled: cfg.jira_enabled||false, base_url: cfg.jira_base_url||'', pat: cfg.jira_pat||'', project_keys_raw: (cfg.jira_project_keys||[]).join('\n') },
-            gitlab: { enabled: cfg.gitlab_enabled||false, base_url: cfg.gitlab_base_url||'https://gitlab.com', access_token: cfg.gitlab_access_token||'', project_ids_raw: (cfg.gitlab_project_ids||[]).join('\n') },
-            sprint: { board_id: cfg.sprint_board_id||'', sprint_id: cfg.sprint_sprint_id||'', sprint_name: cfg.sprint_sprint_name||'', my_jira_email: cfg.sprint_my_jira_email||'', my_gitlab_username: cfg.sprint_my_gitlab_username||'' },
-          };
-        }
-      } catch(e) {}
-    },
-    async saveJira() {
-      if(!this.selApp) return;
-      this.cfgSaving = true;
-      try {
-        const payload = {
-          application_id: this.selApp.application_id,
-          jira_enabled: this.appCfg.jira.enabled,
-          jira_base_url: this.appCfg.jira.base_url,
-          jira_pat: this.appCfg.jira.pat,
-          jira_project_keys: this.appCfg.jira.project_keys_raw.split('\n').filter(k=>k.trim()),
-        };
-        const resp = await fetch('/api/applications/jira/save', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload),
-        });
-        if(resp.ok) {
-          this.cfgMsg = '✓ Jira config saved';
-          setTimeout(() => this.cfgMsg = '', 3000);
-        } else {
-          this.cfgMsg = '✗ Failed to save';
-        }
-      } catch(e) {
-        this.cfgMsg = 'Error: ' + e.message;
-      } finally {
-        this.cfgSaving = false;
-      }
-    },
-    async saveGitLab() {
-      if(!this.selApp) return;
-      this.cfgSaving = true;
-      try {
-        const payload = {
-          application_id: this.selApp.application_id,
-          gitlab_enabled: this.appCfg.gitlab.enabled,
-          gitlab_base_url: this.appCfg.gitlab.base_url,
-          gitlab_access_token: this.appCfg.gitlab.access_token,
-          gitlab_project_ids: this.appCfg.gitlab.project_ids_raw.split('\n').filter(p=>p.trim()),
-        };
-        const resp = await fetch('/api/applications/gitlab/save', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload),
-        });
-        if(resp.ok) {
-          this.cfgMsg = '✓ GitLab config saved';
-          setTimeout(() => this.cfgMsg = '', 3000);
-        } else {
-          this.cfgMsg = '✗ Failed to save';
-        }
-      } catch(e) {
-        this.cfgMsg = 'Error: ' + e.message;
-      } finally {
-        this.cfgSaving = false;
-      }
-    },
-    async saveSprint() {
-      if(!this.selApp) return;
-      this.cfgSaving = true;
-      try {
-        const payload = {
-          application_id: this.selApp.application_id,
-          sprint_board_id: this.appCfg.sprint.board_id,
-          sprint_sprint_id: this.appCfg.sprint.sprint_id,
-          sprint_sprint_name: this.appCfg.sprint.sprint_name,
-          sprint_my_jira_email: this.appCfg.sprint.my_jira_email,
-          sprint_my_gitlab_username: this.appCfg.sprint.my_gitlab_username,
-        };
-        const resp = await fetch('/api/applications/sprint/save', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload),
-        });
-        if(resp.ok) {
-          this.cfgMsg = '✓ Sprint config saved';
-          setTimeout(() => this.cfgMsg = '', 3000);
-        } else {
-          this.cfgMsg = '✗ Failed to save';
-        }
-      } catch(e) {
-        this.cfgMsg = 'Error: ' + e.message;
-      } finally {
-        this.cfgSaving = false;
-      }
     },
 
     filterTasks() {
@@ -6123,48 +6330,133 @@ function app() {
       }
     },
 
-    // ── Resourcing ───────────────────────────────────────────────────────────
     async loadResourcing() {
-      this.resourcingLoading = true;
-      this.resourcingError = null;
       try {
-        this.resourcingData = await fetch('/api/resource-allocations/forecast').then(r=>r.json());
+        const data = await fetch('/api/resource-allocations/forecast').then(r => r.json());
+        this.resourcingData = data;
       } catch(e) {
-        this.resourcingError = e.message;
-      } finally {
-        this.resourcingLoading = false;
+        console.error('Failed to load resourcing data:', e);
+      }
+    },
+    async loadResourcingLists() {
+      try {
+        this.allMembers = await fetch('/api/workload/team/members').then(r => r.json());
+        this.allProjects = await fetch('/api/projects').then(r => r.json());
+      } catch(e) {
+        console.error('Failed to load resourcing lists:', e);
       }
     },
     async saveAllocation() {
-      const b = this.resourcingModal;
-      const payload = {
-        member_id: b.member_id,
-        project_id: b.project_id,
-        start_date: b.start_date,
-        end_date: b.end_date,
-        allocation_pct: b.allocation_pct,
-        role: b.role,
-        notes: b.notes,
-      };
-      const url  = b.allocation_id ? `/api/resource-allocations/${b.allocation_id}` : '/api/resource-allocations';
-      const meth = b.allocation_id ? 'PATCH' : 'POST';
+      const m = this.resourcingModal;
+      if (!m.member_id || !m.project_id || !m.start_date || !m.end_date) {
+        this.addToast('Member, project, start date, and end date are required.', 'warning');
+        return;
+      }
       try {
-        await fetch(url, {method:meth, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        const url = m.allocation_id ? `/api/resource-allocations/${m.allocation_id}` : '/api/resource-allocations';
+        const method = m.allocation_id ? 'PATCH' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            member_id: m.member_id,
+            project_id: m.project_id,
+            start_date: m.start_date,
+            end_date: m.end_date,
+            allocation_pct: m.allocation_pct,
+            role: m.role,
+            notes: m.notes,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Save failed');
+        }
         this.resourcingModal.open = false;
-        this.resourcingData = { months:[], by_project:[], by_member:[] };
+        this.addToast(m.allocation_id ? 'Allocation updated.' : 'Allocation created.', 'success');
         await this.loadResourcing();
       } catch(e) {
-        this.addToast({message: `Failed to save allocation: ${e.message}`, severity: 'error'});
+        this.addToast(e.message || 'Failed to save allocation', 'error');
       }
     },
     async deleteAllocation(id) {
-      if(!confirm('Delete this allocation?')) return;
+      if (!confirm('Delete this allocation?')) return;
       try {
-        await fetch(`/api/resource-allocations/${id}`, {method:'DELETE'});
-        this.resourcingData = { months:[], by_project:[], by_member:[] };
+        await fetch(`/api/resource-allocations/${id}`, { method: 'DELETE' });
+        this.resourcingModal.open = false;
+        this.addToast('Allocation deleted.', 'success');
         await this.loadResourcing();
       } catch(e) {
-        this.addToast({message: `Failed to delete allocation: ${e.message}`, severity: 'error'});
+        this.addToast('Failed to delete allocation', 'error');
+      }
+    },
+
+    // ── Team Member Management ────────────────────────────────────────────────
+    async loadAllMembers() {
+      try {
+        const r = await fetch('/api/workload/team/members');
+        if (!r.ok) throw new Error(`Failed to load members: ${r.status}`);
+        this.allMembers = await r.json();
+      } catch(e) {
+        this.addToast(`Failed to load members: ${e.message}`, 'error');
+      }
+    },
+    openMemberEditor(member) {
+      this.editingMemberId = member.member_id;
+      this.selectedMember = JSON.parse(JSON.stringify(member));  // deep copy
+    },
+    async saveMember() {
+      if (!this.selectedMember.name) {
+        this.addToast('Name is required', 'warning');
+        return;
+      }
+      const payload = {
+        name: this.selectedMember.name,
+        email: this.selectedMember.email,
+        role: this.selectedMember.role,
+        gitlab_username: this.selectedMember.gitlab_username,
+        max_concurrent_tasks: this.selectedMember.max_concurrent_tasks,
+        is_active: this.selectedMember.is_active,
+      };
+      try {
+        const r = await fetch(`/api/workload/team/members/${this.editingMemberId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        this.editingMemberId = null;
+        this.selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true };
+        await this.loadAllMembers();
+        this.addToast('Member updated', 'success');
+      } catch(e) {
+        this.addToast(`Failed to save member: ${e.message}`, 'error');
+      }
+    },
+    async createMember() {
+      if (!this.selectedMember.name) {
+        this.addToast('Name is required', 'warning');
+        return;
+      }
+      const payload = {
+        name: this.selectedMember.name,
+        email: this.selectedMember.email,
+        gitlab_username: this.selectedMember.gitlab_username,
+        role: this.selectedMember.role,
+        max_concurrent_tasks: this.selectedMember.max_concurrent_tasks,
+      };
+      try {
+        const r = await fetch('/api/workload/team/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        this.selectedMember = { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true };
+        await this.loadAllMembers();
+        this.addToast('Member created', 'success');
+      } catch(e) {
+        this.addToast(`Failed to create member: ${e.message}`, 'error');
       }
     },
 

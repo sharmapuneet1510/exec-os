@@ -61,17 +61,127 @@ def _db():
         db.close()
 
 
+# ── Jira HTTP helpers ─────────────────────────────────────────────────────────
+def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
+    import requests, urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
+    resp = requests.get(url, params=params or {},
+        headers={"Authorization": f"Bearer {cfg.pat}", "Accept": "application/json",
+                 "Content-Type": "application/json"},
+        timeout=15, verify=False)
+    if not resp.ok:
+        return None
+    return resp.json()
+
+
+def _jira_search_all(cfg, jql: str, fields: str) -> list:
+    all_issues, start_at = [], 0
+    while True:
+        data = _jira_get(cfg, "search", {"jql": jql, "fields": fields,
+                                          "maxResults": 100, "startAt": start_at})
+        if not data:
+            break
+        issues = data.get("issues", [])
+        all_issues.extend(issues)
+        total = data.get("total", 0)
+        start_at += len(issues)
+        if start_at >= min(total, 500) or not issues:
+            break
+    return all_issues
+
+
+# ── GitLab HTTP helpers ───────────────────────────────────────────────────────
+def _gl_get(cfg: AppGitLabConfigORM, path: str, params: dict = None):
+    import requests
+    base = (cfg.base_url or "https://gitlab.com").rstrip("/")
+    url = f"{base}/api/v4/{path.lstrip('/')}"
+    resp = requests.get(url, params=params or {},
+        headers={"PRIVATE-TOKEN": cfg.access_token, "Accept": "application/json"},
+        timeout=15)
+    if not resp.ok:
+        return None, {}
+    return resp.json(), resp.headers
+
+
+def _gl_all_mrs(cfg: AppGitLabConfigORM) -> list:
+    import urllib.parse
+    raw_ids = json.loads(cfg.project_ids or "[]")
+    if not raw_ids:
+        data, _ = _gl_get(cfg, "projects", {"membership": True, "per_page": 50})
+        raw_ids = [str(p["id"]) for p in (data or [])]
+    all_mrs = []
+    for pid in raw_ids[:20]:
+        encoded = urllib.parse.quote(str(pid), safe="")
+        try:
+            proj, _ = _gl_get(cfg, f"projects/{encoded}")
+            mrs, _ = _gl_get(cfg, f"projects/{encoded}/merge_requests",
+                              {"state": "opened", "per_page": 50, "order_by": "updated_at"})
+            if not proj or not mrs:
+                continue
+            for mr in mrs:
+                author = mr.get("author") or {}
+                all_mrs.append({
+                    "iid": mr["iid"],
+                    "title": mr.get("title", ""),
+                    "state": mr.get("state", "opened"),
+                    "draft": mr.get("draft", False),
+                    "author_user": author.get("username", ""),
+                    "reviewers": [r.get("username", "") for r in (mr.get("reviewers") or [])],
+                    "project_name": proj["name"],
+                    "created_at": (mr.get("created_at") or "")[:10],
+                    "web_url": mr.get("web_url", ""),
+                })
+        except Exception:
+            pass
+    return all_mrs
+
+
 @router.get("/team")
 def get_team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
-    """Return team workload: aggregated local tasks, Jira issues, MRs."""
+    """Return team workload: aggregated local tasks, real Jira issues, real GitLab MRs."""
 
     cache_key = f"workload_team_{app_id}"
     cached = _cache_get(cache_key)
     if cached:
         return cached
 
-    # Fetch all team members
     team_members = db.query(TeamMemberORM).filter(TeamMemberORM.is_active == True).all()
+
+    # ── Real Jira: one call for all members ────────────────────────────────
+    jira_by_email: dict = {}
+    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if jira_cfg and jira_cfg.enabled and jira_cfg.pat and jira_cfg.base_url:
+        emails = [m.email for m in team_members if m.email]
+        if emails:
+            quoted_emails = ", ".join(f'"{e}"' for e in emails)
+            keys = json.loads(jira_cfg.project_keys or "[]")
+            parts = []
+            if keys:
+                parts.append(f"project in ({', '.join(chr(34)+k+chr(34) for k in keys)})")
+            parts.append('statusCategory != "Done"')
+            parts.append(f'assignee in ({quoted_emails})')
+            jql = " AND ".join(parts)
+            fields = "summary,assignee,status,priority"
+            for issue in _jira_search_all(jira_cfg, jql, fields):
+                f = issue.get("fields", {})
+                email = ((f.get("assignee") or {}).get("emailAddress") or "").lower()
+                if email:
+                    jira_by_email.setdefault(email, []).append({
+                        "key": issue["key"],
+                        "summary": f.get("summary", ""),
+                        "status": (f.get("status") or {}).get("name", ""),
+                        "priority": (f.get("priority") or {}).get("name", ""),
+                    })
+
+    # ── Real GitLab: one pass across all projects ───────────────────────────
+    gl_by_username: dict = {}
+    gl_cfg = db.query(AppGitLabConfigORM).filter(AppGitLabConfigORM.application_id == app_id).first()
+    if gl_cfg and gl_cfg.enabled and gl_cfg.access_token:
+        for mr in _gl_all_mrs(gl_cfg):
+            for uname in set([mr["author_user"]] + mr["reviewers"]):
+                if uname:
+                    gl_by_username.setdefault(uname, []).append(mr)
 
     team_data = []
     overloaded_count = 0
@@ -98,40 +208,14 @@ def get_team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
         local_count = len(local_tasks)
         total_local += local_count
 
-        # Mock Jira issues (or real Jira if configured)
-        jira_issues = db.query(MockJiraIssueORM).filter(
-            MockJiraIssueORM.assignee_email == member.email
-        ).all()
-
-        jira_list = [
-            {
-                "key": i.key,
-                "summary": i.summary,
-                "status": i.status,
-                "priority": i.priority,
-            }
-            for i in jira_issues
-        ]
-        jira_count = len(jira_issues)
+        # Real Jira issues via API
+        jira_list = jira_by_email.get((member.email or "").lower(), [])
+        jira_count = len(jira_list)
         total_jira += jira_count
 
-        # Mock GitLab MRs (or real GitLab if configured)
-        # Match by author_username or in reviewers
-        mrs = db.query(MockGitLabMRORM).filter(
-            (MockGitLabMRORM.author_username == member.gitlab_username) |
-            (MockGitLabMRORM.reviewers.like(f'%{member.gitlab_username}%'))
-        ).all()
-
-        mr_list = [
-            {
-                "iid": m.iid,
-                "title": m.title,
-                "state": m.state,
-                "created_at": m.created_at.isoformat() if m.created_at else None,
-            }
-            for m in mrs
-        ]
-        mr_count = len(mrs)
+        # Real GitLab MRs via API
+        mr_list = gl_by_username.get(member.gitlab_username or "", [])
+        mr_count = len(mr_list)
         total_mrs += mr_count
 
         # Calculate total and capacity
@@ -234,6 +318,8 @@ def update_team_member(member_id: str, body: TeamMemberUpdate, db: Session = Dep
         member.email = body.email
     if body.role is not None:
         member.role = body.role
+    if body.gitlab_username is not None:
+        member.gitlab_username = body.gitlab_username
     if body.max_concurrent_tasks is not None:
         member.max_concurrent_tasks = body.max_concurrent_tasks
     if body.is_active is not None:
