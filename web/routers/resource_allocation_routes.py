@@ -3,7 +3,7 @@ from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from db.base import get_db
@@ -17,14 +17,14 @@ class AllocationIn(BaseModel):
     project_id: str
     start_date: date
     end_date: date
-    allocation_pct: int = 100
+    allocation_pct: int = Field(default=100, ge=0, le=200)
     role: Optional[str] = None
     notes: str = ""
 
 
-def _to_out(a: ResourceAllocationORM, db: Session) -> dict:
-    member  = db.query(TeamMemberORM).filter(TeamMemberORM.member_id == a.member_id).first()
-    project = db.query(ProjectORM).filter(ProjectORM.project_id == a.project_id).first()
+def _to_out(a: ResourceAllocationORM, members: dict, projects: dict) -> dict:
+    member  = members.get(a.member_id)
+    project = projects.get(a.project_id)
     return {
         "allocation_id":  a.allocation_id,
         "member_id":      a.member_id,
@@ -43,21 +43,23 @@ def _to_out(a: ResourceAllocationORM, db: Session) -> dict:
 
 @router.get("")
 def list_allocations(db: Session = Depends(get_db)):
+    members  = {m.member_id: m for m in db.query(TeamMemberORM).all()}
+    projects = {p.project_id: p for p in db.query(ProjectORM).all()}
     rows = db.query(ResourceAllocationORM).order_by(ResourceAllocationORM.start_date).all()
-    return [_to_out(r, db) for r in rows]
+    return [_to_out(r, members, projects) for r in rows]
 
 
 @router.post("", status_code=201)
 def create_allocation(body: AllocationIn, db: Session = Depends(get_db)):
     if body.start_date >= body.end_date:
         raise HTTPException(400, "start_date must be before end_date")
-    if not 0 <= body.allocation_pct <= 200:
-        raise HTTPException(400, "allocation_pct must be 0–200")
     a = ResourceAllocationORM(**body.model_dump())
     db.add(a)
     db.commit()
     db.refresh(a)
-    return _to_out(a, db)
+    members  = {m.member_id: m for m in db.query(TeamMemberORM).all()}
+    projects = {p.project_id: p for p in db.query(ProjectORM).all()}
+    return _to_out(a, members, projects)
 
 
 @router.patch("/{allocation_id}")
@@ -72,10 +74,16 @@ def update_allocation(allocation_id: str, body: dict, db: Session = Depends(get_
         if k in ("start_date", "end_date") and isinstance(v, str):
             v = date.fromisoformat(v)
         setattr(a, k, v)
+    if a.start_date >= a.end_date:
+        raise HTTPException(400, "start_date must be before end_date")
+    if not 0 <= a.allocation_pct <= 200:
+        raise HTTPException(400, "allocation_pct must be 0–200")
     a.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(a)
-    return _to_out(a, db)
+    members  = {m.member_id: m for m in db.query(TeamMemberORM).all()}
+    projects = {p.project_id: p for p in db.query(ProjectORM).all()}
+    return _to_out(a, members, projects)
 
 
 @router.delete("/{allocation_id}", status_code=204)
