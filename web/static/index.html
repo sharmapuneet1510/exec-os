@@ -5817,22 +5817,41 @@ function app() {
         this.resourcingData = await fetch('/api/resource-allocations/forecast').then(r=>r.json());
       } catch(e) {
         this.resourcingError = e.message;
+      } finally {
+        this.resourcingLoading = false;
       }
-      this.resourcingLoading = false;
     },
     async saveAllocation() {
       const b = this.resourcingModal;
+      const payload = {
+        member_id: b.member_id,
+        project_id: b.project_id,
+        start_date: b.start_date,
+        end_date: b.end_date,
+        allocation_pct: b.allocation_pct,
+        role: b.role,
+        notes: b.notes,
+      };
       const url  = b.allocation_id ? `/api/resource-allocations/${b.allocation_id}` : '/api/resource-allocations';
       const meth = b.allocation_id ? 'PATCH' : 'POST';
-      await fetch(url, {method:meth, headers:{'Content-Type':'application/json'}, body:JSON.stringify(b)});
-      this.resourcingModal.open = false;
-      this.resourcingData = { months:[], by_project:[], by_member:[] };
-      this.loadResourcing();
+      try {
+        await fetch(url, {method:meth, headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        this.resourcingModal.open = false;
+        this.resourcingData = { months:[], by_project:[], by_member:[] };
+        await this.loadResourcing();
+      } catch(e) {
+        this.addToast({message: `Failed to save allocation: ${e.message}`, severity: 'error'});
+      }
     },
     async deleteAllocation(id) {
-      await fetch(`/api/resource-allocations/${id}`, {method:'DELETE'});
-      this.resourcingData = { months:[], by_project:[], by_member:[] };
-      this.loadResourcing();
+      if(!confirm('Delete this allocation?')) return;
+      try {
+        await fetch(`/api/resource-allocations/${id}`, {method:'DELETE'});
+        this.resourcingData = { months:[], by_project:[], by_member:[] };
+        await this.loadResourcing();
+      } catch(e) {
+        this.addToast({message: `Failed to delete allocation: ${e.message}`, severity: 'error'});
+      }
     },
 
     // ── Sprint Board ─────────────────────────────────────────────────────────
