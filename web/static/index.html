@@ -4379,6 +4379,66 @@
             </div>
           </div>
 
+          <!-- Activity Logs -->
+          <div class="card" style="margin-top:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:18px;">📊</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Activity Log</div>
+                <div style="font-size:12px;color:var(--text-3);">Track all create, update, and delete operations</div>
+              </div>
+            </div>
+
+            <div x-data="{
+              activities: [],
+              activityLoading: false,
+              activityLoaded: false,
+              loadActivities() {
+                if(this.activityLoaded) return;
+                this.activityLoading = true;
+                fetch('/api/activity/entity?limit=100')
+                  .then(r => r.json())
+                  .then(d => { this.activities = d; this.activityLoaded = true; })
+                  .catch(e => console.error('Failed to load activities:', e))
+                  .finally(() => { this.activityLoading = false; });
+              }
+            }">
+              <button @click="loadActivities()" style="padding:8px 16px;border-radius:9px;background:#fef3c7;border:1px solid #fcd34d;color:#b45309;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;">
+                <span x-show="!activityLoading">📂 Load Activity Log</span>
+                <span x-show="activityLoading">Loading…</span>
+              </button>
+
+              <div x-show="activityLoaded && !activities.length" style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;">No activities yet</div>
+
+              <div x-show="activityLoaded && activities.length" style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--border);">
+                      <th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Time</th>
+                      <th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Entity</th>
+                      <th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Action</th>
+                      <th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="log in activities" :key="log.activity_id">
+                      <tr style="border-bottom:1px solid var(--border);hover:background: var(--bg);">
+                        <td style="padding:10px 12px;color:var(--text-3);" x-text="new Date(log.created_at).toLocaleTimeString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})"></td>
+                        <td style="padding:10px 12px;color:var(--text-1);font-weight:500;" x-text="log.entity_type"></td>
+                        <td style="padding:10px 12px;">
+                          <span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;"
+                            :style="log.action==='created'?'background:#d1fae5;color:#047857;':log.action==='updated'?'background:#dbeafe;color:#1e40af;':'background:#fee2e2;color:#b91c1c;'"
+                            x-text="log.action"></span>
+                        </td>
+                        <td style="padding:10px 12px;color:var(--text-1);" x-text="log.description"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
