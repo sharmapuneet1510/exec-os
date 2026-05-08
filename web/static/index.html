@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ExecOS — Command Center</title>
   <script>
-    // Placeholder app() function - will delegate to real one when available
-    window._realAppFn = null;
+    // Placeholder that will be overwritten by the real app() function
+    // This ensures x-data has a function to call immediately
     window.app = function() {
-      if (window._realAppFn) return window._realAppFn();
+      // Will be overwritten by real implementation below
       return { view: 'dashboard', loading: true, init: () => {} };
     };
   </script>
