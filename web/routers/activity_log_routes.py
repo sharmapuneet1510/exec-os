@@ -1,4 +1,4 @@
-"""Activity log — tracks all HTTP requests/responses for debugging."""
+"""Activity log — tracks all HTTP requests/responses and entity changes."""
 
 from datetime import datetime
 from typing import Optional, List
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from db.base import get_db
-from db.models import ActivityLogORM
+from db.models import ActivityLogORM, EntityActivityLogORM
 
 router = APIRouter(prefix="/api/activity", tags=["activity"])
 
@@ -101,3 +101,39 @@ def clear_activities(db: Session = Depends(get_db)):
     db.query(ActivityLogORM).delete()
     db.commit()
     return {"ok": True, "message": "Activity logs cleared"}
+
+
+class EntityActivityOut(BaseModel):
+    activity_id: str
+    entity_type: str
+    entity_id: str
+    action: str
+    description: str
+    details: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/entity", response_model=List[EntityActivityOut])
+def get_entity_activities(
+    limit: int = 50,
+    offset: int = 0,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    action: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Get entity activity logs (create, update, delete operations)."""
+    query = db.query(EntityActivityLogORM)
+
+    if entity_type:
+        query = query.filter(EntityActivityLogORM.entity_type == entity_type)
+    if entity_id:
+        query = query.filter(EntityActivityLogORM.entity_id == entity_id)
+    if action:
+        query = query.filter(EntityActivityLogORM.action == action)
+
+    logs = query.order_by(desc(EntityActivityLogORM.created_at)).offset(offset).limit(limit).all()
+    return [EntityActivityOut.model_validate(log) for log in logs]
