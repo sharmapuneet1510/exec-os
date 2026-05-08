@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from db.models import ProjectORM, TaskORM
+from db.activity_helper import log_activity
 
 
 def _bust_dash():
@@ -105,6 +106,17 @@ def create_project(body: ProjectIn, db: Session = Depends(get_db)):
     db.add(p)
     db.commit()
     db.refresh(p)
+
+    # Log activity
+    log_activity(
+        db=db,
+        entity_type="project",
+        entity_id=p.project_id,
+        action="created",
+        description=f"Created project: {p.name}",
+        details={"name": p.name, "status": p.status, "owner": p.owner}
+    )
+
     _bust_dash()
     return _to_out(p, db)
 

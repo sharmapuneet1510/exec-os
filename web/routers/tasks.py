@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from db.models import TaskORM, ProjectORM
+from db.activity_helper import log_activity
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -103,6 +104,17 @@ def create_task(body: TaskIn, db: Session = Depends(get_db)):
     db.add(t)
     db.commit()
     db.refresh(t)
+
+    # Log activity
+    log_activity(
+        db=db,
+        entity_type="task",
+        entity_id=t.task_id,
+        action="created",
+        description=f"Created task: {t.title}",
+        details={"title": t.title, "priority": t.priority, "status": t.status}
+    )
+
     _bust_dash()
     return _to_out(t)
 
@@ -121,13 +133,17 @@ def update_task(task_id: str, body: dict, db: Session = Depends(get_db)):
     if not t:
         raise HTTPException(404, "task not found")
     allowed = {"title", "description", "due_date", "reminder_date", "priority", "status", "project_id", "application_id", "assignee_id", "tags"}
+    changes = {}
     for k, v in body.items():
         if k not in allowed:
             continue
+        old_v = getattr(t, k)
         if k == "tags":
             v = json.dumps(v)
         if k in ("due_date", "reminder_date") and isinstance(v, str):
             v = date.fromisoformat(v) if v else None
+        if old_v != v:
+            changes[k] = {"old": str(old_v), "new": str(v)}
         setattr(t, k, v)
 
     # Auto-assign application_id based on project_id change
@@ -147,6 +163,18 @@ def update_task(task_id: str, body: dict, db: Session = Depends(get_db)):
         t.completed_at = datetime.utcnow()
     db.commit()
     db.refresh(t)
+
+    # Log activity
+    if changes:
+        log_activity(
+            db=db,
+            entity_type="task",
+            entity_id=t.task_id,
+            action="updated",
+            description=f"Updated task: {t.title}",
+            details=changes
+        )
+
     _bust_dash()
     return _to_out(t)
 
@@ -156,6 +184,17 @@ def delete_task(task_id: str, db: Session = Depends(get_db)):
     t = db.query(TaskORM).filter(TaskORM.task_id == task_id).first()
     if not t:
         raise HTTPException(404, "task not found")
+
+    # Log activity before deletion
+    log_activity(
+        db=db,
+        entity_type="task",
+        entity_id=task_id,
+        action="deleted",
+        description=f"Deleted task: {t.title}",
+        details={"title": t.title, "status": t.status}
+    )
+
     db.delete(t)
     db.commit()
     _bust_dash()

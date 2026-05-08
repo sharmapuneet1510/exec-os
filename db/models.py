@@ -460,3 +460,15 @@ class MockGitLabMRORM(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     merged_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EntityActivityLogORM(Base):
+    __tablename__ = "entity_activity_logs"
+
+    activity_id   = Column(String, primary_key=True, default=_uuid)
+    entity_type   = Column(String(50), nullable=False)  # task, project, release, etc.
+    entity_id     = Column(String(255), nullable=False)  # task_id, project_id, etc.
+    action        = Column(String(20), nullable=False)   # created, updated, deleted
+    description   = Column(String(500), default="")      # human-readable description
+    details       = Column(Text, default="{}")           # JSON with changes
+    created_at    = Column(DateTime, default=datetime.utcnow)

@@ -72,11 +72,15 @@ def _get_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
 
 # ── Jira HTTP helpers ─────────────────────────────────────────────────────────
 def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
-    """Make an authenticated GET to the Jira Cloud REST API with bearer token."""
+    """Make an authenticated GET to Jira API v2 with bearer token.
+
+    Uses Jira REST API v2 with SSL verification disabled.
+    """
     import requests
     import urllib3
+    # Disable SSL warnings since verify=False
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    url = f"{cfg.base_url.rstrip('/')}/rest/api/3/{path.lstrip('/')}"
+    url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
     resp = requests.get(
         url,
         params=params or {},
