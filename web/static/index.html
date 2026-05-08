@@ -5219,6 +5219,7 @@ function app() {
     jiraAppId: localStorage.getItem('execos_jira_app')||'',
     gitlabAppId: localStorage.getItem('execos_gitlab_app')||'',
     sprintAppId: localStorage.getItem('execos_sprint_app')||'',
+    workloadAppId: localStorage.getItem('execos_workload_app')||'',
     jiraData: { team:[], total_issues:0, last_fetched:null },
     jiraLoading: false, jiraError: '',
     jiraTestLoading: false, jiraTestMsg: '', jiraTestOk: false,
@@ -5236,7 +5237,7 @@ function app() {
     sprintData: null, sprintLoading: false, sprintError: '',
     sprintFilter: '', sprintViewTab: 'all',
 
-    workloadData: {},
+    workloadData: { team: [], summary: { total_members: 0, overloaded_count: 0, total_local_tasks: 0, total_jira_issues: 0, total_mrs: 0, last_updated: null } },
     workloadLoading: false,
     workloadError: null,
     workloadFilter: "",
@@ -6314,7 +6315,16 @@ function app() {
       this.workloadLoading = true;
       this.workloadError = null;
       try {
-        const response = await fetch("/api/workload/team?app_id=default");
+        let appId = this.workloadAppId;
+        if (!appId && this.applications?.length > 0) {
+          appId = this.applications[0].application_id;
+          this.workloadAppId = appId;
+          localStorage.setItem('execos_workload_app', appId);
+        }
+        if (!appId) {
+          throw new Error('No application selected. Create or select an application first.');
+        }
+        const response = await fetch(`/api/workload/team?app_id=${appId}`);
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           throw new Error(errData.detail || `HTTP ${response.status}`);
@@ -6325,6 +6335,7 @@ function app() {
       } catch (err) {
         this.workloadError = err.message || 'Failed to load team workload';
         console.error('Team workload error:', err);
+        this.workloadData = { team: [], summary: { total_members: 0, overloaded_count: 0, total_local_tasks: 0, total_jira_issues: 0, total_mrs: 0, last_updated: null } };
       } finally {
         this.workloadLoading = false;
       }
