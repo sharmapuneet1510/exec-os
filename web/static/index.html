@@ -472,6 +472,9 @@
       <div @click="nav('team-workload')"   :class="navCls('team-workload')">
         <div class="nav-icon">👥</div><span style="flex:1">Team Workload</span>
       </div>
+      <div @click="nav('resourcing')" :class="navCls('resourcing')">
+        <div class="nav-icon">📊</div><span style="flex:1">Resourcing</span>
+      </div>
 
       <div class="nav-group-label" style="margin-top:4px;">Debug</div>
       <div @click="nav('activity-log')"     :class="navCls('activity-log')">     <div class="nav-icon">📜</div><span style="flex:1">Activity Log</span></div>
@@ -4015,6 +4018,160 @@
       </div><!-- end sprint-board -->
 
 
+      <!-- ══ RESOURCING ══ -->
+      <div x-show="view==='resourcing'" x-cloak class="p-4 space-y-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold">Resourcing</h2>
+          <div class="flex gap-2">
+            <button @click="resourcingModal.open = true; resourcingModal.allocation_id = null; resourcingModal.member_id = ''; resourcingModal.project_id = ''; resourcingModal.start_date = ''; resourcingModal.end_date = ''; resourcingModal.allocation_pct = 100; resourcingModal.role = ''; resourcingModal.notes = ''" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ Add Allocation</button>
+            <div class="flex gap-1 bg-gray-200 rounded p-1">
+              <button @click="resourcingView = 'project'" :class="resourcingView === 'project' ? 'bg-white text-black' : 'text-gray-600'" class="px-3 py-1 rounded text-sm font-medium">By Project</button>
+              <button @click="resourcingView = 'member'" :class="resourcingView === 'member' ? 'bg-white text-black' : 'text-gray-600'" class="px-3 py-1 rounded text-sm font-medium">By Member</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary strip -->
+        <div class="flex gap-2 flex-wrap">
+          <div class="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm"><strong x-text="(resourcingData.by_project || []).length + (resourcingData.by_member || []).length"></strong> allocations</div>
+          <div class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm"><strong x-text="(resourcingData.by_member || []).filter(m => Object.values(m.months || {}).some(mo => mo.over)).length"></strong> over-allocated</div>
+          <div class="px-3 py-1 bg-gray-100 text-gray-800 rounded text-sm"><strong x-text="(resourcingData.months || []).length"></strong> months</div>
+        </div>
+
+        <!-- Heat map table -->
+        <div class="overflow-x-auto border rounded">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-100 border-b">
+                <th class="px-4 py-2 text-left font-bold">Name</th>
+                <template x-for="month in resourcingData.months" :key="month">
+                  <th class="px-2 py-2 text-center text-xs font-medium" x-text="month"></th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- By Project view -->
+              <template x-show="resourcingView === 'project'" x-for="project in resourcingData.by_project" :key="project.project_id">
+                <tr class="border-b hover:bg-gray-50">
+                  <td class="px-4 py-2 font-medium" x-text="project.name"></td>
+                  <template x-for="month in resourcingData.months" :key="month">
+                    <td class="px-2 py-2 text-center text-sm" :style="`background-color: ${
+                      project.months[month].total_pct === 0 ? '#f3f4f6' :
+                      project.months[month].total_pct <= 75 ? '#f0fdf4' :
+                      project.months[month].total_pct <= 100 ? '#fffbeb' :
+                      '#fff1f2'
+                    }`">
+                      <div :style="`color: ${
+                        project.months[month].total_pct === 0 ? '#9ca3af' :
+                        project.months[month].total_pct <= 75 ? '#15803d' :
+                        project.months[month].total_pct <= 100 ? '#b45309' :
+                        '#be123c'
+                      }`" class="font-semibold">
+                        <span x-show="project.months[month].total_pct > 0" x-text="`${project.months[month].total_pct}%`"></span>
+                        <span x-show="project.months[month].total_pct > 0" class="text-xs block" x-text="`${project.months[month].member_count}p`"></span>
+                      </div>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+
+              <!-- By Member view -->
+              <template x-show="resourcingView === 'member'" x-for="member in resourcingData.by_member" :key="member.member_id">
+                <tr class="border-b hover:bg-gray-50">
+                  <td class="px-4 py-2 font-medium" x-text="member.name"></td>
+                  <template x-for="month in resourcingData.months" :key="month">
+                    <td class="px-2 py-2 text-center text-sm" :style="`background-color: ${
+                      member.months[month].total_pct === 0 ? '#f3f4f6' :
+                      member.months[month].total_pct <= 75 ? '#f0fdf4' :
+                      member.months[month].total_pct <= 100 ? '#fffbeb' :
+                      '#fff1f2'
+                    }`">
+                      <div :style="`color: ${
+                        member.months[month].total_pct === 0 ? '#9ca3af' :
+                        member.months[month].total_pct <= 75 ? '#15803d' :
+                        member.months[month].total_pct <= 100 ? '#b45309' :
+                        '#be123c'
+                      }`" class="font-semibold">
+                        <span x-show="member.months[month].total_pct > 0" x-text="`${member.months[month].total_pct}%`"></span>
+                        <span x-show="member.months[month].total_pct > 0" class="text-xs block" x-text="`${member.months[month].project_count}p`"></span>
+                      </div>
+                    </td>
+                  </template>
+                </tr>
+              </template>
+
+              <!-- Empty state -->
+              <tr x-show="resourcingData.months.length === 0">
+                <td colspan="99" class="px-4 py-12 text-center text-gray-400">
+                  <div style="font-size:40px;margin-bottom:12px;">📊</div>
+                  <div style="font-size:15px;font-weight:600;">No allocations yet</div>
+                  <div style="font-size:12px;margin-top:6px;">Click "+ Add Allocation" to get started</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- end resourcing -->
+
+      <!-- Resourcing Modal -->
+      <div x-show="resourcingModal.open" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded shadow-lg p-6 w-96">
+          <h3 class="text-lg font-bold mb-4">
+            <span x-show="!resourcingModal.allocation_id">New Allocation</span>
+            <span x-show="resourcingModal.allocation_id">Edit Allocation</span>
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium">Member</label>
+              <select x-model="resourcingModal.member_id" class="w-full px-3 py-2 border rounded">
+                <option value="">-- Select Member --</option>
+                <template x-for="member in allMembers || []" :key="member.member_id">
+                  <option :value="member.member_id" x-text="member.name"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Project</label>
+              <select x-model="resourcingModal.project_id" class="w-full px-3 py-2 border rounded">
+                <option value="">-- Select Project --</option>
+                <template x-for="project in allProjects || []" :key="project.project_id">
+                  <option :value="project.project_id" x-text="project.name"></option>
+                </template>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-sm font-medium">Start Date</label>
+                <input x-model="resourcingModal.start_date" type="date" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium">End Date</label>
+                <input x-model="resourcingModal.end_date" type="date" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Allocation % (0-200)</label>
+              <input x-model.number="resourcingModal.allocation_pct" type="number" min="0" max="200" class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Role (optional)</label>
+              <input x-model="resourcingModal.role" type="text" placeholder="e.g., Lead Developer" class="w-full px-3 py-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Notes</label>
+              <textarea x-model="resourcingModal.notes" rows="3" class="w-full px-3 py-2 border rounded"></textarea>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-6">
+            <button @click="saveAllocation()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+            <button @click="resourcingModal.open = false" class="flex-1 px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Cancel</button>
+            <button x-show="resourcingModal.allocation_id" @click="deleteAllocation(resourcingModal.allocation_id)" class="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+          </div>
+        </div>
+      </div><!-- end resourcing modal -->
+
+
       <!-- ══ ADMIN / SETTINGS ══ -->
       <div x-show="view==='admin'" x-cloak>
         <div style="max-width:680px;">
@@ -5006,6 +5163,12 @@ function app() {
     workloadError: null,
     workloadFilter: "",
 
+    resourcingData: { months: [], by_project: [], by_member: [] },
+    resourcingView: 'project',
+    resourcingModal: { open: false, allocation_id: null, member_id: '', project_id: '', start_date: '', end_date: '', allocation_pct: 100, role: '', notes: '' },
+    allMembers: [],
+    allProjects: [],
+
     applications: [],
     applicationModal: { open:false, editing:false, data:{} },
 
@@ -5023,7 +5186,7 @@ function app() {
         tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
         releases:'Releases', commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
-        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', admin:'Settings',
+        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', resourcing:'Resourcing', admin:'Settings',
         planner:'Day Planner', 'my-hub':'My Hub', 'sprint-board':'Sprint Board',
         'proj-planner':'Project Planner', delivery:'Release Tracker',
         applications:'Applications' }[this.view] || 'ExecOS';
@@ -5046,7 +5209,8 @@ function app() {
         'sprint-board':'Sprint items · Jira + GitLab correlation · MR review status',
         'proj-planner':'Hierarchy: Milestones → Tasks · Sequential & parallel · Real-time dates',
         delivery:'Releases · Templates · Pre/release/post checklists',
-        applications:'Portfolio of applications — manage apps, link projects & releases' }[this.view] || '';
+        applications:'Portfolio of applications — manage apps, link projects & releases',
+        resourcing:'Heat-map of team capacity · By project or member · Monthly view' }[this.view] || '';
     },
 
     get filteredReleases() {
@@ -5157,6 +5321,10 @@ function app() {
       if(id==='gitlab-mrs' && this.gitlabAppId && !this.glData.all_mrs.length) this.onGitLabAppChange();
       if(id==='my-hub' && !this.myHubData) this.loadMyHub();
       if(id==='team-workload' && !Object.keys(this.workloadData).length) this.loadTeamWorkload();
+      if(id==='resourcing') {
+        if(!this.resourcingData.months.length) this.loadResourcing();
+        if(!this.allMembers.length) this.loadResourcingLists();
+      }
       if(id==='sprint-board' && this.sprintAppId && !this.sprintData) this.onSprintAppChange();
       if(id==='admin') {
         this.loadEmailConfig(); this.loadOutlookConfig();
@@ -6078,6 +6246,67 @@ function app() {
         console.error('Team workload error:', err);
       } finally {
         this.workloadLoading = false;
+      }
+    },
+
+    async loadResourcing() {
+      try {
+        const data = await fetch('/api/resourcing/heatmap').then(r => r.json());
+        this.resourcingData = data;
+      } catch(e) {
+        console.error('Failed to load resourcing data:', e);
+      }
+    },
+    async loadResourcingLists() {
+      try {
+        this.allMembers = await fetch('/api/workload/team/members').then(r => r.json());
+        this.allProjects = await fetch('/api/projects').then(r => r.json());
+      } catch(e) {
+        console.error('Failed to load resourcing lists:', e);
+      }
+    },
+    async saveAllocation() {
+      const m = this.resourcingModal;
+      if (!m.member_id || !m.project_id || !m.start_date || !m.end_date) {
+        this.addToast('Member, project, start date, and end date are required.', 'warning');
+        return;
+      }
+      try {
+        const url = m.allocation_id ? `/api/resourcing/allocations/${m.allocation_id}` : '/api/resourcing/allocations';
+        const method = m.allocation_id ? 'PATCH' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            member_id: m.member_id,
+            project_id: m.project_id,
+            start_date: m.start_date,
+            end_date: m.end_date,
+            allocation_pct: m.allocation_pct,
+            role: m.role,
+            notes: m.notes,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Save failed');
+        }
+        this.resourcingModal.open = false;
+        this.addToast(m.allocation_id ? 'Allocation updated.' : 'Allocation created.', 'success');
+        await this.loadResourcing();
+      } catch(e) {
+        this.addToast(e.message || 'Failed to save allocation', 'error');
+      }
+    },
+    async deleteAllocation(id) {
+      if (!confirm('Delete this allocation?')) return;
+      try {
+        await fetch(`/api/resourcing/allocations/${id}`, { method: 'DELETE' });
+        this.resourcingModal.open = false;
+        this.addToast('Allocation deleted.', 'success');
+        await this.loadResourcing();
+      } catch(e) {
+        this.addToast('Failed to delete allocation', 'error');
       }
     },
 
