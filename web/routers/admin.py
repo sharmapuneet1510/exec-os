@@ -1,21 +1,14 @@
-"""
-Admin endpoints for database management, exports, and backups.
-"""
 from datetime import datetime
-from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from db.base import get_db, engine
 from db.models import Base
 from db import models
-from backup.service import BackupService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
-
-_backup_service = BackupService()
 
 
 def _serialize_value(val):
@@ -109,16 +102,12 @@ def import_database(data: dict, db: Session = Depends(get_db)):
             inserted = 0
             for row_dict in rows:
                 # Parse datetime strings back to datetime objects
-                for key, val in list(row_dict.items()):
-                    if isinstance(val, str) and val:
-                        # Try parsing as ISO datetime (with T or space)
-                        if 'T' in val or ' ' in val:
-                            try:
-                                # Handle both ISO format and space-separated format
-                                dt_str = val.replace(' ', 'T')
-                                row_dict[key] = datetime.fromisoformat(dt_str)
-                            except (ValueError, TypeError):
-                                pass
+                for key, val in row_dict.items():
+                    if isinstance(val, str) and val and 'T' in val:
+                        try:
+                            row_dict[key] = datetime.fromisoformat(val)
+                        except (ValueError, TypeError):
+                            pass
 
                 try:
                     obj = model_class(**row_dict)
@@ -142,48 +131,3 @@ def import_database(data: dict, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(500, f"Import failed: {str(e)}")
-
-
-@router.get("/backups/list")
-def list_backups():
-    """List all available backups with their metadata."""
-    try:
-        backup_dir = Path.home() / ".commanddesk" / "backups"
-        backups = _backup_service.list_backups(backup_dir)
-        return {
-            "status": "success",
-            "backups": [
-                {
-                    "id": b.backup_id,
-                    "created_at": b.created_at.isoformat(),
-                    "path": b.path,
-                    "size_bytes": b.size_bytes,
-                    "status": b.status,
-                    "error": b.error,
-                }
-                for b in backups
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(500, f"Failed to list backups: {str(e)}")
-
-
-@router.post("/backups/create")
-def trigger_backup():
-    """Manually trigger an immediate backup."""
-    try:
-        backup_dir = Path.home() / ".commanddesk" / "backups"
-        manifest = _backup_service.create_backup(backup_dir)
-        return {
-            "status": "success",
-            "message": "Backup created successfully",
-            "backup": {
-                "id": manifest.backup_id,
-                "created_at": manifest.created_at.isoformat(),
-                "path": manifest.path,
-                "size_bytes": manifest.size_bytes,
-                "status": manifest.status,
-            }
-        }
-    except Exception as e:
-        raise HTTPException(500, f"Backup creation failed: {str(e)}")

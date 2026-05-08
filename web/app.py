@@ -97,7 +97,10 @@ app.include_router(workload_router)
 app.include_router(outlook_router)
 app.include_router(activity_log_router)
 app.include_router(releases_router)
+<<<<<<< HEAD
 app.include_router(resource_allocation_router)
+=======
+>>>>>>> feature/releases-management
 app.include_router(admin_router)
 
 _static = pathlib.Path(__file__).parent / "static"

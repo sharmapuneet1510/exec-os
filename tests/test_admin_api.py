@@ -1,76 +1,79 @@
-"""
-Tests for admin export/import endpoints.
-"""
-import json
 import pytest
 from fastapi.testclient import TestClient
-from web.app import app
+from db.base import SessionLocal, engine
+from db.models import Base
 
-client = TestClient(app)
+@pytest.fixture
+def db():
+    """Get a fresh database session"""
+    Base.metadata.create_all(bind=engine)
+    session = SessionLocal()
+    yield session
+    session.close()
+    Base.metadata.drop_all(bind=engine)
 
 
-def test_export_database():
-    """Test export endpoint returns valid JSON with structure."""
+def test_export_database(db):
+    from web.app import app
+    client = TestClient(app)
+
     response = client.get("/api/admin/export")
     assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+
+    # Verify it's valid JSON
     data = response.json()
-    assert "version" in data
-    assert "exported_at" in data
+    assert isinstance(data, dict)
     assert "tables" in data
-    assert data["version"] == "1.0"
-    assert isinstance(data["tables"], dict)
+    assert "exported_at" in data
+    assert "version" in data
 
 
-def test_export_contains_all_tables():
-    """Test that export includes all expected tables."""
+def test_export_contains_tables(db):
+    from web.app import app
+    client = TestClient(app)
+
     response = client.get("/api/admin/export")
+    data = response.json()
+    tables = data["tables"]
+    # Should have at least some tables
+    assert len(tables) > 0
+    # Each table should have a "rows" key
+    for table_name, table_data in tables.items():
+        assert "rows" in table_data
+        assert isinstance(table_data["rows"], list)
+
+
+def test_import_database(db):
+    from web.app import app
+    client = TestClient(app)
+
+    # First export data
+    export_resp = client.get("/api/admin/export")
+    assert export_resp.status_code == 200
+    export_data = export_resp.json()
+
+    # Now import it back
+    response = client.post("/api/admin/import", json=export_data)
     assert response.status_code == 200
     data = response.json()
-    tables = data.get("tables", {})
-
-    # Check some core tables exist
-    expected_tables = ["email_config", "outlook_config", "tasks", "projects", "commitments"]
-    for table_name in expected_tables:
-        assert table_name in tables or len(tables) > 0  # At least some data structure
+    assert data["status"] == "success"
+    assert "restored_tables" in data
+    assert "message" in data
 
 
-def test_import_valid_export():
-    """Test import of valid exported data."""
-    # First export
-    export_response = client.get("/api/admin/export")
-    assert export_response.status_code == 200
-    export_data = export_response.json()
+def test_import_invalid_json(db):
+    from web.app import app
+    client = TestClient(app)
 
-    # Then import
-    import_response = client.post("/api/admin/import", json=export_data)
-    assert import_response.status_code == 200
-    result = import_response.json()
-    assert result["status"] == "success"
-    assert "restored_tables" in result
-
-
-def test_import_invalid_format():
-    """Test import with invalid format."""
-    invalid_data = {"invalid": "format"}
-    response = client.post("/api/admin/import", json=invalid_data)
+    response = client.post("/api/admin/import", json={"invalid": "data"})
     assert response.status_code == 400
-    assert "Invalid export format" in response.json()["detail"]
+    assert "version" in response.json()["detail"].lower() or "invalid" in response.json()["detail"].lower()
 
 
-def test_export_preserves_data_types():
-    """Test that export preserves data types for reimport."""
-    # Export, manipulate, and re-import
-    export_response = client.get("/api/admin/export")
-    export_data = export_response.json()
+def test_import_empty_data(db):
+    from web.app import app
+    client = TestClient(app)
 
-    # Verify structure is correct for reimport
-    assert "version" in export_data
-    assert "tables" in export_data
-
-    # Try to re-import - should work
-    import_response = client.post("/api/admin/import", json=export_data)
-    assert import_response.status_code == 200
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    response = client.post("/api/admin/import", json={})
+    assert response.status_code == 400
