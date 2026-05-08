@@ -3150,24 +3150,19 @@
 
           <div x-show="glError" style="padding:14px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="glError"></div>
 
-          <!-- Stats -->
-          <div x-show="glData.total_mrs >= 0" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px;">
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:#fc6d26;" x-text="glData.total_mrs||0"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Open MRs</div>
-            </div>
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:#10b981;" x-text="glData.ready_mrs||0"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Ready to Merge</div>
-            </div>
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:var(--text-3);" x-text="glData.draft_mrs||0"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Draft</div>
-            </div>
-            <div class="card" style="padding:14px;text-align:center;">
-              <div style="font-size:26px;font-weight:800;color:#6366f1;" x-text="(glData.authors||[]).length"></div>
-              <div style="font-size:10px;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Contributors</div>
-            </div>
+          <!-- Summary Strip -->
+          <div x-show="glData.total_mrs >= 0"
+            style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;
+                   padding:10px 14px;background:var(--surface);border:1px solid var(--border);
+                   border-radius:10px;font-size:12px;">
+            <span style="color:var(--text-3);font-weight:600;margin-right:4px;">GITLAB</span>
+            <span class="stat-chip" style="background:#fff7f3;color:#c2410c;" x-text="(glData.total_mrs||0)+' open'"></span>
+            <span class="stat-chip green" x-text="(glData.ready_mrs||0)+' ready'"></span>
+            <span class="stat-chip" style="background:#f8fafc;color:#64748b;" x-text="(glData.draft_mrs||0)+' draft'"></span>
+            <span class="stat-chip indigo" x-text="(glData.authors||[]).length+' contributors'"></span>
+            <span class="stat-chip blue" x-text="(glData.projects||[]).length+' projects'"></span>
+            <span style="margin-left:auto;color:var(--text-3);font-size:11px;"
+              x-text="glData.last_fetched ? 'Updated ' + new Date(glData.last_fetched+'Z').toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : ''"></span>
           </div>
 
           <!-- BY MR LIST -->
@@ -3200,42 +3195,70 @@
 
           <!-- BY AUTHOR -->
           <div x-show="glView==='author'">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;">
-              <template x-for="author in (glData.authors||[]).filter(a=>!glFilter||a.name.toLowerCase().includes(glFilter.toLowerCase()))" :key="author.name">
-                <div class="card" style="padding:0;overflow:hidden;">
-                  <div style="padding:12px 14px;background:linear-gradient(135deg,#fff7f3,#fff3ee);border-bottom:1px solid #fde8d8;display:flex;align-items:center;gap:10px;">
-                    <template x-if="author.avatar">
-                      <img :src="author.avatar" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex-shrink:0;">
-                    </template>
-                    <template x-if="!author.avatar">
-                      <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#fc6d26,#e24329);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;"
-                        x-text="author.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()"></div>
-                    </template>
-                    <div style="flex:1;">
-                      <div style="font-size:13.5px;font-weight:700;color:var(--text-1);" x-text="author.name"></div>
-                      <div style="font-size:11.5px;color:var(--text-2);" x-text="author.total+' MR'+(author.total!==1?'s':'')+' · '+author.ready+' ready · '+author.draft+' draft'"></div>
-                    </div>
-                  </div>
-                  <div style="padding:8px 14px 12px;display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;">
-                    <template x-for="mr in author.mrs" :key="mr.web_url">
-                      <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 9px;border-radius:7px;background:var(--bg);">
-                        <div :style="'width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0;background:'+(mr.draft?'#94a3b8':mr.has_conflicts?'#ef4444':'#10b981')"></div>
-                        <div style="flex:1;min-width:0;">
-                          <a :href="mr.web_url" target="_blank"
-                            style="font-size:12px;font-weight:600;color:var(--text-1);text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                            x-text="mr.title"></a>
-                          <div style="font-size:10.5px;color:var(--text-3);margin-top:2px;">
-                            <span style="color:#fc6d26;font-weight:600;" x-text="mr.project_name"></span>
-                            · <span x-text="mr.source_branch"></span>
-                            <span x-show="mr.has_conflicts" style="color:#ef4444;font-weight:700;margin-left:4px;">⚠ conflicts</span>
-                          </div>
-                        </div>
+            <table class="wl-table">
+              <thead>
+                <tr>
+                  <th>Author</th>
+                  <th style="text-align:center;">Open</th>
+                  <th style="text-align:center;">Ready</th>
+                  <th style="text-align:center;">Draft</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="author in (glData.authors||[]).filter(a=>!glFilter||a.name.toLowerCase().includes(glFilter.toLowerCase()))" :key="author.name">
+                  <!-- Author row (header) -->
+                  <tr x-data="{open:false}" class="wl-row-header" @click="open=!open">
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <template x-if="author.avatar">
+                          <img :src="author.avatar" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+                        </template>
+                        <template x-if="!author.avatar">
+                          <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#fc6d26,#e24329);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;"
+                            x-text="author.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()"></div>
+                        </template>
+                        <span style="font-weight:600;" x-text="author.name"></span>
                       </div>
-                    </template>
-                  </div>
-                </div>
-              </template>
-            </div>
+                    </td>
+                    <td style="text-align:center;font-weight:700;color:#fc6d26;" x-text="author.total"></td>
+                    <td style="text-align:center;font-weight:700;color:#10b981;" x-text="author.ready"></td>
+                    <td style="text-align:center;color:var(--text-3);" x-text="author.draft"></td>
+                    <td style="text-align:right;color:var(--text-3);font-size:14px;" x-text="open?'▼':'▶'"></td>
+                  </tr>
+                  <!-- Author details (expanded) -->
+                  <tr x-show="open">
+                    <td colspan="5" style="padding:0 0 8px 40px;background:var(--bg);">
+                      <table class="wl-sub-table">
+                        <thead><tr>
+                          <th>!MR</th><th>Title</th><th>Project</th><th>Status</th><th>Updated</th>
+                        </tr></thead>
+                        <tbody>
+                          <template x-for="mr in author.mrs" :key="mr.web_url">
+                            <tr>
+                              <td style="white-space:nowrap;color:var(--text-3);" x-text="'!'+mr.id"></td>
+                              <td>
+                                <a :href="mr.web_url" target="_blank" @click.stop
+                                  style="color:var(--text-1);font-weight:600;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;"
+                                  x-text="mr.title"></a>
+                                <span x-show="mr.has_conflicts" style="font-size:10px;color:#ef4444;font-weight:700;">⚠ conflicts</span>
+                              </td>
+                              <td style="color:#fc6d26;font-weight:600;white-space:nowrap;" x-text="mr.project_name"></td>
+                              <td>
+                                <span :style="mr.draft?'background:#f1f5f9;color:#64748b':mr.has_conflicts?'background:#fff1f2;color:#ef4444':'background:#f0fdf4;color:#15803d'"
+                                  style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;"
+                                  x-text="mr.draft?'Draft':mr.has_conflicts?'Conflicts':'Ready'"></span>
+                              </td>
+                              <td style="white-space:nowrap;color:var(--text-3);" x-text="mr.updated_at"></td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
           </div>
 
           <!-- BY PROJECT -->
