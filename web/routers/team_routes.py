@@ -72,7 +72,10 @@ def _get_gl_cfg(db: Session) -> GitLabConfigORM:
 
 def _jira_get(cfg, path: str, params: dict = None):
     import requests
-    url = f"{cfg.base_url.rstrip('/')}/rest/api/3/{path.lstrip('/')}"
+    import urllib3
+    # Use Jira API v2 with SSL verification disabled
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
     resp = requests.get(
         url, params=params or {},
         headers={
@@ -81,6 +84,7 @@ def _jira_get(cfg, path: str, params: dict = None):
             "Content-Type": "application/json",
         },
         timeout=15,
+        verify=False,  # Ignore SSL verification
     )
     if resp.status_code == 401:
         raise HTTPException(401, "Jira auth failed — check PAT and permissions")
