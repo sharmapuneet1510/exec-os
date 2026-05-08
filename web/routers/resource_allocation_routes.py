@@ -1,5 +1,4 @@
 """Resource Allocation — assign team members to projects with % allocation and date ranges."""
-import json
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from typing import Optional
@@ -50,7 +49,7 @@ def list_allocations(db: Session = Depends(get_db)):
 
 @router.post("", status_code=201)
 def create_allocation(body: AllocationIn, db: Session = Depends(get_db)):
-    if body.start_date > body.end_date:
+    if body.start_date >= body.end_date:
         raise HTTPException(400, "start_date must be before end_date")
     if not 0 <= body.allocation_pct <= 200:
         raise HTTPException(400, "allocation_pct must be 0–200")
