@@ -433,6 +433,21 @@ class TeamMemberORM(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ResourceAllocationORM(Base):
+    __tablename__ = "resource_allocations"
+
+    allocation_id = Column(String, primary_key=True, default=_uuid)
+    member_id = Column(String, ForeignKey("team_members.member_id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(String, ForeignKey("projects.project_id", ondelete="CASCADE"), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    allocation_pct = Column(Integer, default=100)
+    role = Column(String(100), nullable=True)
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class MockJiraIssueORM(Base):
     __tablename__ = "mock_jira_issues"
 
