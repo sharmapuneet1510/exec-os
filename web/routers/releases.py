@@ -1,11 +1,11 @@
 from datetime import date, datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from db.base import get_db
-from db.models import ReleaseORM, ProjectORM
+from db.models import ReleaseORM, ProjectORM, AppJiraConfigORM
 
 router = APIRouter(prefix="/api/releases", tags=["releases"])
 
@@ -46,6 +46,23 @@ def _bust_dash():
     r.delete("dashboard:executive")
 
 
+def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
+    import requests
+    url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
+    resp = requests.get(
+        url, params=params or {},
+        headers={
+            "Authorization": f"Bearer {cfg.pat}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+        timeout=15,
+    )
+    if not resp.ok:
+        return None
+    return resp.json()
+
+
 def _to_out(rel: ReleaseORM, db: Session) -> dict:
     today = date.today()
     days_until_due = None
@@ -78,6 +95,105 @@ def _to_out(rel: ReleaseORM, db: Session) -> dict:
         "is_overdue": is_overdue,
         "created_at": rel.created_at,
         "updated_at": rel.updated_at,
+    }
+
+
+# ── Jira Integration Endpoints ────────────────────────────────────────────────
+@router.get("/jira/projects", tags=["releases-jira"])
+def jira_projects(app_id: str = Query(...), db: Session = Depends(get_db)):
+    """Fetch Jira projects for an application."""
+    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if not jira_cfg or not jira_cfg.enabled or not jira_cfg.pat:
+        raise HTTPException(400, "Jira integration not configured for this application")
+
+    data = _jira_get(jira_cfg, "project")
+    if not data:
+        raise HTTPException(502, "Failed to fetch Jira projects")
+
+    projects = [
+        {"key": p.get("key"), "name": p.get("name"), "id": p.get("id")}
+        for p in data
+    ]
+    return {"projects": projects}
+
+
+@router.get("/jira/versions", tags=["releases-jira"])
+def jira_versions(
+    app_id: str = Query(...),
+    project_key: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    """Fetch versions/releases for a Jira project."""
+    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if not jira_cfg or not jira_cfg.enabled or not jira_cfg.pat:
+        raise HTTPException(400, "Jira integration not configured")
+
+    data = _jira_get(jira_cfg, f"project/{project_key}/versions")
+    if not data:
+        raise HTTPException(502, "Failed to fetch Jira versions")
+
+    versions = [
+        {
+            "id": v.get("id"),
+            "name": v.get("name"),
+            "released": v.get("released", False),
+            "releaseDate": v.get("releaseDate"),
+            "description": v.get("description", ""),
+        }
+        for v in data
+    ]
+    return {"versions": versions}
+
+
+@router.get("/jira/issues-in-version", tags=["releases-jira"])
+def jira_issues_in_version(
+    app_id: str = Query(...),
+    project_key: str = Query(...),
+    version_id: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    """Fetch all issues fixed in a specific Jira version."""
+    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if not jira_cfg or not jira_cfg.enabled or not jira_cfg.pat:
+        raise HTTPException(400, "Jira integration not configured")
+
+    # Query: project = PROJECT_KEY AND fixVersion = VERSION_ID
+    jql = f'project = "{project_key}" AND fixVersion = "{version_id}"'
+    fields = "summary,key,status,priority,issuetype,assignee"
+
+    all_issues = []
+    start_at = 0
+    while True:
+        data = _jira_get(jira_cfg, "search", {
+            "jql": jql,
+            "fields": fields,
+            "maxResults": 100,
+            "startAt": start_at
+        })
+        if not data:
+            break
+
+        issues = data.get("issues", [])
+        for issue in issues:
+            f = issue.get("fields", {})
+            all_issues.append({
+                "key": issue.get("key"),
+                "summary": f.get("summary", ""),
+                "status": (f.get("status") or {}).get("name", ""),
+                "priority": (f.get("priority") or {}).get("name", ""),
+                "type": (f.get("issuetype") or {}).get("name", ""),
+                "assignee": (f.get("assignee") or {}).get("displayName", "Unassigned"),
+            })
+
+        total = data.get("total", 0)
+        start_at += len(issues)
+        if start_at >= total or not issues:
+            break
+
+    return {
+        "issues": all_issues,
+        "count": len(all_issues),
+        "summary": f"{len(all_issues)} issues in this version"
     }
 
 

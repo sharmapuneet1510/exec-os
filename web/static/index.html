@@ -5007,6 +5007,32 @@
       </div>
     </div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Jira Integration Section -->
+      <div style="padding:12px;background:var(--bg-2);border-radius:8px;border-left:3px solid #6366f1;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;">📊 Jira Integration</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Jira Project</label>
+            <select x-model="releaseModal.data.jira_project_key" @change="loadJiraVersions()" class="input" style="font-size:12px;">
+              <option value="">— Select Project —</option>
+              <template x-for="p in releaseModal.jiraProjects" :key="p.key">
+                <option :value="p.key" x-text="p.name + ' (' + p.key + ')'"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Version</label>
+            <select x-model="releaseModal.data.jira_version_id" @change="loadJiraIssues()" class="input" style="font-size:12px;">
+              <option value="">— Select Version —</option>
+              <template x-for="v in releaseModal.jiraVersions" :key="v.id">
+                <option :value="v.id" x-text="v.name + (v.released ? ' (Released)' : ' (Unreleased)')"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+        <div x-show="releaseModal.data.jira_project_key && releaseModal.data.jira_version_id" style="margin-top:10px;font-size:11px;color:var(--text-3);" x-text="releaseModal.jiraIssueCount ? releaseModal.jiraIssueCount + ' issues found' : ''"></div>
+      </div>
+
       <div>
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Release Name *</label>
         <input x-model="releaseModal.data.name" class="input" placeholder="e.g. Version 2.0 Release" />
@@ -5264,7 +5290,7 @@ function app() {
     taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
     milestoneModal:  { open:false, editing:false, data:{} },
-    releaseModal:    { open:false, editing:false, data:{} },
+    releaseModal:    { open:false, editing:false, data:{}, jiraProjects:[], jiraVersions:[], jiraIssues:[], jiraIssueCount:0 },
     commitmentModal: { open:false, data:{} },
     alertModal:      { open:false, data:{} },
 
@@ -5643,17 +5669,71 @@ function app() {
       await fetch(`/api/milestones/${id}`,{method:'DELETE'}); await this.loadMilestones();
     },
 
-    openReleaseModal(rel) {
+    async openReleaseModal(rel) {
       if(rel) {
-        this.releaseModal={open:true,editing:true,data:{...rel,due_date:rel.due_date||'',project_id:rel.project_id||''}};
+        this.releaseModal={open:true,editing:true,data:{...rel,due_date:rel.due_date||'',project_id:rel.project_id||'',jira_project_key:'',jira_version_id:''},jiraProjects:[],jiraVersions:[],jiraIssues:[],jiraIssueCount:0};
       } else {
-        this.releaseModal={open:true,editing:false,data:{name:'',version:'',project_id:'',due_date:'',status:'planned',description:''}};
+        this.releaseModal={open:true,editing:false,data:{name:'',version:'',project_id:'',due_date:'',status:'planned',description:'',jira_project_key:'',jira_version_id:''},jiraProjects:[],jiraVersions:[],jiraIssues:[],jiraIssueCount:0};
       }
+      await this.loadJiraProjects();
+    },
+    async loadJiraProjects() {
+      try {
+        const appId=this.selectedApp?.application_id||this.applications[0]?.application_id;
+        if(!appId) return;
+        const res=await fetch(`/api/releases/jira/projects?app_id=${appId}`);
+        if(!res.ok) return;
+        const data=await res.json();
+        this.releaseModal.jiraProjects=data.projects||[];
+      } catch(e) {}
+    },
+    async loadJiraVersions() {
+      try {
+        const appId=this.selectedApp?.application_id||this.applications[0]?.application_id;
+        const projectKey=this.releaseModal.data.jira_project_key;
+        if(!appId||!projectKey) return;
+        const res=await fetch(`/api/releases/jira/versions?app_id=${appId}&project_key=${projectKey}`);
+        if(!res.ok) return;
+        const data=await res.json();
+        this.releaseModal.jiraVersions=data.versions||[];
+        this.releaseModal.data.jira_version_id='';
+        this.releaseModal.jiraIssues=[];
+        this.releaseModal.jiraIssueCount=0;
+      } catch(e) {}
+    },
+    async loadJiraIssues() {
+      try {
+        const appId=this.selectedApp?.application_id||this.applications[0]?.application_id;
+        const projectKey=this.releaseModal.data.jira_project_key;
+        const versionId=this.releaseModal.data.jira_version_id;
+        if(!appId||!projectKey||!versionId) return;
+        const res=await fetch(`/api/releases/jira/issues-in-version?app_id=${appId}&project_key=${projectKey}&version_id=${versionId}`);
+        if(!res.ok) return;
+        const data=await res.json();
+        this.releaseModal.jiraIssues=data.issues||[];
+        this.releaseModal.jiraIssueCount=data.count||0;
+        const version=this.releaseModal.jiraVersions.find(v=>v.id===versionId);
+        if(version&&!this.releaseModal.editing) {
+          this.releaseModal.data.name=version.name;
+          this.releaseModal.data.version=version.name;
+          this.releaseModal.data.due_date=version.releaseDate||'';
+          const issuesList=this.releaseModal.jiraIssues.map(i=>`• ${i.key}: ${i.summary}`).join('\n');
+          this.releaseModal.data.description=`Release: ${version.name}\n\nIssues (${this.releaseModal.jiraIssueCount}):\n${issuesList}`;
+        }
+      } catch(e) {}
     },
     async saveRelease() {
       const d=this.releaseModal.data;
       if(!d.name?.trim()) return;
-      const payload={...d,due_date:d.due_date||null,project_id:d.project_id||null};
+      const payload={
+        name:d.name,
+        version:d.version||'',
+        project_id:d.project_id||null,
+        due_date:d.due_date||null,
+        status:d.status||'planned',
+        description:d.description||'',
+        application_id:d.application_id||null,
+      };
       if(this.releaseModal.editing) {
         await fetch(`/api/releases/${d.release_id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       } else {
