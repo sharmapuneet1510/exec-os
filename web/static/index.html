@@ -3921,25 +3921,25 @@
           </div>
         </div>
 
-        <!-- Sprint board table -->
+        <!-- Sprint board table - Compact -->
         <div x-show="sprintData" class="card" style="padding:0;overflow:hidden;">
           <!-- Table header -->
-          <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:14px;font-weight:700;color:var(--text-1);" x-text="sprintData?.sprint?.name||'Sprint Board'"></span>
-              <span style="font-size:11px;padding:2px 8px;border-radius:5px;font-weight:700;"
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;font-weight:700;color:var(--text-1);" x-text="sprintData?.sprint?.name||'Sprint Board'"></span>
+              <span style="font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;"
                 :style="sprintData?.sprint?.state==='active'?'background:#dcfce7;color:#16a34a':sprintData?.sprint?.state==='closed'?'background:#f3f4f6;color:#6b7280':'background:#dbeafe;color:#2563eb'"
                 x-text="sprintData?.sprint?.state||''"></span>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input x-model="sprintFilter" placeholder="Filter issues…" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font);width:160px;outline:none;">
-              <button @click="loadSprintBoard(true)" :disabled="sprintLoading" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;" x-text="sprintLoading?'Loading…':'↻ Refresh'"></button>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input x-model="sprintFilter" placeholder="Filter…" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:var(--font);width:140px;outline:none;">
+              <button @click="loadSprintBoard(true)" :disabled="sprintLoading" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:11px;" x-text="sprintLoading?'…':'↻'"></button>
             </div>
           </div>
 
-          <!-- Column headers -->
-          <div style="display:grid;grid-template-columns:80px 2fr 100px 90px 140px 1.5fr;gap:0;padding:8px 18px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);">
-            <div>Key</div><div>Summary</div><div>Status</div><div>Priority</div><div>Assignee</div><div>GitLab MR</div>
+          <!-- Column headers - Compact -->
+          <div style="display:grid;grid-template-columns:50px 55px 45px 2fr 65px 60px 85px 65px 1.2fr;gap:0;padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);overflow-x:auto;">
+            <div>Project</div><div>Key</div><div>Type</div><div>Summary</div><div>Status</div><div>Priority</div><div>Assignee</div><div>Due</div><div>MR</div>
           </div>
 
           <!-- Loading -->
@@ -3949,52 +3949,59 @@
           <!-- Empty -->
           <div x-show="!sprintLoading && !sprintError && sprintData?.items?.length===0" style="padding:40px;text-align:center;color:var(--text-3);">No items in this sprint</div>
 
-          <!-- Rows -->
+          <!-- Rows - Compact -->
           <template x-for="item in (sprintData?.items||[]).filter(i => !sprintFilter || i.key.toLowerCase().includes(sprintFilter.toLowerCase()) || i.summary.toLowerCase().includes(sprintFilter.toLowerCase()) || i.assignee.toLowerCase().includes(sprintFilter.toLowerCase()))" :key="item.key">
-            <div style="display:grid;grid-template-columns:80px 2fr 100px 90px 140px 1.5fr;gap:0;padding:10px 18px;border-bottom:1px solid var(--border);align-items:start;transition:background .12s;"
+            <div style="display:grid;grid-template-columns:50px 55px 45px 2fr 65px 60px 85px 65px 1.2fr;gap:0;padding:8px 12px;border-bottom:1px solid var(--border);align-items:start;transition:background .1s;overflow-x:auto;"
               onmouseenter="this.style.background='#f9f8f6'" onmouseleave="this.style.background='transparent'">
+
+              <!-- Project -->
+              <div style="font-size:10px;font-weight:600;color:var(--accent);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.project" x-text="item.project"></div>
 
               <!-- Key -->
               <div style="min-width:0;">
-                <a :href="item.web_url" target="_blank" style="font-size:11.5px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;line-height:1.4;" x-text="item.key"></a>
-                <div style="font-size:10px;color:var(--text-3);line-height:1.3;" x-text="item.type"></div>
+                <a :href="item.web_url" target="_blank" style="font-size:10px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;" x-text="item.key"></a>
               </div>
 
-              <!-- Summary with tooltip -->
-              <div style="padding-right:12px;min-width:0;" :title="item.summary">
-                <div style="font-size:12.5px;font-weight:500;color:var(--text-1);line-height:1.4;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;max-height:3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" x-text="item.summary"></div>
+              <!-- Type -->
+              <div style="font-size:9px;color:var(--text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.type" x-text="item.type"></div>
+
+              <!-- Summary with tooltip - Word wrapped -->
+              <div style="min-width:0;" :title="item.summary">
+                <div style="font-size:10px;font-weight:500;color:var(--text-1);line-height:1.3;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;max-height:2.6em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" x-text="item.summary"></div>
               </div>
 
               <!-- Status -->
-              <div>
-                <span style="font-size:10.5px;padding:2px 7px;border-radius:5px;font-weight:600;"
+              <div style="min-width:0;">
+                <span style="font-size:9px;padding:2px 5px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
                   :style="item.cat==='done'?'background:#dcfce7;color:#16a34a':item.cat==='indeterminate'?'background:#dbeafe;color:#2563eb':'background:#f3f4f6;color:#6b7280'"
                   x-text="item.status"></span>
               </div>
 
               <!-- Priority -->
-              <div>
-                <span style="font-size:10.5px;padding:2px 7px;border-radius:5px;font-weight:600;"
+              <div style="min-width:0;">
+                <span style="font-size:9px;padding:2px 5px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
                   :style="item.priority==='Highest'||item.priority==='Critical'?'background:#fff1f2;color:#dc2626':item.priority==='High'?'background:#fff7ed;color:#c2410c':item.priority==='Low'||item.priority==='Lowest'?'background:#f9f8f6;color:var(--text-3)':'background:#fef9ec;color:#d97706'"
                   x-text="item.priority"></span>
               </div>
 
               <!-- Assignee -->
-              <div style="font-size:11.5px;color:var(--text-2);word-wrap:break-word;overflow-wrap:break-word;white-space:normal;line-height:1.4;min-width:0;" :title="item.assignee" x-text="item.assignee"></div>
+              <div style="font-size:10px;color:var(--text-2);line-height:1.3;min-width:0;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" :title="item.assignee" x-text="item.assignee"></div>
 
-              <!-- GitLab MR -->
-              <div style="min-width:0;">
-                <div x-show="!item.mr" style="font-size:11px;color:var(--text-3);">No MR</div>
+              <!-- Due Date -->
+              <div style="font-size:10px;color:var(--text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.due_date||'—'" x-text="item.due_date||'—'"></div>
+
+              <!-- GitLab MR - Compact -->
+              <div style="min-width:0;font-size:9px;">
+                <div x-show="!item.mr" style="color:var(--text-3);">—</div>
                 <div x-show="item.mr">
                   <a :href="item.mr?.web_url" target="_blank" style="text-decoration:none;">
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                      <span style="font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;white-space:nowrap;"
+                    <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;">
+                      <span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap;"
                         :style="item.mr?.state==='merged'?'background:#f0fdf4;color:#16a34a;':item.mr?.draft?'background:#fef3c7;color:#92400e':'background:#eff6ff;color:#2563eb'"
-                        x-text="item.mr?.state==='merged'?'Merged':item.mr?.draft?'Draft':'Open'"></span>
-                      <span x-show="!item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#fff7ed;color:#c2410c;font-weight:600;border:1px solid #fed7aa;white-space:nowrap;">Needs review</span>
-                      <span x-show="item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#f0fdf4;color:#16a34a;font-weight:600;white-space:nowrap;">Reviewed ✓</span>
+                        x-text="item.mr?.state==='merged'?'✓':item.mr?.draft?'D':'O'"></span>
+                      <span x-show="!item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:8px;padding:1px 3px;border-radius:3px;background:#fff7ed;color:#c2410c;font-weight:600;">NR</span>
                     </div>
-                    <div style="font-size:10px;color:var(--text-3);margin-top:3px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;line-height:1.3;max-height:2em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;" :title="item.mr?.title" x-text="item.mr?.title"></div>
+                    <div style="font-size:8px;color:var(--text-3);margin-top:2px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;line-height:1.2;max-height:1.4em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;" :title="item.mr?.title" x-text="item.mr?.title"></div>
                     <div style="font-size:10px;color:var(--text-3);">
                       <span x-show="item.mr?.state==='merged'" x-text="'Merged: ' + item.mr?.merged_at"></span>
                       <span x-show="item.mr?.state!=='merged'" x-text="'Raised: ' + item.mr?.created_at"></span>
@@ -6536,6 +6543,10 @@ function app() {
         });
         this.sprintData = data;
         if (data.sprint?.name) this.sprintCfg.sprint_name = data.sprint.name;
+        // Also update team workload with sprint data
+        this.workloadAppId = this.sprintAppId;
+        localStorage.setItem('execos_workload_app', this.sprintAppId);
+        await this.loadTeamWorkload();
       } catch(e) {
         this.sprintError = e.message;
       }

@@ -291,13 +291,15 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
         merged_mr = next((m for m in matching if m["state"] == "merged"), None)
         mr_display = open_mr or merged_mr
 
+        project_name = (f.get("project") or {}).get("key", "")
         item = {
             "key":         jira_key,
+            "project":     project_name,
+            "type":        itype,
             "summary":     f.get("summary", ""),
             "status":      status,
             "cat":         cat,
             "priority":    priority,
-            "type":        itype,
             "assignee":    assignee.get("displayName", "Unassigned"),
             "due_date":    f.get("duedate"),
             "updated":     (f.get("updated") or "")[:10],
