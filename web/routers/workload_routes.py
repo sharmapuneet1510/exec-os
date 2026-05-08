@@ -138,8 +138,18 @@ def _gl_all_mrs(cfg: AppGitLabConfigORM) -> list:
 
 
 @router.get("/team")
-def get_team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
-    """Return team workload: aggregated local tasks, real Jira issues, real GitLab MRs."""
+def get_team_workload(app_id: str = Query(None), db: Session = Depends(_db)):
+    """Return team workload: aggregated local tasks, real Jira issues, real GitLab MRs.
+
+    If app_id not provided, uses the first available application automatically.
+    """
+    # If no app_id provided, use first available application
+    if not app_id:
+        from db.models import ApplicationORM
+        app = db.query(ApplicationORM).order_by(ApplicationORM.created_at).first()
+        if not app:
+            return {"team": [], "summary": {"total_members": 0, "overloaded_count": 0, "total_local_tasks": 0, "total_jira_issues": 0, "total_mrs": 0, "last_updated": None}}
+        app_id = app.application_id
 
     cache_key = f"workload_team_{app_id}"
     cached = _cache_get(cache_key)

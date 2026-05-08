@@ -6315,16 +6315,8 @@ function app() {
       this.workloadLoading = true;
       this.workloadError = null;
       try {
-        let appId = this.workloadAppId;
-        if (!appId && this.applications?.length > 0) {
-          appId = this.applications[0].application_id;
-          this.workloadAppId = appId;
-          localStorage.setItem('execos_workload_app', appId);
-        }
-        if (!appId) {
-          throw new Error('No application selected. Create or select an application first.');
-        }
-        const response = await fetch(`/api/workload/team?app_id=${appId}`);
+        const appIdParam = this.workloadAppId ? `?app_id=${this.workloadAppId}` : '';
+        const response = await fetch(`/api/workload/team${appIdParam}`);
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           throw new Error(errData.detail || `HTTP ${response.status}`);
