@@ -6251,7 +6251,7 @@ function app() {
 
     async loadResourcing() {
       try {
-        const data = await fetch('/api/resourcing/heatmap').then(r => r.json());
+        const data = await fetch('/api/resource-allocations/forecast').then(r => r.json());
         this.resourcingData = data;
       } catch(e) {
         console.error('Failed to load resourcing data:', e);
@@ -6272,7 +6272,7 @@ function app() {
         return;
       }
       try {
-        const url = m.allocation_id ? `/api/resourcing/allocations/${m.allocation_id}` : '/api/resourcing/allocations';
+        const url = m.allocation_id ? `/api/resource-allocations/${m.allocation_id}` : '/api/resource-allocations';
         const method = m.allocation_id ? 'PATCH' : 'POST';
         const res = await fetch(url, {
           method,
@@ -6301,7 +6301,7 @@ function app() {
     async deleteAllocation(id) {
       if (!confirm('Delete this allocation?')) return;
       try {
-        await fetch(`/api/resourcing/allocations/${id}`, { method: 'DELETE' });
+        await fetch(`/api/resource-allocations/${id}`, { method: 'DELETE' });
         this.resourcingModal.open = false;
         this.addToast('Allocation deleted.', 'success');
         await this.loadResourcing();
