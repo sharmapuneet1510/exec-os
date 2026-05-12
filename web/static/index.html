@@ -967,6 +967,14 @@
           appCfg: { jira:{}, gitlab:{}, sprint:{} },
           cfgSaving: false,
           cfgMsg: '',
+          _parentApp: null,
+          get applications() {
+            return this._parentApp?.applications || [];
+          },
+          set applications(val) {
+            // Prevent accidental overrides
+            return;
+          },
           async selectApp(app) {
             this.selApp = app;
             this.appTab = 'overview';
@@ -1024,7 +1032,7 @@
             this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
           },
         }"
-        x-init="if($root.applications?.length) selectApp($root.applications[0])">
+        x-init="this._parentApp = document.querySelector('html')._x_dataStack?.[0]; if(this.applications?.length) selectApp(this.applications[0])">
 
         <!-- Master-detail layout -->
         <div style="display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start;">
@@ -1036,10 +1044,10 @@
               <button @click="$root.openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
             </div>
 
-            <div x-show="!($root.applications||[]).length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
+            <div x-show="!(applications||[]).length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
 
             <div style="display:flex;flex-direction:column;gap:6px;">
-              <template x-for="app in $root.applications" :key="app.application_id">
+              <template x-for="app in (applications||[])" :key="app.application_id">
                 <div @click="selectApp(app)"
                   style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;"
                   :style="selApp?.application_id===app.application_id ? 'border-color:#6366f1;background:#f5f3ff;' : ''">
@@ -1089,19 +1097,19 @@
             <div x-show="appTab==='overview'">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
                 <div class="card" style="text-align:center;padding:18px;">
-                  <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id).length"></div>
+                  <div style="font-size:28px;font-weight:800;color:#6366f1;" x-text="($root.projects||[]).filter(p=>p.application_id===selApp?.application_id).length"></div>
                   <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Projects</div>
                 </div>
                 <div class="card" style="text-align:center;padding:18px;">
-                  <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="$root.projects.filter(p=>p.application_id===selApp?.application_id&&p.status==='active').length"></div>
+                  <div style="font-size:28px;font-weight:800;color:#d97706;" x-text="($root.projects||[]).filter(p=>p.application_id===selApp?.application_id&&p.status==='active').length"></div>
                   <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Active</div>
                 </div>
               </div>
 
               <div class="card" style="margin-bottom:14px;">
                 <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Linked Projects</div>
-                <div x-show="!$root.projects.filter(p=>p.application_id===selApp?.application_id).length" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
-                <template x-for="p in $root.projects.filter(p=>p.application_id===selApp?.application_id)" :key="p.project_id">
+                <div x-show="!($root.projects||[]).filter(p=>p.application_id===selApp?.application_id).length" style="font-size:13px;color:var(--text-3);padding:16px 0;text-align:center;">No projects linked — edit a project and set its Application.</div>
+                <template x-for="p in ($root.projects||[]).filter(p=>p.application_id===selApp?.application_id)" :key="p.project_id">
                   <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
                     <div :class="'dot-'+(p.health||'grey')" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
                     <span style="flex:1;font-size:13px;font-weight:500;" x-text="p.name"></span>

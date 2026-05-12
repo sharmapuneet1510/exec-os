@@ -24,6 +24,8 @@ from web.routers.proj_estimate_routes import router as proj_estimate_router
 from web.routers.delivery_routes import router as delivery_router
 from web.routers.application_routes import router as application_router
 from web.routers.app_integration_routes import router as app_integration_router
+from web.routers.integrations import router as integrations_router
+from web.routers.stakeholders import router as stakeholders_router
 from web.routers.workload_routes import router as workload_router
 from web.routers.outlook_calendar_routes import router as outlook_router
 from web.routers.activity_log_routes import router as activity_log_router
@@ -31,6 +33,7 @@ from web.routers.releases import router as releases_router
 from web.routers.resource_allocation_routes import router as resource_allocation_router
 from web.routers import reminders
 from web.routers.admin import router as admin_router
+from web.routers.settings import router as settings_router
 
 from services.reminder_scheduler import create_scheduler_job
 from services.backup_scheduler import start_backup_scheduler, shutdown_backup_scheduler
@@ -93,12 +96,15 @@ app.include_router(proj_estimate_router)
 app.include_router(delivery_router)
 app.include_router(application_router)
 app.include_router(app_integration_router)
+app.include_router(integrations_router)
+app.include_router(stakeholders_router)
 app.include_router(workload_router)
 app.include_router(outlook_router)
 app.include_router(activity_log_router)
 app.include_router(releases_router)
 app.include_router(resource_allocation_router)
 app.include_router(admin_router)
+app.include_router(settings_router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
