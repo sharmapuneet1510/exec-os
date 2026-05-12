@@ -1032,13 +1032,13 @@
             this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
           },
           async openApplicationModal(app) {
-            return this._parentApp.openApplicationModal(app);
+            if (window.__appInstance) return window.__appInstance.openApplicationModal(app);
           },
           async deleteApplication(id) {
-            return this._parentApp.deleteApplication(id);
+            if (window.__appInstance) return window.__appInstance.deleteApplication(id);
           },
         }"
-        x-init="this._parentApp = document.querySelector('html')._x_dataStack?.[0]; if(this.applications?.length) this.selectApp(this.applications[0])">
+        x-init="if(this.applications?.length) this.selectApp(this.applications[0])">
 
         <!-- Master-detail layout -->
         <div style="display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start;">
@@ -5571,6 +5571,7 @@ function app() {
     },
 
     async init() {
+      window.__appInstance = this;  // Store reference for nested scopes
       await this.loadAll();
       await this.loadStakeholders();
       this.checkReminders();
