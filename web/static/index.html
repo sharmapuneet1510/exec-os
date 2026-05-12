@@ -1031,6 +1031,12 @@
             await fetch('/api/applications/'+this.selApp.application_id+'/integrations/sprint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});
             this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
           },
+          async openApplicationModal(app) {
+            return this._parentApp.openApplicationModal(app);
+          },
+          async deleteApplication(id) {
+            return this._parentApp.deleteApplication(id);
+          },
         }"
         x-init="this._parentApp = document.querySelector('html')._x_dataStack?.[0]; if(this.applications?.length) this.selectApp(this.applications[0])">
 
@@ -1041,7 +1047,7 @@
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);">Applications</div>
-              <button @click="$root.openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
+              <button @click="openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
             </div>
 
             <div x-show="!(applications||[]).length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
@@ -1074,8 +1080,8 @@
                 <div style="font-size:12.5px;color:var(--text-2);margin-top:2px;" x-text="selApp?.description||'No description'"></div>
               </div>
               <div style="display:flex;gap:8px;flex-shrink:0;">
-                <button @click="$root.openApplicationModal(selApp)" class="btn-secondary" style="font-size:12px;">✏️ Edit</button>
-                <button @click="$root.deleteApplication(selApp.application_id)"
+                <button @click="openApplicationModal(selApp)" class="btn-secondary" style="font-size:12px;">✏️ Edit</button>
+                <button @click="deleteApplication(selApp.application_id)"
                   style="padding:7px 12px;border:1px solid var(--red-border);background:var(--red-bg);color:var(--red);border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">🗑</button>
               </div>
             </div>
