@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Text, Date, DateTime, ForeignKey, Boolean, Integer
+from sqlalchemy import Column, String, Text, Date, DateTime, ForeignKey, Boolean, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .base import Base
 
@@ -228,6 +228,62 @@ class ApplicationORM(Base):
     name           = Column(String(255), nullable=False)
     code           = Column(String(50), default="")   # short identifier e.g. "MYAPP"
     description    = Column(Text, default="")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class StakeholderORM(Base):
+    __tablename__ = "stakeholders"
+
+    stakeholder_id = Column(String, primary_key=True, default=_uuid)
+    name           = Column(String(255), nullable=False)
+    email          = Column(String(255), nullable=False, unique=True)
+    role           = Column(String(100), default="")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ApplicationStakeholderORM(Base):
+    __tablename__ = "application_stakeholders"
+
+    id                = Column(String, primary_key=True, default=_uuid)
+    application_id    = Column(String, ForeignKey("applications.application_id", ondelete="CASCADE"), nullable=False)
+    stakeholder_id    = Column(String, ForeignKey("stakeholders.stakeholder_id", ondelete="CASCADE"), nullable=False)
+    created_at        = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("application_id", "stakeholder_id", name="uq_app_stakeholder"),)
+
+
+class GitLabIntegrationORM(Base):
+    __tablename__ = "gitlab_integrations"
+
+    gitlab_id      = Column(String, primary_key=True, default=_uuid)
+    application_id = Column(String, ForeignKey("applications.application_id", ondelete="CASCADE"), nullable=False)
+    namespace      = Column(String(255), nullable=False)
+    project_name   = Column(String(255), default="")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class JiraIntegrationORM(Base):
+    __tablename__ = "jira_integrations"
+
+    jira_id        = Column(String, primary_key=True, default=_uuid)
+    application_id = Column(String, ForeignKey("applications.application_id", ondelete="CASCADE"), nullable=False)
+    project_key    = Column(String(50), nullable=False)
+    project_name   = Column(String(255), default="")
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class IntegrationTokenORM(Base):
+    __tablename__ = "integration_tokens"
+
+    id             = Column(Integer, primary_key=True, default=1)
+    gitlab_base_url = Column(String(500), default="")
+    gitlab_token   = Column(Text, default="")
+    jira_base_url  = Column(String(500), default="")
+    jira_token     = Column(Text, default="")
     created_at     = Column(DateTime, default=datetime.utcnow)
     updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
