@@ -1032,7 +1032,7 @@
             this.cfgMsg='Sprint config saved ✓'; this.cfgSaving=false;
           },
         }"
-        x-init="this._parentApp = document.querySelector('html')._x_dataStack?.[0]; if(this.applications?.length) selectApp(this.applications[0])">
+        x-init="this._parentApp = document.querySelector('html')._x_dataStack?.[0]; if(this.applications?.length) this.selectApp(this.applications[0])">
 
         <!-- Master-detail layout -->
         <div style="display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start;">
@@ -5714,6 +5714,31 @@ function app() {
           appStakeholders:[],
           appGitLabIntegrations:[],
           appJiraIntegrations:[],
+        };
+      }
+    },
+    openApplicationModal(app) {
+      if (app) {
+        this.applicationModal = {
+          open: true,
+          editing: true,
+          tab: "overview",
+          data: {...app, stakeholders: [], gitlab_integrations: [], jira_integrations: []},
+          allStakeholders: [],
+          appStakeholders: [],
+          appGitLabIntegrations: [],
+          appJiraIntegrations: [],
+        };
+      } else {
+        this.applicationModal = {
+          open: true,
+          editing: false,
+          tab: "overview",
+          data: {name: '', description: '', owner: '', status: 'active'},
+          allStakeholders: [],
+          appStakeholders: [],
+          appGitLabIntegrations: [],
+          appJiraIntegrations: [],
         };
       }
     },
