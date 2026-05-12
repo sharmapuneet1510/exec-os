@@ -967,9 +967,8 @@
           appCfg: { jira:{}, gitlab:{}, sprint:{} },
           cfgSaving: false,
           cfgMsg: '',
-          _parentApp: null,
           get applications() {
-            return this._parentApp?.applications || [];
+            return window.__appInstance?.applications || [];
           },
           set applications(val) {
             // Prevent accidental overrides
