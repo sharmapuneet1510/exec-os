@@ -5717,31 +5717,6 @@ function app() {
         };
       }
     },
-    openApplicationModal(app) {
-      if (app) {
-        this.applicationModal = {
-          open: true,
-          editing: true,
-          tab: "overview",
-          data: {...app, stakeholders: [], gitlab_integrations: [], jira_integrations: []},
-          allStakeholders: [],
-          appStakeholders: [],
-          appGitLabIntegrations: [],
-          appJiraIntegrations: [],
-        };
-      } else {
-        this.applicationModal = {
-          open: true,
-          editing: false,
-          tab: "overview",
-          data: {name: '', description: '', owner: '', status: 'active'},
-          allStakeholders: [],
-          appStakeholders: [],
-          appGitLabIntegrations: [],
-          appJiraIntegrations: [],
-        };
-      }
-    },
     async saveApplication() {
       const d=this.applicationModal.data;
       if(!d.name?.trim()) {
