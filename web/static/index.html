@@ -494,6 +494,7 @@
 
       <div class="nav-group-label" style="margin-top:4px;">Admin</div>
       <div @click="nav('admin')"           :class="navCls('admin')">          <div class="nav-icon">⚙️</div><span style="flex:1">Settings</span></div>
+      <div @click="nav('settings')"        :class="navCls('settings')">        <span class="nav-icon">🔑</span><span>Integration Tokens</span></div>
 
     </nav>
 
@@ -1035,7 +1036,7 @@
               <button @click="openApplicationModal()" class="btn-primary" style="font-size:11px;padding:5px 12px;">+ New</button>
             </div>
 
-            <div x-show="!$root.applications.length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
+            <div x-show="!($root.applications||[]).length" style="text-align:center;padding:40px 16px;color:var(--text-3);font-size:13px;">No applications yet</div>
 
             <div style="display:flex;flex-direction:column;gap:6px;">
               <template x-for="app in $root.applications" :key="app.application_id">
@@ -1046,7 +1047,7 @@
                     <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#4f46e5,#818cf8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.05em;" x-text="app.code||app.name.slice(0,3).toUpperCase()"></div>
                     <div style="min-width:0;">
                       <div style="font-size:13px;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="app.name"></div>
-                      <div style="font-size:11px;color:var(--text-3);" x-text="$root.projects.filter(p=>p.application_id===app.application_id).length + ' projects'"></div>
+                      <div style="font-size:11px;color:var(--text-3);" x-text="(($root.projects||[]).filter(p=>p.application_id===app.application_id).length)+' projects'"></div>
                     </div>
                   </div>
                 </div>
@@ -4707,6 +4708,66 @@
         </div>
       </div>
 
+      <!-- ══ SETTINGS: INTEGRATION TOKENS ══ -->
+      <div x-show="view==='settings'" x-cloak>
+        <div style="max-width:720px;">
+
+          <!-- GitLab Token Configuration -->
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:18px;">🦊</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">GitLab Configuration</div>
+                <div style="font-size:12px;color:var(--text-3);">Connect to GitLab to manage merge requests and projects</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">GitLab Base URL</label>
+                <input x-model="tokenConfig.gitlab_base_url" type="text" placeholder="https://gitlab.com"
+                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;font-family:var(--font-mono);">
+              </div>
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">GitLab Personal Access Token</label>
+                <input x-model="tokenConfig.gitlab_token" type="password" placeholder="glpat-xxxxxxxxxxxx"
+                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;font-family:var(--font-mono);">
+              </div>
+              <button @click="testGitLabToken()" class="btn-secondary" style="align-self:flex-start;font-size:12px;">Test GitLab Connection</button>
+            </div>
+          </div>
+
+          <!-- Jira Token Configuration -->
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🔵</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Jira Configuration</div>
+                <div style="font-size:12px;color:var(--text-3);">Connect to Jira to sync issues and projects</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira Base URL</label>
+                <input x-model="tokenConfig.jira_base_url" type="text" placeholder="https://your-domain.atlassian.net"
+                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;font-family:var(--font-mono);">
+              </div>
+              <div>
+                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Jira API Token</label>
+                <input x-model="tokenConfig.jira_token" type="password" placeholder="ATATT3xxxxxxxxxxxx"
+                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;font-family:var(--font-mono);">
+              </div>
+              <button @click="testJiraToken()" class="btn-secondary" style="align-self:flex-start;font-size:12px;">Test Jira Connection</button>
+            </div>
+          </div>
+
+          <!-- Save All -->
+          <div style="display:flex;gap:10px;">
+            <button @click="saveTokenConfig()" class="btn-primary" style="font-size:13px;">Save All Tokens</button>
+          </div>
+
+        </div>
+      </div>
+
     </div><!-- /content -->
   </main>
 </div><!-- /layout -->
@@ -5155,30 +5216,119 @@
 
 <!-- ══ APPLICATION MODAL ══ -->
 <div x-show="applicationModal.open" x-cloak class="modal-backdrop" @click.self="applicationModal.open=false">
-  <div class="modal-box">
-    <div class="modal-header" style="background:linear-gradient(135deg,#4f46e5,#818cf8);">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
+  <div class="modal-box" style="width:600px;">
+    <div class="modal-header" style="background:linear-gradient(135deg,#4f46e5,#818cf8);padding-bottom:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div>
           <div style="font-size:18px;font-weight:800;" x-text="applicationModal.editing ? 'Edit Application' : 'New Application'"></div>
           <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px;">Top-level grouping for your projects</div>
         </div>
         <button @click="applicationModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
-    </div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
-      <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Application Name *</label>
-        <input x-model="applicationModal.data.name" class="input" placeholder="e.g. ExecOS Platform" />
-      </div>
-      <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Code <span style="font-weight:400;color:var(--text-3);">(short identifier, auto-uppercased)</span></label>
-        <input x-model="applicationModal.data.code" class="input" placeholder="e.g. EXEC, MOBILE, PORTAL" maxlength="20" />
-      </div>
-      <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Description</label>
-        <textarea x-model="applicationModal.data.description" class="input" style="height:70px;" placeholder="What does this application do?"></textarea>
+      <!-- Tab buttons -->
+      <div style="display:flex;gap:0;border-bottom:2px solid rgba(255,255,255,.2);">
+        <button @click="applicationModal.tab='overview'" :class="{'tab-btn-active':applicationModal.tab==='overview'}" style="flex:1;padding:10px;background:none;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;" :style="applicationModal.tab==='overview'?'border-bottom-color:#fff;':''">Overview</button>
+        <button @click="applicationModal.tab='stakeholders'" :class="{'tab-btn-active':applicationModal.tab==='stakeholders'}" style="flex:1;padding:10px;background:none;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;" :style="applicationModal.tab==='stakeholders'?'border-bottom-color:#fff;':''">Stakeholders</button>
+        <button @click="applicationModal.tab='gitlab'" :class="{'tab-btn-active':applicationModal.tab==='gitlab'}" style="flex:1;padding:10px;background:none;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;" :style="applicationModal.tab==='gitlab'?'border-bottom-color:#fff;':''">GitLab</button>
+        <button @click="applicationModal.tab='jira'" :class="{'tab-btn-active':applicationModal.tab==='jira'}" style="flex:1;padding:10px;background:none;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;" :style="applicationModal.tab==='jira'?'border-bottom-color:#fff;':''">Jira</button>
       </div>
     </div>
+
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;min-height:300px;">
+
+      <!-- OVERVIEW TAB -->
+      <div x-show="applicationModal.tab==='overview'" style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Application Name *</label>
+          <input x-model="applicationModal.data.name" class="input" placeholder="e.g. ExecOS Platform" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Code <span style="font-weight:400;color:var(--text-3);">(short identifier, auto-uppercased)</span></label>
+          <input x-model="applicationModal.data.code" class="input" placeholder="e.g. EXEC, MOBILE, PORTAL" maxlength="20" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Description</label>
+          <textarea x-model="applicationModal.data.description" class="input" style="height:70px;" placeholder="What does this application do?"></textarea>
+        </div>
+      </div>
+
+      <!-- STAKEHOLDERS TAB -->
+      <div x-show="applicationModal.tab==='stakeholders'" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;">
+          <select x-model="applicationModal.stakeholdersInput" class="input" style="flex:1;font-size:12px;" placeholder="Select stakeholder">
+            <option value="">-- Select stakeholder --</option>
+            <template x-for="sh in applicationModal.allStakeholders" :key="sh.stakeholder_id">
+              <option :value="sh.stakeholder_id" x-text="sh.name"></option>
+            </template>
+          </select>
+          <button @click="linkStakeholderToApp()" class="btn-primary" style="font-size:11px;padding:8px 14px;white-space:nowrap;">Link</button>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:10px;">
+          <template x-if="applicationModal.appStakeholders.length === 0">
+            <div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px;">No stakeholders linked</div>
+          </template>
+          <template x-if="applicationModal.appStakeholders.length > 0">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <template x-for="sh in applicationModal.appStakeholders" :key="sh.stakeholder_id">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--bg-2);border-radius:4px;">
+                  <span style="font-size:12px;" x-text="sh.name"></span>
+                  <button @click="unlinkStakeholderFromApp(sh.stakeholder_id)" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:14px;">✕</button>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+        <button @click="openCreateStakeholderForm()" class="btn-secondary" style="font-size:11px;padding:8px 12px;">+ New Stakeholder</button>
+      </div>
+
+      <!-- GITLAB TAB -->
+      <div x-show="applicationModal.tab==='gitlab'" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;">
+          <input x-model="applicationModal.gitlabNamespaceInput" class="input" style="flex:1;font-size:12px;" placeholder="e.g. my-team/my-namespace" />
+          <button @click="addGitLabNamespace()" class="btn-primary" style="font-size:11px;padding:8px 14px;white-space:nowrap;">+ Add</button>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:10px;">
+          <template x-if="applicationModal.appGitLabIntegrations.length === 0">
+            <div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px;">No GitLab namespaces linked</div>
+          </template>
+          <template x-if="applicationModal.appGitLabIntegrations.length > 0">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <template x-for="gl in applicationModal.appGitLabIntegrations" :key="gl.id">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--bg-2);border-radius:4px;">
+                  <span style="font-size:12px;" x-text="gl.namespace"></span>
+                  <button @click="removeGitLabNamespace(gl.id)" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:14px;">✕</button>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- JIRA TAB -->
+      <div x-show="applicationModal.tab==='jira'" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;">
+          <input x-model="applicationModal.jiraProjectKeyInput" class="input" style="flex:1;font-size:12px;" placeholder="e.g. PROJ, EXEC, MOBILE" />
+          <button @click="addJiraProject()" class="btn-primary" style="font-size:11px;padding:8px 14px;white-space:nowrap;">+ Add</button>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:10px;">
+          <template x-if="applicationModal.appJiraIntegrations.length === 0">
+            <div style="font-size:12px;color:var(--text-3);text-align:center;padding:20px;">No Jira projects linked</div>
+          </template>
+          <template x-if="applicationModal.appJiraIntegrations.length > 0">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <template x-for="jira in applicationModal.appJiraIntegrations" :key="jira.id">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--bg-2);border-radius:4px;">
+                  <span style="font-size:12px;" x-text="jira.project_key"></span>
+                  <button @click="removeJiraProject(jira.id)" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:14px;">✕</button>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+    </div>
+
     <div class="modal-footer">
       <button @click="applicationModal.open=false" class="btn-secondary">Cancel</button>
       <button @click="saveApplication()" class="btn-primary" x-text="applicationModal.editing ? 'Update Application' : 'Create Application'"></button>
@@ -5285,7 +5435,24 @@ function app() {
     selectedMember: { member_id: '', name: '', email: '', role: '', gitlab_username: '', max_concurrent_tasks: 8, is_active: true },
 
     applications: [],
-    applicationModal: { open:false, editing:false, data:{} },
+    applicationModal: {
+      open:false, editing:false, data:{},
+      tab: "overview",
+      stakeholdersInput: "",
+      gitlabNamespaceInput: "",
+      jiraProjectKeyInput: "",
+      allStakeholders: [],
+      appStakeholders: [],
+      appGitLabIntegrations: [],
+      appJiraIntegrations: [],
+    },
+
+    tokenConfig: {
+      gitlab_base_url: "",
+      gitlab_token: "",
+      jira_base_url: "",
+      jira_token: ""
+    },
 
     taskModal:       { open:false, editing:false, inboxMode:false, data:{} },
     projectModal:    { open:false, editing:false, data:{} },
@@ -5301,7 +5468,7 @@ function app() {
         tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
         releases:'Releases', commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
-        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', resourcing:'Resourcing', admin:'Settings',
+        'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', resourcing:'Resourcing', admin:'Settings', settings:'Integration Tokens',
         planner:'Day Planner', 'my-hub':'My Hub', 'sprint-board':'Sprint Board',
         'proj-planner':'Project Planner', delivery:'Release Tracker',
         applications:'Applications' }[this.view] || 'ExecOS';
@@ -5319,6 +5486,7 @@ function app() {
         'team-workload':'Team workload across local tasks, Jira issues, and GitLab MRs',
         'gitlab-mrs':'Open MRs · By author · By project · Draft vs Ready',
         admin:'Email · Jira · GitLab · Outlook · Integrations',
+        settings:'Configure authentication tokens for Jira and GitLab',
         planner:'Schedule tasks · Outlook calendar · 2-hr reminders',
         'my-hub':'My assigned Jira issues · My MRs · Book of Work',
         'sprint-board':'Sprint items · Jira + GitLab correlation · MR review status',
@@ -5390,6 +5558,7 @@ function app() {
 
     async init() {
       await this.loadAll();
+      await this.loadStakeholders();
       this.checkReminders();
       this._alertPollTs = new Date().toISOString();
       // Re-check reminders every 5 minutes
@@ -5445,6 +5614,9 @@ function app() {
         this.loadEmailConfig(); this.loadOutlookConfig();
         if (!this.settingsApp && this.applications.length) this.settingsApp = this.applications[0].application_id;
         this.loadSettingsAppConfig();
+      }
+      if(id==='settings') {
+        this.loadTokenConfig();
       }
     },
 
@@ -5504,11 +5676,37 @@ function app() {
       }
     },
     applicationName(id) { const a=this.applications.find(a=>a.application_id===id); return a?a.name:''; },
-    openApplicationModal(app) {
+    async openApplicationModal(app) {
+      await this.loadStakeholders();
       if(app) {
-        this.applicationModal={open:true,editing:true,data:{...app}};
+        this.applicationModal={
+          open:true,editing:true,data:{...app},
+          tab:"overview",
+          stakeholdersInput:"",
+          gitlabNamespaceInput:"",
+          jiraProjectKeyInput:"",
+          allStakeholders: this.applicationModal.allStakeholders,
+          appStakeholders:[],
+          appGitLabIntegrations:[],
+          appJiraIntegrations:[],
+        };
+        await Promise.all([
+          this.loadAppStakeholders(app.application_id),
+          this.loadAppGitLabIntegrations(app.application_id),
+          this.loadAppJiraIntegrations(app.application_id),
+        ]);
       } else {
-        this.applicationModal={open:true,editing:false,data:{name:'',code:'',description:''}};
+        this.applicationModal={
+          open:true,editing:false,data:{name:'',code:'',description:''},
+          tab:"overview",
+          stakeholdersInput:"",
+          gitlabNamespaceInput:"",
+          jiraProjectKeyInput:"",
+          allStakeholders: this.applicationModal.allStakeholders,
+          appStakeholders:[],
+          appGitLabIntegrations:[],
+          appJiraIntegrations:[],
+        };
       }
     },
     async saveApplication() {
@@ -5549,6 +5747,169 @@ function app() {
       await fetch(`/api/applications/${id}`,{method:'DELETE'});
       this.addToast('Application deleted','info');
       await this.loadApplications(); await this.loadProjects();
+    },
+
+    // ── Application Modal: Stakeholders ──────────────────────────────────────
+    async loadStakeholders() {
+      try {
+        const resp = await fetch('/api/stakeholders');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        this.applicationModal.allStakeholders = await resp.json();
+      } catch(e) {
+        console.error('Failed to load stakeholders:', e);
+        this.applicationModal.allStakeholders = [];
+      }
+    },
+    async loadAppStakeholders(appId) {
+      try {
+        const resp = await fetch(`/api/applications/${appId}/stakeholders`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        this.applicationModal.appStakeholders = await resp.json();
+      } catch(e) {
+        console.error('Failed to load app stakeholders:', e);
+        this.applicationModal.appStakeholders = [];
+      }
+    },
+    async linkStakeholderToApp() {
+      const stakeholderId = this.applicationModal.stakeholdersInput;
+      const appId = this.applicationModal.data.application_id;
+      if (!stakeholderId) {
+        this.addToast('Please select a stakeholder','warning');
+        return;
+      }
+      if (!appId) {
+        this.addToast('Please save the application first','warning');
+        return;
+      }
+      try {
+        const resp = await fetch(`/api/applications/${appId}/stakeholders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stakeholder_id: stakeholderId }),
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        this.applicationModal.stakeholdersInput = '';
+        await this.loadAppStakeholders(appId);
+        this.addToast('Stakeholder linked','success');
+      } catch(e) {
+        this.addToast('Error linking stakeholder: '+e.message,'error');
+      }
+    },
+    async unlinkStakeholderFromApp(stakeholderId) {
+      const appId = this.applicationModal.data.application_id;
+      try {
+        const resp = await fetch(`/api/applications/${appId}/stakeholders/${stakeholderId}`, {
+          method: 'DELETE',
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        await this.loadAppStakeholders(appId);
+        this.addToast('Stakeholder unlinked','info');
+      } catch(e) {
+        this.addToast('Error unlinking stakeholder: '+e.message,'error');
+      }
+    },
+    openCreateStakeholderForm() {
+      alert('Stakeholder creation form coming soon. For now, please create stakeholders in the admin section.');
+    },
+
+    // ── Application Modal: GitLab ──────────────────────────────────────
+    async loadAppGitLabIntegrations(appId) {
+      try {
+        const resp = await fetch(`/api/applications/${appId}/gitlab`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        this.applicationModal.appGitLabIntegrations = await resp.json();
+      } catch(e) {
+        console.error('Failed to load app GitLab integrations:', e);
+        this.applicationModal.appGitLabIntegrations = [];
+      }
+    },
+    async addGitLabNamespace() {
+      const namespace = this.applicationModal.gitlabNamespaceInput?.trim();
+      const appId = this.applicationModal.data.application_id;
+      if (!namespace) {
+        this.addToast('Please enter a namespace','warning');
+        return;
+      }
+      if (!appId) {
+        this.addToast('Please save the application first','warning');
+        return;
+      }
+      try {
+        const resp = await fetch(`/api/applications/${appId}/gitlab`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ namespace }),
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        this.applicationModal.gitlabNamespaceInput = '';
+        await this.loadAppGitLabIntegrations(appId);
+        this.addToast('GitLab namespace added','success');
+      } catch(e) {
+        this.addToast('Error adding GitLab namespace: '+e.message,'error');
+      }
+    },
+    async removeGitLabNamespace(gitlabId) {
+      const appId = this.applicationModal.data.application_id;
+      try {
+        const resp = await fetch(`/api/applications/${appId}/gitlab/${gitlabId}`, {
+          method: 'DELETE',
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        await this.loadAppGitLabIntegrations(appId);
+        this.addToast('GitLab namespace removed','info');
+      } catch(e) {
+        this.addToast('Error removing GitLab namespace: '+e.message,'error');
+      }
+    },
+
+    // ── Application Modal: Jira ──────────────────────────────────────
+    async loadAppJiraIntegrations(appId) {
+      try {
+        const resp = await fetch(`/api/applications/${appId}/jira`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        this.applicationModal.appJiraIntegrations = await resp.json();
+      } catch(e) {
+        console.error('Failed to load app Jira integrations:', e);
+        this.applicationModal.appJiraIntegrations = [];
+      }
+    },
+    async addJiraProject() {
+      const projectKey = this.applicationModal.jiraProjectKeyInput?.trim()?.toUpperCase();
+      const appId = this.applicationModal.data.application_id;
+      if (!projectKey) {
+        this.addToast('Please enter a project key','warning');
+        return;
+      }
+      if (!appId) {
+        this.addToast('Please save the application first','warning');
+        return;
+      }
+      try {
+        const resp = await fetch(`/api/applications/${appId}/jira`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_key: projectKey }),
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        this.applicationModal.jiraProjectKeyInput = '';
+        await this.loadAppJiraIntegrations(appId);
+        this.addToast('Jira project added','success');
+      } catch(e) {
+        this.addToast('Error adding Jira project: '+e.message,'error');
+      }
+    },
+    async removeJiraProject(jiraId) {
+      const appId = this.applicationModal.data.application_id;
+      try {
+        const resp = await fetch(`/api/applications/${appId}/jira/${jiraId}`, {
+          method: 'DELETE',
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        await this.loadAppJiraIntegrations(appId);
+        this.addToast('Jira project removed','info');
+      } catch(e) {
+        this.addToast('Error removing Jira project: '+e.message,'error');
+      }
     },
 
     filterTasks() {
@@ -6376,6 +6737,85 @@ function app() {
         });
         this.addToast('Calendar settings saved','success');
         await this.loadOutlookConfig();
+      } catch(e) {
+        this.addToast('Save failed: '+e.message,'error');
+      }
+    },
+
+    // ── Token Configuration ─────────────────────────────────────────────────
+    async loadTokenConfig() {
+      try {
+        const resp = await fetch('/api/settings/tokens');
+        if (!resp.ok) {
+          console.error('Failed to load token config');
+          return;
+        }
+        const data = await resp.json();
+        this.tokenConfig = {
+          gitlab_base_url: data.gitlab_base_url || '',
+          gitlab_token: data.gitlab_token || '',
+          jira_base_url: data.jira_base_url || '',
+          jira_token: data.jira_token || ''
+        };
+      } catch(e) {
+        console.error('Error loading token config:', e);
+      }
+    },
+    async testGitLabToken() {
+      try {
+        const resp = await fetch('/api/settings/tokens/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gitlab_base_url: this.tokenConfig.gitlab_base_url,
+            gitlab_token: this.tokenConfig.gitlab_token
+          })
+        });
+        const result = await resp.json();
+        if (result.valid) {
+          this.addToast('GitLab token is valid','success');
+        } else {
+          const errMsg = result.errors && result.errors.length ? result.errors[0] : 'Invalid credentials';
+          this.addToast('GitLab validation failed: ' + errMsg,'error');
+        }
+      } catch(e) {
+        this.addToast('Test failed: '+e.message,'error');
+      }
+    },
+    async testJiraToken() {
+      try {
+        const resp = await fetch('/api/settings/tokens/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jira_base_url: this.tokenConfig.jira_base_url,
+            jira_token: this.tokenConfig.jira_token
+          })
+        });
+        const result = await resp.json();
+        if (result.valid) {
+          this.addToast('Jira token is valid','success');
+        } else {
+          const errMsg = result.errors && result.errors.length ? result.errors[0] : 'Invalid credentials';
+          this.addToast('Jira validation failed: ' + errMsg,'error');
+        }
+      } catch(e) {
+        this.addToast('Test failed: '+e.message,'error');
+      }
+    },
+    async saveTokenConfig() {
+      try {
+        const resp = await fetch('/api/settings/tokens', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.tokenConfig)
+        });
+        if (!resp.ok) {
+          const err = await resp.text();
+          throw new Error(err || resp.statusText);
+        }
+        await resp.json();
+        this.addToast('Tokens saved successfully','success');
       } catch(e) {
         this.addToast('Save failed: '+e.message,'error');
       }
