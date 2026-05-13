@@ -3348,7 +3348,7 @@ function initApiTokens() {
           <button @click="openReleaseModal()" class="btn-primary">+ New Release</button>
         </div>
         <div class="card">
-          <div class="p-4 border-b space-y-3" style="padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:12px;">
+          <div class="p-4 border-b space-y-3" style="padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:var(--card-gap);">
             <input type="text"
               x-model="releaseSearchTerm"
               placeholder="Search releases..."
@@ -3789,7 +3789,7 @@ function initApiTokens() {
           </div>
 
           <!-- Right: today's summary panel -->
-          <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px;">
+          <div style="display:flex;flex-direction:column;gap:var(--card-gap);position:sticky;top:20px;">
             <!-- Today's stats -->
             <div class="card" style="padding:16px;">
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin-bottom:12px;">Today at a Glance</div>
@@ -4110,7 +4110,7 @@ function initApiTokens() {
         </div>
 
         <!-- Item cards -->
-        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+        <div style="display:flex;flex-direction:column;gap:var(--card-gap);margin-bottom:16px;">
           <template x-for="(item, idx) in estItems" :key="item._id">
             <div class="card" style="border:1px solid var(--border);">
 
@@ -4481,7 +4481,7 @@ function initApiTokens() {
         <div style="display:grid;grid-template-columns:260px 1fr;gap:20px;height:calc(100vh - 120px);overflow:hidden;">
 
           <!-- Left: plan list -->
-          <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding-right:4px;">
+          <div style="display:flex;flex-direction:column;gap:var(--card-gap);overflow-y:auto;padding-right:4px;">
             <button @click="newEstForm.open=true" class="btn-primary" style="width:100%;font-size:13px;">+ New Plan</button>
 
             <!-- New plan form -->
@@ -5745,13 +5745,13 @@ function initApiTokens() {
           </template>
         </div>
 
-        <div style="flex:1;overflow-y:auto;padding:16px 20px;box-sizing:border-box;">
+        <div style="flex:1;overflow-y:auto;padding:var(--content-padding-top) var(--content-padding-sides);box-sizing:border-box;">
           <!-- MY WORK tab -->
           <template x-if="myWorkTab==='my'">
-            <div style="display:flex;flex-direction:column;gap:12px;box-sizing:border-box;">
+            <div style="display:flex;flex-direction:column;gap:var(--card-gap);box-sizing:border-box;">
               <!-- Local Tasks -->
-              <div style="border-radius:10px;border:1px solid var(--border);border-left:2px solid #6366f1;overflow:hidden;box-sizing:border-box;">
-                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
+              <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #6366f1;overflow:hidden;box-sizing:border-box;">
+                <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">📋 Local Tasks</span>
                   <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWork.tasks||[]).length+' tasks'"></span>
                 </div>
@@ -5769,8 +5769,8 @@ function initApiTokens() {
                 </div>
               </div>
               <!-- Jira Assigned -->
-              <div style="border-radius:10px;border:1px solid var(--border);border-left:2px solid #d97706;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
+              <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #d97706;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">🔵 Jira Assigned</span>
                   <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWork.jira||[]).length+' issues'"></span>
                 </div>
@@ -5786,8 +5786,8 @@ function initApiTokens() {
                 </div>
               </div>
               <!-- MRs -->
-              <div style="border-radius:10px;border:1px solid var(--border);border-left:2px solid #e2336b;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
+              <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #e2336b;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">🦊 MRs (Raised / Assigned)</span>
                   <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fde8f0;color:#e2336b;padding:2px 8px;border-radius:10px;" x-text="(myWork.mrs||[]).length+' MRs'"></span>
                 </div>
@@ -5809,12 +5809,12 @@ function initApiTokens() {
 
           <!-- TEAM WORK tab -->
           <template x-if="myWorkTab==='team'">
-            <div style="display:flex;flex-direction:column;gap:12px;box-sizing:border-box;">
+            <div style="display:flex;flex-direction:column;gap:var(--card-gap);box-sizing:border-box;">
               <div x-show="!myWorkTeamMemberId" style="text-align:center;padding:60px;color:var(--text-3);">Select a team member above to view their work</div>
               <template x-if="myWorkTeamMemberId">
-                <div style="display:flex;flex-direction:column;gap:12px;">
-                  <div style="border-radius:10px;border:1px solid var(--border);border-left:2px solid #6366f1;overflow:hidden;box-sizing:border-box;">
-                    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
+                <div style="display:flex;flex-direction:column;gap:var(--card-gap);">
+                  <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #6366f1;overflow:hidden;box-sizing:border-box;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">📋 Local Tasks</span>
                       <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.tasks||[]).length+' tasks'"></span>
                     </div>
@@ -5830,8 +5830,8 @@ function initApiTokens() {
                       <div x-show="!(myWorkTeamData.tasks||[]).length" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No tasks</div>
                     </div>
                   </div>
-                  <div style="border-radius:10px;border:1px solid var(--border);border-left:2px solid #d97706;overflow:hidden;">
-                    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
+                  <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #d97706;overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">🔵 Jira Assigned</span>
                       <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.jira||[]).length+' issues'"></span>
                     </div>
@@ -5846,8 +5846,8 @@ function initApiTokens() {
                       <div x-show="!(myWorkTeamData.jira||[]).length" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No Jira issues</div>
                     </div>
                   </div>
-                  <div style="border-radius:10px;border:1px solid var(--border);border-left:2px solid #e2336b;overflow:hidden;">
-                    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
+                  <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #e2336b;overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">🦊 MRs (Raised / Assigned)</span>
                       <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fde8f0;color:#e2336b;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.mrs||[]).length+' MRs'"></span>
                     </div>
@@ -6598,7 +6598,7 @@ function initApiTokens() {
             <div style="padding:10px 14px;border-radius:12px;background:#f5f3ff;border:1px solid #ddd6fe;margin-bottom:16px;font-size:12px;color:#6d28d9;line-height:1.6;">
               <strong>How to get your Outlook ICS URL:</strong> Outlook Web → Settings → Calendar → Shared calendars → Publish a calendar → select your calendar → Copy the <em>ICS</em> link.
             </div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;flex-direction:column;gap:var(--card-gap);">
               <div>
                 <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Outlook ICS Feed URL</label>
                 <input x-model="outlookCfg.ics_url" type="url" placeholder="https://outlook.live.com/owa/calendar/.../calendar.ics"
@@ -6719,7 +6719,7 @@ function initApiTokens() {
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
               <!-- Export Card -->
-              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;">
+              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:var(--card-gap);">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <div style="font-size:20px;">📥</div>
                   <div style="font-size:13px;font-weight:700;color:var(--text-1);">Export Database</div>
@@ -6731,7 +6731,7 @@ function initApiTokens() {
               </div>
 
               <!-- Import Card -->
-              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;">
+              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:var(--card-gap);">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <div style="font-size:20px;">📤</div>
                   <div style="font-size:13px;font-weight:700;color:var(--text-1);">Import/Restore</div>
