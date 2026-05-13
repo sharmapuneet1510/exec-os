@@ -1,0 +1,121 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e9]:
+        - generic [ref=e10]: ExecOS
+        - generic [ref=e11]: Command Center
+    - navigation [ref=e12]:
+      - generic [ref=e13] [cursor=pointer]:
+        - generic [ref=e14]: 📊 Dashboard
+        - generic [ref=e15]: ▾
+      - generic [ref=e16]:
+        - generic [ref=e17] [cursor=pointer]:
+          - generic [ref=e18]: ⚡
+          - generic [ref=e19]: Operational
+        - generic [ref=e20] [cursor=pointer]:
+          - generic [ref=e21]: 🎯
+          - generic [ref=e22]: Executive
+        - generic [ref=e23] [cursor=pointer]:
+          - generic [ref=e24]: 📋
+          - generic [ref=e25]: Summaries
+        - generic [ref=e26] [cursor=pointer]:
+          - generic [ref=e27]: ✅
+          - generic [ref=e28]: Tasks
+        - generic [ref=e29] [cursor=pointer]:
+          - generic [ref=e30]: 🤝
+          - generic [ref=e31]: Commitments
+        - generic [ref=e32] [cursor=pointer]:
+          - generic [ref=e33]: 🔔
+          - generic [ref=e34]: Alerts
+          - generic [ref=e35]: "2"
+        - generic [ref=e36] [cursor=pointer]:
+          - generic [ref=e37]: 🗓️
+          - generic [ref=e38]: Day Planner
+      - generic [ref=e39] [cursor=pointer]:
+        - generic [ref=e40]: 🗂 Applications
+        - generic [ref=e41]: ▸
+      - generic [ref=e42] [cursor=pointer]:
+        - generic [ref=e43]: 👥 Resources
+        - generic [ref=e44]: ▸
+      - generic [ref=e45] [cursor=pointer]:
+        - generic [ref=e46]: 📖 My Book of Work
+        - generic [ref=e47]: ▾
+      - generic [ref=e48]:
+        - generic [ref=e49] [cursor=pointer]:
+          - generic [ref=e50]: 🧑‍💻
+          - generic [ref=e51]: My Work
+        - generic [ref=e52] [cursor=pointer]:
+          - generic [ref=e53]: 🏃
+          - generic [ref=e54]: Sprint Board
+        - generic [ref=e55] [cursor=pointer]:
+          - generic [ref=e56]: 🦊
+          - generic [ref=e57]: Open MRs
+        - generic [ref=e58] [cursor=pointer]:
+          - generic [ref=e59]: 🔢
+          - generic [ref=e60]: Story Estimator
+      - generic [ref=e61] [cursor=pointer]:
+        - generic [ref=e62]: ⚙️ Settings
+        - generic [ref=e63]: ▸
+    - generic [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]: PS
+        - generic [ref=e67]:
+          - generic [ref=e68]: Puneet Sharma
+          - generic [ref=e69]: Operations Lead
+      - generic [ref=e70]: Wednesday, May 13, 2026
+  - main [ref=e71]:
+    - generic [ref=e72]:
+      - generic [ref=e73]:
+        - heading "Operational Dashboard" [level=1] [ref=e74]
+        - paragraph [ref=e75]: Today's execution pulse
+      - generic [ref=e76]:
+        - generic [ref=e77]: Wed, May 13
+        - button "Refresh" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - generic [ref=e86]: "0"
+          - generic [ref=e87]: Overdue
+        - generic [ref=e88]:
+          - generic [ref=e89]: "1"
+          - generic [ref=e90]: Due Today
+        - generic [ref=e91]:
+          - generic [ref=e92]: "0"
+          - generic [ref=e93]: In Progress
+        - generic [ref=e94]:
+          - generic [ref=e95]: "0"
+          - generic [ref=e96]: Jira Open
+        - generic [ref=e97]:
+          - generic [ref=e98]: "0"
+          - generic [ref=e99]: MRs Pending
+        - generic [ref=e100]:
+          - generic [ref=e101]: "0"
+          - generic [ref=e102]: Done Today
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - generic [ref=e106]: 📋 Tasks
+            - button "+ new" [ref=e107] [cursor=pointer]
+          - generic [ref=e108]:
+            - generic [ref=e109]: Due Today
+            - generic [ref=e113]: cvcv
+        - generic [ref=e114]:
+          - generic [ref=e115]: 🔵 Jira Assigned
+          - generic [ref=e117]: No open Jira issues
+        - generic [ref=e118]:
+          - generic [ref=e119]: 🦊 MRs
+          - generic [ref=e121]: No open MRs
+        - generic [ref=e122]:
+          - generic [ref=e123]: 📌 Status
+          - generic [ref=e124]:
+            - generic [ref=e125]: Commitments Due
+            - generic [ref=e126]: Milestones
+            - generic [ref=e127]: Alerts
+            - generic [ref=e128]:
+              - generic [ref=e129]: "Due today: cvcv"
+              - generic [ref=e130]: info
+            - generic [ref=e131]:
+              - generic [ref=e132]: "Due today: cvcv"
+              - generic [ref=e133]: info

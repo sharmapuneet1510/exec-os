@@ -67,7 +67,7 @@ function app() {
     settingsAppCfg: {
       jira: { base_url:'', pat:'', project_keys_raw:'', enabled:false },
       gitlab: { base_url:'https://gitlab.com', access_token:'', project_ids_raw:'', enabled:false },
-      sprint: { board_id:'', sprint_id:'', sprint_name:'' },
+      sprint: { board_id:'', sprint_id:'', sprint_name:'', my_jira_email:'', my_gitlab_username:'' },
     },
     settingsJiraTestLoading: false, settingsJiraMsg:'', settingsJiraOk:false,
     settingsGlTestLoading: false, settingsGlMsg:'', settingsGlOk:false,
@@ -89,7 +89,7 @@ function app() {
     glFilter: '', glView: 'list',
 
     myHubData: null, myHubLoading: false, myHubError: '', myHubTab: 'jira',
-    sprintCfg: { board_id:'', sprint_id:'', sprint_name:'' },
+    sprintCfg: { board_id:'', sprint_id:'', sprint_name:'', my_jira_email:'', my_gitlab_username:'' },
     sprintBoards: [], sprintList: [], sprintBoardsLoading: false,
     sprintData: null, sprintLoading: false, sprintError: '',
     sprintFilter: '', sprintViewTab: 'all',
@@ -1244,6 +1244,7 @@ function app() {
           },
           sprint: {
             board_id: s.board_id||'', sprint_id: s.sprint_id||'', sprint_name: s.sprint_name||'',
+            my_jira_email: s.my_jira_email||'', my_gitlab_username: s.my_gitlab_username||'',
           },
         };
         this.settingsJiraMsg=''; this.settingsGlMsg=''; this.settingsSprintMsg='';
@@ -1537,35 +1538,17 @@ function app() {
         const s = await fetch(`/api/applications/${appId}/integrations/sprint`).then(r=>r.json());
         this.sprintCfg = {
           board_id: s.board_id||'', sprint_id: s.sprint_id||'', sprint_name: s.sprint_name||'',
+          my_jira_email: s.my_jira_email||'', my_gitlab_username: s.my_gitlab_username||'',
         };
         const j = await fetch(`/api/applications/${appId}/integrations/jira`).then(r=>r.json());
         this.jiraCfg = { ...this.jiraCfg, base_url: j.base_url||'', enabled: j.enabled||false };
-      } catch(e) {}
-    },
-    onSprintSelect() {
-      if (!this.sprintCfg.sprint_id || !this.sprintAppId) return;
-      try {
-        const app = this.applications.find(a => a.application_id === this.sprintAppId);
-        if (!app || !app.sprints) return;
-        const sprints = JSON.parse(app.sprints);
-        const selected = sprints.find(s => s.sprint_id === this.sprintCfg.sprint_id);
-        if (selected) {
-          this.sprintCfg.board_id = selected.board_id || '';
-          this.sprintCfg.sprint_name = selected.name || '';
-        }
       } catch(e) {}
     },
     async saveSprintAppConfig() {
       if (!this.sprintAppId) return;
       await fetch(`/api/applications/${this.sprintAppId}/integrations/sprint`, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          board_id: this.sprintCfg.board_id,
-          sprint_id: this.sprintCfg.sprint_id,
-          sprint_name: this.sprintCfg.sprint_name,
-          my_jira_email: '',
-          my_gitlab_username: '',
-        }),
+        body: JSON.stringify(this.sprintCfg),
       });
       if (this.sprintCfg.sprint_id) this.loadSprintBoard();
     },
@@ -1765,61 +1748,6 @@ function app() {
       } catch(e) { console.warn('loadMyWorkTeam failed', e); }
     },
 
-  };
-}
-
-function initApiTokens() {
-  return {
-    jiraSettings: { base_url: '', pat: '', enabled: false },
-    gitlabSettings: { base_url: 'https://gitlab.com', access_token: '', enabled: false },
-    tokenMsg: '',
-
-    async initTokens() {
-      try {
-        this.jiraSettings = await fetch('/api/settings/jira').then(r => r.json());
-      } catch(e) { console.warn('Failed to load Jira settings', e); }
-      try {
-        this.gitlabSettings = await fetch('/api/settings/gitlab').then(r => r.json());
-      } catch(e) { console.warn('Failed to load GitLab settings', e); }
-    },
-
-    async saveJira() {
-      try {
-        await fetch('/api/settings/jira', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base_url: this.jiraSettings.base_url,
-            pat: this.jiraSettings.pat,
-            enabled: this.jiraSettings.enabled
-          })
-        });
-        this.tokenMsg = 'Jira settings saved ✓';
-        setTimeout(() => this.tokenMsg = '', 3000);
-      } catch(e) {
-        this.tokenMsg = 'Error saving Jira settings';
-        console.error(e);
-      }
-    },
-
-    async saveGitLab() {
-      try {
-        await fetch('/api/settings/gitlab', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base_url: this.gitlabSettings.base_url,
-            access_token: this.gitlabSettings.access_token,
-            enabled: this.gitlabSettings.enabled
-          })
-        });
-        this.tokenMsg = 'GitLab settings saved ✓';
-        setTimeout(() => this.tokenMsg = '', 3000);
-      } catch(e) {
-        this.tokenMsg = 'Error saving GitLab settings';
-        console.error(e);
-      }
-    }
   };
 }
 </script>
@@ -2329,7 +2257,7 @@ function initApiTokens() {
     <span x-text="sidebarOpen.set ? '▾' : '▸'" style="font-size:10px;"></span>
   </div>
   <div x-show="sidebarOpen.set">
-    <div @click="nav('api-tokens')"      :class="navCls('api-tokens')">      <span class="nav-icon">🔐</span><span>API Tokens</span></div>
+    <div @click="nav('admin')"           :class="navCls('admin')">           <span class="nav-icon">🔐</span><span>API Tokens</span></div>
     <div @click="nav('summaries')"       :class="navCls('summaries')">       <span class="nav-icon">📧</span><span>Email Briefing</span></div>
     <div @click="nav('activity-log')"    :class="navCls('activity-log')">    <span class="nav-icon">📜</span><span>Activity Log</span></div>
   </div>
@@ -2351,7 +2279,7 @@ function initApiTokens() {
   </aside>
 
   <!-- ══ MAIN ══ -->
-  <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;">
+  <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
 
     <!-- Topbar -->
     <header style="background:var(--surface);border-bottom:1px solid var(--border);padding:11px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:16px;">
@@ -2381,49 +2309,15 @@ function initApiTokens() {
       </div>
     </header>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-    <style>
-      /*
-        Semantic Spacing System
-        These variables define consistent spacing across all pages.
-        Update these values to change spacing globally.
-
-        Variables:
-        - header-padding-*: Section header spacing
-        - content-padding-*: Main content area spacing
-        - card-*: Card container spacing and styling
-      */
-      :root {
-        /* Header spacing */
-        --header-padding-top: 0px;
-        --header-padding-bottom: 10px;
-        --header-padding-sides: 20px;
-
-        /* Content area spacing */
-        --content-padding-top: 24px;
-        --content-padding-sides: 28px;
-
-        /* Card and internal spacing */
-        --card-gap: 12px;
-        --card-padding: 10px 14px;
-        --card-border-width: 1px;
-        --card-accent-border-width: 2px;
-        --card-border-radius: 10px;
-      }
-
-      /* Global box-sizing for all elements */
-      *, *::before, *::after {
-        box-sizing: border-box;
-      }
-    </style>
 
     <!-- Content -->
-    <div x-show="['dashboard','executive','tasks','inbox','projects','applications','project-tracker','milestones','releases','commitments','alerts','activity-log','planner','summaries','estimate','proj-planner','delivery'].includes(view)" style="flex:1;overflow-y:auto;padding:24px 28px;box-sizing:border-box;">
+    <div style="flex:1;overflow-y:auto;padding:24px 28px;">
 
       <!-- ══ COMMAND CENTRE DASHBOARD ══ -->
-      <div x-show="view==='dashboard'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;">
+      <div x-show="view==='dashboard'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
 
         <!-- 6 stat tiles -->
-        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:var(--header-padding-top) var(--header-padding-sides) var(--header-padding-bottom);flex-shrink:0;box-sizing:border-box;">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:16px 20px 10px;flex-shrink:0;">
           <div class="card" style="text-align:center;padding:12px 8px;">
             <div style="font-size:26px;font-weight:800;color:#dc2626;font-family:monospace;" x-text="opDash?.overdue_count||0"></div>
             <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">Overdue</div>
@@ -2891,48 +2785,52 @@ function initApiTokens() {
             <button @click="openApplicationModal()" class="btn-primary" style="font-size:13px;font-weight:600;padding:10px 18px;">+ New Application</button>
           </div>
           <div x-show="!applications?.length" style="text-align:center;padding:60px;color:var(--text-3);">No applications yet. Create your first application above.</div>
-          <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead style="background:var(--surface-2);">
-                <tr>
-                  <th style="padding:12px 14px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">Name</th>
-                  <th style="padding:12px 14px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">Owner</th>
-                  <th style="padding:12px 14px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">Status</th>
-                  <th style="padding:12px 14px;text-align:center;font-weight:600;border-bottom:1px solid var(--border);">Projects</th>
-                  <th style="padding:12px 14px;text-align:center;font-weight:600;border-bottom:1px solid var(--border);">Actions</th>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:var(--bg);border-bottom:2px solid var(--border);">
+                <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Name</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Owner</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Status</th>
+                <th style="padding:10px 12px;text-align:center;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Projects</th>
+                <th style="padding:10px 12px;text-align:right;font-weight:700;color:var(--text-2);text-transform:uppercase;font-size:11px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="app in (applications||[]).slice((appTablePage-1)*appTablePageSize, appTablePage*appTablePageSize)" :key="app.application_id">
+                <tr style="border-bottom:1px solid var(--border);cursor:pointer;" @click="selApp=app" :style="selApp?.application_id===app.application_id ? 'background:#f0f4ff;' : 'hover:background:var(--bg);'">
+                  <td style="padding:12px;color:var(--text-1);font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;" x-text="app.name"></td>
+                  <td style="padding:12px;color:var(--text-2);max-width:150px;overflow:hidden;text-overflow:ellipsis;" x-text="app.owner||'—'"></td>
+                  <td style="padding:12px;">
+                    <span style="font-size:10px;padding:4px 10px;border-radius:6px;font-weight:600;white-space:nowrap;"
+                          :style="app.status==='active' ? 'background:#d1fae5;color:#059669' : app.status==='on_hold' ? 'background:#fef3c7;color:#d97706' : 'background:#f3f4f6;color:#6b7280'"
+                          x-text="app.status||'active'"></span>
+                  </td>
+                  <td style="padding:12px;text-align:center;color:var(--text-2);">
+                    <span style="display:inline-block;background:var(--border);padding:4px 8px;border-radius:6px;font-weight:600;" x-text="(projects?.filter(p=>p.application_id===app.application_id).length||0)+' '"></span>
+                  </td>
+                  <td style="padding:12px;text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+                    <button @click.stop="openApplicationModal(app)" class="btn-icon" title="Edit" style="font-size:12px;padding:4px 6px;">✏️</button>
+                    <button @click.stop="app.status=app.status==='active'?'on_hold':'active';saveApplication()" class="btn-icon" title="Toggle Status" style="font-size:12px;padding:4px 6px;" :style="app.status==='active'?'color:#059669':'color:#d97706'">🔄</button>
+                    <button @click.stop="deleteApplication(app.application_id)" class="btn-icon" title="Delete" style="font-size:12px;padding:4px 6px;color:#ef4444;">🗑</button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                <template x-for="app in (applications||[]).slice((appTablePage-1)*appTablePageSize, appTablePage*appTablePageSize)" :key="app.application_id">
-                  <tr @click="selApp=app" :style="selApp?.application_id===app.application_id?'background:#f5f3ff;':'background:var(--surface);'" style="cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;">
-                    <td style="padding:12px 14px;"><div x-text="app.name" style="font-weight:600;"></div></td>
-                    <td style="padding:12px 14px;" x-text="app.owner||'—'"></td>
-                    <td style="padding:12px 14px;">
-                      <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;"
-                            :style="app.status==='active' ? 'background:#d1fae5;color:#059669' : app.status==='on_hold' ? 'background:#fef3c7;color:#d97706' : 'background:#f3f4f6;color:#6b7280'"
-                            x-text="(app.status||'active').replace('_',' ')"></span>
-                    </td>
-                    <td style="padding:12px 14px;text-align:center;color:var(--text-2);">
-                      <span style="font-size:13px;font-weight:600;" x-text="(projects?.filter(p=>p.application_id===app.application_id).length||0)"></span>
-                    </td>
-                    <td style="padding:12px 14px;text-align:center;">
-                      <button @click.stop="openApplicationModal(app)" style="width:28px;height:28px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:14px;" title="Edit">✏️</button>
-                      <button @click.stop="deleteApplication(app.application_id)" style="width:28px;height:28px;border:none;background:transparent;color:var(--text-3);cursor:pointer;font-size:14px;" title="Delete">🗑</button>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-            <div x-show="!applications?.length&&true" style="text-align:center;padding:40px;color:var(--text-3);font-size:13px;">No applications yet.</div>
-          </div>
-          <div x-show="(applications||[]).length>0" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;font-size:12px;color:var(--text-3);">
-            <div>
-              <span x-text="((appTablePage-1)*appTablePageSize+1)+' — '+Math.min(appTablePage*appTablePageSize,(applications||[]).length)+' of '+(applications||[]).length"></span>
-            </div>
-            <div style="display:flex;gap:4px;">
-              <template x-for="p in Math.ceil((applications||[]).length/appTablePageSize)" :key="p">
-                <button @click="appTablePage=p" :disabled="appTablePage===p" :style="appTablePage===p?'background:#6366f1;color:#fff;':'';" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;" x-text="p"></button>
               </template>
+            </tbody>
+          </table>
+          <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-3);">
+            <div>
+              <span x-text="Math.min((appTablePage-1)*appTablePageSize+1) + ' — ' + Math.min(appTablePage*appTablePageSize, (applications||[]).length) + ' of ' + (applications||[]).length"></span>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button @click="appTablePage=Math.max(1,appTablePage-1)" :disabled="appTablePage===1" style="padding:6px 10px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;" :style="appTablePage===1 ? 'opacity:0.5;cursor:not-allowed' : ''">← Prev</button>
+              <div style="display:flex;gap:4px;align-items:center;">
+                <template x-for="p in Math.ceil((applications||[]).length/appTablePageSize)" :key="p">
+                  <button @click="appTablePage=p" style="padding:6px 8px;border:1px solid var(--border);background:var(--surface);border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;" :style="appTablePage===p ? 'background:#6366f1;color:#fff;border-color:#6366f1' : ''">
+                    <span x-text="p"></span>
+                  </button>
+                </template>
+              </div>
+              <button @click="appTablePage=Math.min(Math.ceil((applications||[]).length/appTablePageSize),appTablePage+1)" :disabled="appTablePage===Math.ceil((applications||[]).length/appTablePageSize)" style="padding:6px 10px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;" :style="appTablePage===Math.ceil((applications||[]).length/appTablePageSize) ? 'opacity:0.5;cursor:not-allowed' : ''">Next →</button>
             </div>
           </div>
         </div>
@@ -3348,7 +3246,7 @@ function initApiTokens() {
           <button @click="openReleaseModal()" class="btn-primary">+ New Release</button>
         </div>
         <div class="card">
-          <div class="p-4 border-b space-y-3" style="padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:var(--card-gap);">
+          <div class="p-4 border-b space-y-3" style="padding:16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:12px;">
             <input type="text"
               x-model="releaseSearchTerm"
               placeholder="Search releases..."
@@ -3789,7 +3687,7 @@ function initApiTokens() {
           </div>
 
           <!-- Right: today's summary panel -->
-          <div style="display:flex;flex-direction:column;gap:var(--card-gap);position:sticky;top:20px;">
+          <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:20px;">
             <!-- Today's stats -->
             <div class="card" style="padding:16px;">
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin-bottom:12px;">Today at a Glance</div>
@@ -4110,7 +4008,7 @@ function initApiTokens() {
         </div>
 
         <!-- Item cards -->
-        <div style="display:flex;flex-direction:column;gap:var(--card-gap);margin-bottom:16px;">
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
           <template x-for="(item, idx) in estItems" :key="item._id">
             <div class="card" style="border:1px solid var(--border);">
 
@@ -4481,7 +4379,7 @@ function initApiTokens() {
         <div style="display:grid;grid-template-columns:260px 1fr;gap:20px;height:calc(100vh - 120px);overflow:hidden;">
 
           <!-- Left: plan list -->
-          <div style="display:flex;flex-direction:column;gap:var(--card-gap);overflow-y:auto;padding-right:4px;">
+          <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding-right:4px;">
             <button @click="newEstForm.open=true" class="btn-primary" style="width:100%;font-size:13px;">+ New Plan</button>
 
             <!-- New plan form -->
@@ -4654,7 +4552,6 @@ function initApiTokens() {
           tab:'releases',
           templates:[], releases:[], members:[],
           activeTemplate:null, activeRelease:null,
-          releaseJiraIssues:[], releaseJiraLoading:false, releaseJiraError:'',
           relTablePage:1, relTablePageSize:10,
           newTmplForm:{open:false,name:'',description:'',is_default:false},
           newItemForm:{open:false,title:'',category:'pre_release',responsible_role:'',is_required:true},
@@ -4666,38 +4563,6 @@ function initApiTokens() {
               fetch('/api/delivery/releases').then(r=>r.json()).catch(()=>[]),
               fetch('/api/members').then(r=>r.json()).catch(()=>[])
             ]);
-          },
-          async loadReleaseJira() {
-            if (!this.activeRelease?.jira_project_key || !this.activeRelease?.version) return;
-            this.releaseJiraLoading = true;
-            this.releaseJiraError = '';
-            try {
-              const res = await fetch(`/api/releases/jira/issues-in-version?project_key=${this.activeRelease.jira_project_key}&version_id=${this.activeRelease.version}`);
-              if (res.ok) {
-                const data = await res.json().catch(() => ({}));
-                this.releaseJiraIssues = data.issues || [];
-              } else {
-                this.releaseJiraError = 'Failed to load Jira issues';
-              }
-            } catch (e) {
-              this.releaseJiraError = 'Error loading Jira issues: ' + e.message;
-            } finally {
-              this.releaseJiraLoading = false;
-            }
-          },
-          async loadReleaseJiraIssues() {
-            if (!this.newRelForm.jira_project_key || !this.newRelForm.version) return;
-            try {
-              const res = await fetch(`/api/releases/jira/issues-in-version?project_key=${encodeURIComponent(this.newRelForm.jira_project_key)}&version_id=${encodeURIComponent(this.newRelForm.version)}`);
-              if (res.ok) {
-                const data = await res.json();
-                alert(`Loaded ${data.count} issues from Jira for version ${this.newRelForm.version}`);
-              } else {
-                alert('Failed to load Jira issues. Check that the project key is correct.');
-              }
-            } catch (e) {
-              alert('Error loading Jira issues: ' + e.message);
-            }
           },
           async syncMembersFromJira() {
             // Sync members from all applications with Jira config
@@ -4732,10 +4597,6 @@ function initApiTokens() {
           },
           async loadRelease(id) {
             this.activeRelease=await fetch('/api/delivery/releases/'+id).then(r=>r.json());
-            this.releaseJiraIssues = [];
-            if (this.activeRelease?.jira_project_key && this.activeRelease?.version) {
-              await this.loadReleaseJira();
-            }
           },
           async editRelease(id) {
             const rel=await fetch('/api/delivery/releases/'+id).then(r=>r.json());
@@ -4770,7 +4631,7 @@ function initApiTokens() {
             if(!f.name.trim()) return;
             const method=f.editing?'PATCH':'POST';
             const url=f.editing?`/api/delivery/releases/${f.editing_id}`:'/api/delivery/releases';
-            const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name:f.name,version:f.version,application_id:f.application_id||'',project_id:f.project_id||'',jira_project_key:f.jira_project_key||'',start_date:f.start_date||'',release_date:f.release_date||'',due_date:f.target_date||'',uat_date:f.uat_date||'',sign_off_date:f.sign_off_date||'',template_id:f.template_id||'',release_manager:f.release_manager||'',status:f.status||'planned',description:f.description||''})}).then(r=>r.json());
+            const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name:f.name,version:f.version,application_id:f.application_id||null,project_id:f.project_id||null,jira_project_key:f.jira_project_key||'',start_date:f.start_date||null,release_date:f.release_date||null,target_date:f.target_date||null,uat_date:f.uat_date||null,sign_off_date:f.sign_off_date||null,template_id:f.template_id||null,release_manager:f.release_manager,status:f.status,description:f.description})}).then(r=>r.json());
             this.newRelForm={open:false,editing:false,editing_id:'',name:'',version:'',application_id:'',project_id:'',jira_project_key:'',start_date:'',release_date:'',target_date:'',uat_date:'',sign_off_date:'',template_id:'',release_manager:'',status:'planned',description:''};
             await this.loadAll();
             await this.loadRelease(r.release_id);
@@ -4809,16 +4670,6 @@ function initApiTokens() {
           },
           itemStatusBg(s) {
             return {pending:'#f3f4f6',in_progress:'#fffbeb',done:'#f0fdf4',skipped:'#f5f3ff',blocked:'#fff1f2'}[s]||'#f3f4f6';
-          },
-          getJiraProjects() {
-            try{
-              const app = applications?.find(a=>a.application_id===this.newRelForm.application_id);
-              if(!app||!app.jira_projects) return [];
-              const parsed = JSON.parse(app.jira_projects);
-              return Array.isArray(parsed)?parsed:[];
-            }catch(e){
-              return [];
-            }
           }
         }">
 
@@ -4869,18 +4720,13 @@ function initApiTokens() {
               </select>
 
               <!-- Jira Project Selection -->
-              <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-end;">
-                <div style="flex:1;">
-                  <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">Jira Project</div>
-                  <select x-model="newRelForm.jira_project_key" class="input" style="width:100%;">
-                    <option value="">— Select Project —</option>
-                    <template x-for="p in getJiraProjects()" :key="p">
-                      <option :value="p" x-text="p"></option>
-                    </template>
-                  </select>
-                </div>
-                <button @click="loadReleaseJiraIssues()" :disabled="!newRelForm.jira_project_key || !newRelForm.version.trim()" style="padding:8px 12px;border:1px solid #6366f1;background:#6366f1;color:#fff;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;transition:all .2s;" :style="!newRelForm.jira_project_key || !newRelForm.version.trim()?'opacity:0.5;cursor:not-allowed;':'';" x-text="'🔄 Load'" title="Load Jira issues for this version"></button>
-              </div>
+              <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">Jira Project</div>
+              <select x-model="newRelForm.jira_project_key" class="input" style="margin-bottom:8px;">
+                <option value="">— Select Project —</option>
+                <template x-for="p in (()=>{try{const app = applications.find(a=>a.application_id===newRelForm.application_id);if(!app||!app.jira_projects)return[];const parsed = JSON.parse(app.jira_projects);return Array.isArray(parsed)?parsed:[];}catch(e){return[];}})();" :key="p">
+                  <option :value="p" x-text="p"></option>
+                </template>
+              </select>
 
               <!-- Date fields grid -->
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
@@ -4996,7 +4842,6 @@ function initApiTokens() {
                         style="padding:4px 12px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid var(--border);cursor:pointer;transition:all .15s;"
                         x-text="s.replace('_',' ')"></button>
                     </template>
-                    <button x-show="activeRelease?.jira_project_key && activeRelease?.version" @click="loadReleaseJira()" :disabled="releaseJiraLoading" style="padding:4px 12px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid #6366f1;background:#6366f1;color:#fff;cursor:pointer;" :style="releaseJiraLoading?'opacity:0.6;cursor:not-allowed;':''" x-text="releaseJiraLoading?'Loading...':'🔵 Load Jira'"></button>
                   </div>
                 </div>
                 <!-- Progress bar -->
@@ -5008,29 +4853,6 @@ function initApiTokens() {
                   <div style="height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden;">
                     <div :style="'width:'+releaseProgress()+'%;background:linear-gradient(90deg,#6366f1,#10b981);'" style="height:100%;border-radius:99px;transition:width .4s;"></div>
                   </div>
-                </div>
-              </div>
-
-              <!-- Jira Issues Section -->
-              <div x-show="activeRelease?.jira_project_key && activeRelease?.version" class="card" style="margin-bottom:14px;padding:0;">
-                <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg);border-radius:16px 16px 0 0;">
-                  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text-2);">🔵 Jira Issues</div>
-                  <div style="font-size:11px;color:var(--text-3);margin-top:2px;">
-                    <span x-text="activeRelease?.jira_project_key + ' / ' + activeRelease?.version"></span>
-                  </div>
-                </div>
-                <div x-show="releaseJiraError" style="padding:12px 16px;background:#fff1f2;border-bottom:1px solid var(--border);color:#991b1b;font-size:12px;" x-text="releaseJiraError"></div>
-                <div x-show="!releaseJiraError && !releaseJiraLoading && releaseJiraIssues.length===0" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No Jira issues found</div>
-                <div x-show="!releaseJiraError && releaseJiraIssues.length>0" style="padding:8px 12px;display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;">
-                  <template x-for="issue in releaseJiraIssues" :key="issue.key">
-                    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);">
-                      <div style="min-width:60px;font-size:11px;font-weight:700;color:#6366f1;flex-shrink:0;" x-text="issue.key"></div>
-                      <div style="flex:1;min-width:0;">
-                        <div style="font-size:12px;font-weight:600;color:var(--text-1);" x-text="issue.summary"></div>
-                        <div x-show="issue.status" style="font-size:11px;color:var(--text-3);margin-top:2px;" x-text="'Status: '+issue.status"></div>
-                      </div>
-                    </div>
-                  </template>
                 </div>
               </div>
 
@@ -5208,7 +5030,7 @@ function initApiTokens() {
       </div>
 
       <!-- ══ GITLAB OPEN MRS ══ -->
-      <div x-show="view==='gitlab-mrs'" x-cloak style="padding:0 20px;padding-top:8px;">
+      <div x-show="view==='gitlab-mrs'" x-cloak>
 
         <!-- App selector -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -5403,7 +5225,7 @@ function initApiTokens() {
       <div x-show="view==='jira-team'" x-cloak>
 
         <!-- App selector -->
-        <div style="display:flex;align-items:center;gap:10px;margin-top:-16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
           <label style="font-size:12px;font-weight:700;color:var(--text-2);white-space:nowrap;">Application</label>
           <select x-model="jiraAppId" @change="onJiraAppChange()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);background:var(--bg);">
             <option value="">— select —</option>
@@ -5669,8 +5491,8 @@ function initApiTokens() {
       </div>
 
       <!-- ══ TEAM LIST ══ -->
-      <div x-show="view==='team-list'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:8px;">
-        <div style="padding:0 20px 10px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border);">
+      <div x-show="view==='team-list'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:16px 20px 10px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border);">
           <div style="font-size:15px;font-weight:700;">Team Members</div>
           <button @click="loadTeamList(); addToast('Refreshed','info')" class="btn-secondary" style="font-size:11px;margin-left:auto;">↻ Refresh</button>
           <button @click="tmModal=true; tmEditId=null; tmForm={name:'',email:'',gitlab_username:'',role:'',is_active:true}" class="btn-primary" style="font-size:11px;">+ Add Member</button>
@@ -5719,11 +5541,11 @@ function initApiTokens() {
       </div>
 
       <!-- ══ MY BOOK OF WORK ══ -->
-      <div x-show="view==='my-work'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;">
-        <div style="padding:0px 20px 10px;flex-shrink:0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-sizing:border-box;">
+      <div x-show="view==='my-work'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:12px 20px 10px;flex-shrink:0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="font-size:15px;font-weight:700;">My Book of Work</div>
           <!-- My / Team toggle -->
-          <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px;gap:2px;margin-left:0;box-sizing:border-box;">
+          <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px;gap:2px;margin-left:12px;">
             <button @click="myWorkTab='my'; loadMyWork()"
                     :style="myWorkTab==='my' ? 'background:var(--surface);color:var(--text-1);box-shadow:0 1px 2px rgba(0,0,0,.1);' : 'background:transparent;color:var(--text-3);'"
                     style="padding:5px 16px;border-radius:16px;border:none;cursor:pointer;font-size:12px;font-weight:600;">My Work</button>
@@ -5745,13 +5567,13 @@ function initApiTokens() {
           </template>
         </div>
 
-        <div style="flex:1;overflow-y:auto;padding:var(--content-padding-top) var(--content-padding-sides);box-sizing:border-box;">
+        <div style="flex:1;overflow-y:auto;padding:16px 20px;">
           <!-- MY WORK tab -->
           <template x-if="myWorkTab==='my'">
-            <div style="display:flex;flex-direction:column;gap:var(--card-gap);box-sizing:border-box;">
+            <div style="display:flex;flex-direction:column;gap:12px;">
               <!-- Local Tasks -->
-              <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #6366f1;overflow:hidden;box-sizing:border-box;">
-                <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
+              <div style="border-radius:10px;border:1px solid var(--border);border-left:3px solid #6366f1;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">📋 Local Tasks</span>
                   <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWork.tasks||[]).length+' tasks'"></span>
                 </div>
@@ -5769,8 +5591,8 @@ function initApiTokens() {
                 </div>
               </div>
               <!-- Jira Assigned -->
-              <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #d97706;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
+              <div style="border-radius:10px;border:1px solid var(--border);border-left:3px solid #d97706;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">🔵 Jira Assigned</span>
                   <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWork.jira||[]).length+' issues'"></span>
                 </div>
@@ -5786,8 +5608,8 @@ function initApiTokens() {
                 </div>
               </div>
               <!-- MRs -->
-              <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #e2336b;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
+              <div style="border-radius:10px;border:1px solid var(--border);border-left:3px solid #e2336b;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">🦊 MRs (Raised / Assigned)</span>
                   <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fde8f0;color:#e2336b;padding:2px 8px;border-radius:10px;" x-text="(myWork.mrs||[]).length+' MRs'"></span>
                 </div>
@@ -5809,12 +5631,12 @@ function initApiTokens() {
 
           <!-- TEAM WORK tab -->
           <template x-if="myWorkTab==='team'">
-            <div style="display:flex;flex-direction:column;gap:var(--card-gap);box-sizing:border-box;">
+            <div style="display:flex;flex-direction:column;gap:12px;">
               <div x-show="!myWorkTeamMemberId" style="text-align:center;padding:60px;color:var(--text-3);">Select a team member above to view their work</div>
               <template x-if="myWorkTeamMemberId">
-                <div style="display:flex;flex-direction:column;gap:var(--card-gap);">
-                  <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #6366f1;overflow:hidden;box-sizing:border-box;">
-                    <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div style="border-radius:10px;border:1px solid var(--border);border-left:3px solid #6366f1;overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">📋 Local Tasks</span>
                       <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.tasks||[]).length+' tasks'"></span>
                     </div>
@@ -5830,8 +5652,8 @@ function initApiTokens() {
                       <div x-show="!(myWorkTeamData.tasks||[]).length" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No tasks</div>
                     </div>
                   </div>
-                  <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #d97706;overflow:hidden;">
-                    <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
+                  <div style="border-radius:10px;border:1px solid var(--border);border-left:3px solid #d97706;overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">🔵 Jira Assigned</span>
                       <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.jira||[]).length+' issues'"></span>
                     </div>
@@ -5846,8 +5668,8 @@ function initApiTokens() {
                       <div x-show="!(myWorkTeamData.jira||[]).length" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No Jira issues</div>
                     </div>
                   </div>
-                  <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #e2336b;overflow:hidden;">
-                    <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
+                  <div style="border-radius:10px;border:1px solid var(--border);border-left:3px solid #e2336b;overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">🦊 MRs (Raised / Assigned)</span>
                       <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fde8f0;color:#e2336b;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.mrs||[]).length+' MRs'"></span>
                     </div>
@@ -5879,7 +5701,8 @@ function initApiTokens() {
           <div>
             <div style="font-size:22px;font-weight:800;color:var(--text-1);letter-spacing:-0.5px;">My Hub</div>
             <div style="font-size:12px;color:var(--text-3);margin-top:2px;">
-              <span x-show="myHubData?.issues?.length||myHubData?.my_mrs?.length" x-text="'Your work across all projects'"></span>
+              <span x-show="myHubData?.my_jira_email" x-text="'Jira: ' + myHubData?.my_jira_email"></span>
+              <span x-show="myHubData?.my_gitlab_username" x-text="' · GitLab: @' + myHubData?.my_gitlab_username"></span>
             </div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
@@ -6085,7 +5908,7 @@ function initApiTokens() {
 
 
       <!-- ══ SPRINT BOARD ══ -->
-      <div x-show="view==='sprint-board'" x-cloak style="padding:0 20px;padding-top:8px;">
+      <div x-show="view==='sprint-board'" x-cloak>
 
         <!-- App selector -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -6108,19 +5931,43 @@ function initApiTokens() {
               Sprint Configuration
             </div>
 
-            <!-- Sprint selector from application -->
-            <div style="margin-bottom:16px;" x-show="sprintAppId && (()=>{try{const app=applications.find(a=>a.application_id===sprintAppId);const sprints=app?.sprints?JSON.parse(app.sprints):[];return Array.isArray(sprints)&&sprints.length>0;}catch(e){return false;}})()">
-              <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Sprint</label>
-              <select x-model="sprintCfg.sprint_id" @change="onSprintSelect()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);background:var(--surface);">
-                <option value="">— select sprint —</option>
-                <template x-for="s in (()=>{try{const app=applications.find(a=>a.application_id===sprintAppId);const sprints=app?.sprints?JSON.parse(app.sprints):[];return Array.isArray(sprints)?sprints:[];}catch(e){return[];}})();" :key="s.sprint_id">
-                  <option :value="s.sprint_id" x-text="s.name"></option>
-                </template>
-              </select>
+            <!-- My Jira email -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">My Jira Email</label>
+              <input x-model="sprintCfg.my_jira_email" type="email" placeholder="you@company.com"
+                style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg);">
             </div>
 
-            <div x-show="sprintAppId && !(()=>{try{const app=applications.find(a=>a.application_id===sprintAppId);const sprints=app?.sprints?JSON.parse(app.sprints):[];return Array.isArray(sprints)&&sprints.length>0;}catch(e){return false;}})()" style="padding:12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--text-2);margin-bottom:16px;">
-              No sprints configured for this application. Add sprints in the Applications settings.
+            <!-- My GitLab username -->
+            <div style="margin-bottom:16px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">My GitLab Username</label>
+              <input x-model="sprintCfg.my_gitlab_username" type="text" placeholder="username (no @)"
+                style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;background:var(--bg);">
+            </div>
+
+            <!-- Load boards -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Jira Board</label>
+              <div style="display:flex;gap:8px;">
+                <select x-model="sprintCfg.board_id" @change="loadSprintList()" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);background:var(--surface);">
+                  <option value="">— select board —</option>
+                  <template x-for="b in sprintBoards" :key="b.id">
+                    <option :value="b.id" x-text="b.name"></option>
+                  </template>
+                </select>
+                <button @click="loadSprintBoards()" :disabled="sprintBoardsLoading" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;" x-text="sprintBoardsLoading ? '...' : '↻ Load'"></button>
+              </div>
+            </div>
+
+            <!-- Sprint selector -->
+            <div style="margin-bottom:16px;" x-show="sprintList.length>0">
+              <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Sprint</label>
+              <select x-model="sprintCfg.sprint_id" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);background:var(--surface);">
+                <option value="">— select sprint —</option>
+                <template x-for="s in sprintList" :key="s.id">
+                  <option :value="s.id" x-text="s.name + ' (' + s.state + ')'"></option>
+                </template>
+              </select>
             </div>
 
             <button @click="saveSprintAppConfig()" class="btn-primary" style="width:100%;font-size:13px;padding:9px;">
@@ -6475,81 +6322,6 @@ function initApiTokens() {
 
 
       <!-- ══ ADMIN / SETTINGS ══ -->
-      <!-- ══ API TOKENS VIEW ══ -->
-      <div x-show="view==='api-tokens'" x-cloak>
-        <div style="max-width:680px;">
-          <div class="card" style="margin-bottom:20px;" x-data="initApiTokens()" x-init="initTokens()">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-              <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:20px;">🔑</div>
-              <div>
-                <div style="font-size:15px;font-weight:800;color:var(--text-1);">API Tokens</div>
-                <div style="font-size:12px;color:var(--text-3);">Manage global API credentials for Jira and GitLab</div>
-              </div>
-            </div>
-
-            <!-- Jira Token -->
-            <div style="margin-bottom:24px;padding:18px;background:var(--surface);border-radius:10px;border:1px solid var(--border);">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-                <div style="width:32px;height:32px;border-radius:8px;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:16px;">🔵</div>
-                <div style="font-size:13px;font-weight:700;color:var(--text-1);">Jira API Token</div>
-              </div>
-              <div style="display:grid;gap:12px;margin-bottom:14px;">
-                <div>
-                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Base URL
-                    <span style="font-weight:400;color:var(--text-3);">(e.g., https://company.atlassian.net)</span>
-                  </label>
-                  <input x-model="jiraSettings.base_url" type="url" placeholder="https://company.atlassian.net"
-                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;margin-bottom:12px;">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">API Token
-                    <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#6366f1;font-weight:500;margin-left:4px;text-decoration:none;">Get token ↗</a>
-                  </label>
-                  <input x-model="jiraSettings.pat" type="password" placeholder="Paste your Jira API token here"
-                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                </div>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-                  <input type="checkbox" x-model="jiraSettings.enabled" style="width:16px;height:16px;accent-color:#6366f1;">
-                  <span style="font-size:12px;color:var(--text-1);">Enable Jira integration</span>
-                </label>
-              </div>
-              <button @click="saveJira()" style="padding:9px 16px;border-radius:8px;background:#6366f1;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s ease;" @mouseenter="$el.style.background='#4f46e5'" @mouseleave="$el.style.background='#6366f1'">Save Jira Settings</button>
-            </div>
-
-            <!-- GitLab Token -->
-            <div style="padding:18px;background:var(--surface);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-                <div style="width:32px;height:32px;border-radius:8px;background:#fff3ee;display:flex;align-items:center;justify-content:center;font-size:16px;">🦊</div>
-                <div style="font-size:13px;font-weight:700;color:var(--text-1);">GitLab API Token</div>
-              </div>
-              <div style="display:grid;gap:12px;margin-bottom:14px;">
-                <div>
-                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Base URL
-                    <span style="font-weight:400;color:var(--text-3);">(default: https://gitlab.com)</span>
-                  </label>
-                  <input x-model="gitlabSettings.base_url" type="url" placeholder="https://gitlab.com"
-                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;margin-bottom:12px;">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Personal Access Token
-                    <a href="https://gitlab.com/-/user_settings/personal_access_tokens" target="_blank" style="color:#fc6d26;font-weight:500;margin-left:4px;text-decoration:none;">Get token ↗</a>
-                  </label>
-                  <input x-model="gitlabSettings.access_token" type="password" placeholder="Paste your GitLab personal access token here"
-                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                </div>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-                  <input type="checkbox" x-model="gitlabSettings.enabled" style="width:16px;height:16px;accent-color:#fc6d26;">
-                  <span style="font-size:12px;color:var(--text-1);">Enable GitLab integration</span>
-                </label>
-              </div>
-              <button @click="saveGitLab()" style="padding:9px 16px;border-radius:8px;background:#fc6d26;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s ease;" @mouseenter="$el.style.background='#e65100'" @mouseleave="$el.style.background='#fc6d26'">Save GitLab Settings</button>
-            </div>
-
-            <div x-show="tokenMsg" style="padding:12px 14px;border-radius:9px;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:12px;font-weight:600;" x-text="tokenMsg"></div>
-          </div>
-        </div>
-      </div>
-
       <div x-show="view==='admin'" x-cloak>
         <div style="max-width:680px;">
 
@@ -6598,7 +6370,7 @@ function initApiTokens() {
             <div style="padding:10px 14px;border-radius:12px;background:#f5f3ff;border:1px solid #ddd6fe;margin-bottom:16px;font-size:12px;color:#6d28d9;line-height:1.6;">
               <strong>How to get your Outlook ICS URL:</strong> Outlook Web → Settings → Calendar → Shared calendars → Publish a calendar → select your calendar → Copy the <em>ICS</em> link.
             </div>
-            <div style="display:flex;flex-direction:column;gap:var(--card-gap);">
+            <div style="display:flex;flex-direction:column;gap:12px;">
               <div>
                 <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Outlook ICS Feed URL</label>
                 <input x-model="outlookCfg.ics_url" type="url" placeholder="https://outlook.live.com/owa/calendar/.../calendar.ics"
@@ -6707,6 +6479,77 @@ function initApiTokens() {
             </div>
           </div>
 
+          <!-- API Token Management -->
+          <div class="card" style="margin-bottom:20px;" x-data="{jiraSettings:{base_url:'',pat:'',enabled:false},gitlabSettings:{base_url:'https://gitlab.com',access_token:'',enabled:false},tokenMsg:'',async initTokens(){this.jiraSettings=await fetch('/api/settings/jira').then(r=>r.json());this.gitlabSettings=await fetch('/api/settings/gitlab').then(r=>r.json());},async saveJira(){await fetch('/api/settings/jira',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:this.jiraSettings.base_url,pat:this.jiraSettings.pat,enabled:this.jiraSettings.enabled})});this.tokenMsg='Jira settings saved ✓';setTimeout(()=>this.tokenMsg='',3000);},async saveGitLab(){await fetch('/api/settings/gitlab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:this.gitlabSettings.base_url,access_token:this.gitlabSettings.access_token,enabled:this.gitlabSettings.enabled})});this.tokenMsg='GitLab settings saved ✓';setTimeout(()=>this.tokenMsg='',3000);}}" x-init="initTokens()">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:20px;">🔑</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">API Tokens</div>
+                <div style="font-size:12px;color:var(--text-3);">Manage global API credentials for Jira and GitLab</div>
+              </div>
+            </div>
+
+            <!-- Jira Token -->
+            <div style="margin-bottom:24px;padding:18px;background:var(--surface);border-radius:10px;border:1px solid var(--border);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#e8f0ff;display:flex;align-items:center;justify-content:center;font-size:16px;">🔵</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-1);">Jira API Token</div>
+              </div>
+              <div style="display:grid;gap:12px;margin-bottom:14px;">
+                <div>
+                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Base URL
+                    <span style="font-weight:400;color:var(--text-3);">(e.g., https://company.atlassian.net)</span>
+                  </label>
+                  <input x-model="jiraSettings.base_url" type="url" placeholder="https://company.atlassian.net"
+                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;margin-bottom:12px;">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">API Token
+                    <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color:#6366f1;font-weight:500;margin-left:4px;text-decoration:none;">Get token ↗</a>
+                  </label>
+                  <input x-model="jiraSettings.pat" type="password" placeholder="Paste your Jira API token here"
+                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input type="checkbox" x-model="jiraSettings.enabled" style="width:16px;height:16px;accent-color:#6366f1;">
+                  <span style="font-size:12px;color:var(--text-1);">Enable Jira integration</span>
+                </label>
+              </div>
+              <button @click="saveJira()" style="padding:9px 16px;border-radius:8px;background:#6366f1;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s ease;" @mouseenter="$el.style.background='#4f46e5'" @mouseleave="$el.style.background='#6366f1'">Save Jira Settings</button>
+            </div>
+
+            <!-- GitLab Token -->
+            <div style="padding:18px;background:var(--surface);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#fff3ee;display:flex;align-items:center;justify-content:center;font-size:16px;">🦊</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-1);">GitLab API Token</div>
+              </div>
+              <div style="display:grid;gap:12px;margin-bottom:14px;">
+                <div>
+                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Base URL
+                    <span style="font-weight:400;color:var(--text-3);">(default: https://gitlab.com)</span>
+                  </label>
+                  <input x-model="gitlabSettings.base_url" type="url" placeholder="https://gitlab.com"
+                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;margin-bottom:12px;">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px;">Personal Access Token
+                    <a href="https://gitlab.com/-/user_settings/personal_access_tokens" target="_blank" style="color:#fc6d26;font-weight:500;margin-left:4px;text-decoration:none;">Get token ↗</a>
+                  </label>
+                  <input x-model="gitlabSettings.access_token" type="password" placeholder="Paste your GitLab personal access token here"
+                    style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input type="checkbox" x-model="gitlabSettings.enabled" style="width:16px;height:16px;accent-color:#fc6d26;">
+                  <span style="font-size:12px;color:var(--text-1);">Enable GitLab integration</span>
+                </label>
+              </div>
+              <button @click="saveGitLab()" style="padding:9px 16px;border-radius:8px;background:#fc6d26;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s ease;" @mouseenter="$el.style.background='#e65100'" @mouseleave="$el.style.background='#fc6d26'">Save GitLab Settings</button>
+            </div>
+
+            <div x-show="tokenMsg" style="padding:12px 14px;border-radius:9px;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:12px;font-weight:600;" x-text="tokenMsg"></div>
+          </div><!-- /API Token Management card -->
+
           <!-- Export / Import / Backups -->
           <div class="card">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
@@ -6719,7 +6562,7 @@ function initApiTokens() {
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
               <!-- Export Card -->
-              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:var(--card-gap);">
+              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <div style="font-size:20px;">📥</div>
                   <div style="font-size:13px;font-weight:700;color:var(--text-1);">Export Database</div>
@@ -6731,7 +6574,7 @@ function initApiTokens() {
               </div>
 
               <!-- Import Card -->
-              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:var(--card-gap);">
+              <div style="background:var(--bg);border-radius:12px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <div style="font-size:20px;">📤</div>
                   <div style="font-size:13px;font-weight:700;color:var(--text-1);">Import/Restore</div>
@@ -7360,6 +7203,10 @@ function initApiTokens() {
               <option value="archived">⬜ Archived</option>
             </select>
           </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:800;color:#6366f1;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px;">Jira Project Key</label>
+          <input x-model="applicationModal.data.jira_project_key" class="input" placeholder="e.g. EXEC, INFRA" maxlength="20" style="font-size:14px;padding:12px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);" />
         </div>
       </div>
 
