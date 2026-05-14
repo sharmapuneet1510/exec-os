@@ -119,6 +119,56 @@ def _auto_create_team_from_jira(issues: list, db: Session):
     db.commit()
 
 
+def _get_jira_pr_from_dev_api(jira_cfg: JiraConfigORM, issue_key: str):
+    """Fetch PR/MR linked to Jira issue from Development API.
+
+    Uses Jira's dev-status API which pulls from GitHub/GitLab integration.
+    Returns first PR found (prioritizing open PRs over merged).
+    """
+    try:
+        # Development Information API (Jira Cloud + Server with app integration)
+        data = _jira_get(jira_cfg, f"rest/dev-status/latest/issue/detail", {
+            "issueId": issue_key,
+            "applicationType": "GitHub",
+            "dataType": "pullrequest"
+        })
+
+        prs = data.get("detail", [])
+        if not prs:
+            return None
+
+        # Get pullRequests from the first detail entry
+        pull_requests = prs[0].get("pullRequests", []) if prs else []
+        if not pull_requests:
+            return None
+
+        # Prefer open over merged
+        for pr in pull_requests:
+            if pr.get("status") != "MERGED":
+                return {
+                    "title": pr.get("name", ""),
+                    "web_url": pr.get("url", ""),
+                    "state": "opened" if pr.get("status") == "OPEN" else pr.get("status", "").lower(),
+                    "draft": pr.get("status") == "DRAFT",
+                    "is_reviewed": pr.get("reviewState") == "APPROVED",
+                }
+
+        # Fall back to merged PR
+        if pull_requests:
+            pr = pull_requests[0]
+            return {
+                "title": pr.get("name", ""),
+                "web_url": pr.get("url", ""),
+                "state": "merged",
+                "draft": False,
+                "is_reviewed": True,
+            }
+    except Exception as e:
+        log.debug(f"Could not fetch dev status for {issue_key}: {e}")
+
+    return None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 @router.get("/boards")
 def list_boards(app_id: str = Query(...), db: Session = Depends(_db)):
@@ -312,12 +362,16 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
         assignee = (f.get("assignee")  or {})
         jira_key = issue["key"]
 
-        # Try matching against GitLab MRs by branch/title pattern
-        matching = [m for m in combined_mrs if _matches_key(m, jira_key)]
-        # Prefer open over merged in display; merged as fallback
-        open_mr   = next((m for m in matching if m["state"] == "opened"), None)
-        merged_mr = next((m for m in matching if m["state"] == "merged"), None)
-        mr_display = open_mr or merged_mr
+        # First try Jira's Development API (for GitHub/GitLab linked PRs)
+        mr_display = _get_jira_pr_from_dev_api(jira_cfg, jira_key)
+
+        # Fall back to GitLab MR correlation by branch/title pattern
+        if not mr_display:
+            matching = [m for m in combined_mrs if _matches_key(m, jira_key)]
+            # Prefer open over merged in display; merged as fallback
+            open_mr   = next((m for m in matching if m["state"] == "opened"), None)
+            merged_mr = next((m for m in matching if m["state"] == "merged"), None)
+            mr_display = open_mr or merged_mr
 
         project_name = (f.get("project") or {}).get("key", "")
         item = {
