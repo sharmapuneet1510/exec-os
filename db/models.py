@@ -496,6 +496,20 @@ class MockGitLabMRORM(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class JiraIssueCommentORM(Base):
+    __tablename__ = "jira_issue_comments"
+
+    comment_id = Column(String, primary_key=True, default=_uuid)
+    issue_key = Column(String(50), nullable=False, index=True)
+    author_email = Column(String(255), nullable=False)
+    author_name = Column(String(255), default="")
+    text = Column(Text, nullable=False)
+    is_jira_comment = Column(Boolean, default=False)  # True if from Jira, False if local
+    jira_comment_id = Column(String(255), nullable=True)  # For syncing with Jira
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class EntityActivityLogORM(Base):
     __tablename__ = "entity_activity_logs"
 

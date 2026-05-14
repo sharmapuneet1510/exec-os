@@ -35,6 +35,7 @@ from web.routers.my_work_routes import router as my_work_router
 from web.routers.members import router as members_router
 from web.routers.jira_sync_routes import router as jira_sync_router
 from web.routers.settings import router as settings_router
+from web.routers.issue_comments import router as issue_comments_router
 
 from services.reminder_scheduler import create_scheduler_job
 from services.backup_scheduler import start_backup_scheduler, shutdown_backup_scheduler
@@ -107,6 +108,7 @@ app.include_router(my_work_router)
 app.include_router(members_router)
 app.include_router(jira_sync_router)
 app.include_router(settings_router)
+app.include_router(issue_comments_router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
