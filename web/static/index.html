@@ -6293,32 +6293,36 @@ function initApiTokens() {
             </button>
           </div>
 
-          <!-- Sprint stats preview -->
-          <div class="card" x-show="sprintData">
-            <div style="font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:4px;" x-text="sprintData?.sprint?.name||'Sprint'"></div>
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:16px;" x-text="(sprintData?.sprint?.start_date||'') + ' → ' + (sprintData?.sprint?.end_date||'')"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div style="text-align:center;padding:12px;background:var(--bg);border-radius:10px;">
-                <div style="font-size:24px;font-weight:800;font-family:var(--font-mono);color:var(--text-1);" x-text="sprintData?.stats?.total||0"></div>
-                <div style="font-size:10px;color:var(--text-3);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Total</div>
+          <!-- Sprint stats preview - COMPACT -->
+          <div class="card" x-show="sprintData" style="padding:10px 14px;">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-1);" x-text="sprintData?.sprint?.name||'Sprint'"></div>
+                <div style="font-size:9px;color:var(--text-3);" x-text="(sprintData?.sprint?.start_date||'') + ' → ' + (sprintData?.sprint?.end_date||'')"></div>
               </div>
-              <div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:10px;">
-                <div style="font-size:24px;font-weight:800;font-family:var(--font-mono);color:#16a34a;" x-text="sprintData?.stats?.done||0"></div>
-                <div style="font-size:10px;color:#16a34a;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Done</div>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(60px,1fr));gap:6px;">
+                <div style="text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                  <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--text-1);" x-text="sprintData?.stats?.total||0"></div>
+                  <div style="font-size:8px;color:var(--text-3);margin-top:1px;font-weight:600;">Total</div>
+                </div>
+                <div style="text-align:center;padding:6px;background:#f0fdf4;border-radius:6px;">
+                  <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:#16a34a;" x-text="sprintData?.stats?.done||0"></div>
+                  <div style="font-size:8px;color:#16a34a;margin-top:1px;font-weight:600;">Done</div>
+                </div>
+                <div style="text-align:center;padding:6px;background:#eff6ff;border-radius:6px;">
+                  <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:#2563eb;" x-text="sprintData?.stats?.in_progress||0"></div>
+                  <div style="font-size:8px;color:#2563eb;margin-top:1px;font-weight:600;">In Prog</div>
+                </div>
+                <div style="text-align:center;padding:6px;background:#fef9ec;border-radius:6px;">
+                  <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:#d97706;" x-text="sprintData?.stats?.needs_review||0"></div>
+                  <div style="font-size:8px;color:#d97706;margin-top:1px;font-weight:600;">Review</div>
+                </div>
               </div>
-              <div style="text-align:center;padding:12px;background:#eff6ff;border-radius:10px;">
-                <div style="font-size:24px;font-weight:800;font-family:var(--font-mono);color:#2563eb;" x-text="sprintData?.stats?.in_progress||0"></div>
-                <div style="font-size:10px;color:#2563eb;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">In Progress</div>
+              <div style="font-size:9px;color:var(--text-2);margin-left:auto;">
+                <span x-text="(sprintData?.stats?.with_mr||0)+' MRs'"></span>
+                <span style="margin:0 4px;color:var(--text-3);">·</span>
+                <span x-text="(sprintData?.stats?.merged||0)+' merged'"></span>
               </div>
-              <div style="text-align:center;padding:12px;background:#fef9ec;border-radius:10px;">
-                <div style="font-size:24px;font-weight:800;font-family:var(--font-mono);color:#d97706;" x-text="sprintData?.stats?.needs_review||0"></div>
-                <div style="font-size:10px;color:#d97706;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Needs Review</div>
-              </div>
-            </div>
-            <div style="margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:8px;font-size:11px;color:var(--text-2);">
-              <span x-text="(sprintData?.stats?.with_mr||0)+' items have MRs'"></span>
-              <span style="margin:0 6px;">·</span>
-              <span x-text="(sprintData?.stats?.merged||0)+' merged'"></span>
             </div>
           </div>
         </div>
@@ -6354,7 +6358,7 @@ function initApiTokens() {
           </div>
 
           <!-- Column headers - Compact -->
-          <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">
+          <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,140px) minmax(70px,100px) minmax(150px,150px);gap:0;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">
             <div>Project</div><div>Key</div><div>Type</div><div>Summary</div><div>Status</div><div>Priority</div><div>Assignee</div><div>Due</div><div>MR / Review</div>
           </div>
 
@@ -6374,8 +6378,7 @@ function initApiTokens() {
             });
             return filtered;
           })()" :key="item.key">
-              <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:10px 12px;border-bottom:1px solid var(--border);align-items:center;transition:background .1s;"
-                style="overflow-wrap:break-word;word-break:break-word;"
+              <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,140px) minmax(70px,100px) minmax(150px,150px);gap:0;padding:10px 12px;border-bottom:1px solid var(--border);align-items:flex-start;transition:background .1s;overflow-wrap:break-word;word-break:break-word;"
                 onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='transparent'">
 
                 <!-- Project name -->
@@ -6409,10 +6412,10 @@ function initApiTokens() {
                 </div>
 
                 <!-- Assignee -->
-                <div style="font-size:10px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.assignee" x-text="item.assignee||'Unassigned'"></div>
+                <div style="font-size:10px;color:var(--text-2);word-wrap:break-word;line-height:1.3;min-width:0;" :title="item.assignee" x-text="item.assignee||'Unassigned'"></div>
 
                 <!-- Due Date -->
-                <div style="font-size:10px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.due_date||'—'" x-text="item.due_date||'—'"></div>
+                <div style="font-size:10px;color:var(--text-2);word-wrap:break-word;line-height:1.3;min-width:0;" :title="item.due_date||'—'" x-text="item.due_date||'—'"></div>
 
                 <!-- GitLab MR -->
                 <div style="min-width:0;">
