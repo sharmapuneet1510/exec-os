@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import AppSprintConfigORM, JiraConfigORM, AppGitLabConfigORM
+from db.models import AppSprintConfigORM, JiraConfigORM, AppGitLabConfigORM, TeamMemberORM
 
 log = logging.getLogger("execos.sprint")
 router = APIRouter(prefix="/api/sprint", tags=["sprint"])
@@ -93,6 +93,30 @@ def _gl_get(cfg, path: str, params: dict = None):
     if not resp.ok:
         raise HTTPException(resp.status_code, f"GitLab error: {resp.text[:200]}")
     return resp.json(), resp.headers
+
+
+def _auto_create_team_from_jira(issues: list, db: Session):
+    """Extract assignees from Jira issues and create team members if they don't exist."""
+    for issue in issues:
+        assignee = (issue.get("fields", {}) or {}).get("assignee") or {}
+        email = (assignee.get("emailAddress") or "").lower()
+        name = assignee.get("displayName", "")
+
+        if not email:
+            continue
+
+        existing = db.query(TeamMemberORM).filter(TeamMemberORM.email == email).first()
+        if not existing:
+            member = TeamMemberORM(
+                name=name or email.split('@')[0],
+                email=email,
+                role="Engineer",
+                is_active=True,
+                max_concurrent_tasks=8
+            )
+            db.add(member)
+
+    db.commit()
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -195,6 +219,9 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
         start_at += len(issues)
         if start_at >= min(total, 500) or not issues:
             break
+
+    # Auto-create team members from Jira assignees
+    _auto_create_team_from_jira(all_issues, db)
 
     # ── Fetch GitLab MRs for correlation ────────────────────────────────────
     import urllib.parse

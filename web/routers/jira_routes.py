@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import JiraConfigORM, AppJiraConfigORM
+from db.models import JiraConfigORM, AppJiraConfigORM, TeamMemberORM
 
 log = logging.getLogger("execos.jira")
 router = APIRouter(prefix="/api/jira", tags=["jira"])
@@ -116,6 +116,30 @@ def _build_jql(app_cfg: AppJiraConfigORM, extra: str = "") -> str:
     return " AND ".join(parts)
 
 
+def _auto_create_team_from_jira(issues: list, db: Session):
+    """Extract assignees from Jira issues and create team members if they don't exist."""
+    for issue in issues:
+        assignee = (issue.get("fields", {}) or {}).get("assignee") or {}
+        email = (assignee.get("emailAddress") or "").lower()
+        name = assignee.get("displayName", "")
+
+        if not email:
+            continue
+
+        existing = db.query(TeamMemberORM).filter(TeamMemberORM.email == email).first()
+        if not existing:
+            member = TeamMemberORM(
+                name=name or email.split('@')[0],
+                email=email,
+                role="Engineer",
+                is_active=True,
+                max_concurrent_tasks=8
+            )
+            db.add(member)
+
+    db.commit()
+
+
 def _jira_search_all(cfg: JiraConfigORM, jql: str, fields: str) -> list:
     """Paginate through all Jira search results (max 500)."""
     all_issues = []
@@ -184,6 +208,9 @@ def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     jql = _build_jql(app_cfg)
     fields = "summary,assignee,status,priority,issuetype,project,created,updated,duedate"
     issues = _jira_search_all(cfg, jql, fields)
+
+    # Auto-create team members from Jira assignees
+    _auto_create_team_from_jira(issues, db)
 
     # Group by assignee
     team: dict = {}
