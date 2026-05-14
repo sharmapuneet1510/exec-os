@@ -107,6 +107,11 @@ function app() {
     sprintWorkloadFilter: "",
     swlExpanded: {},
 
+    commentsModal: { open: false, issue_key: '', loading: false, error: '' },
+    comments: [],
+    commentForm: { text: '' },
+    currentUserEmail: localStorage.getItem('execos_user_email') || '',
+
     teamList: [],
     tmModal: false,
     tmEditId: null,
@@ -1804,6 +1809,83 @@ function app() {
         const data = await fetch(`/api/my-work/team/${memberId}`).then(r=>r.json());
         this.myWorkTeamData = { tasks: data.tasks||[], jira: data.jira||[], mrs: data.mrs||[] };
       } catch(e) { console.warn('loadMyWorkTeam failed', e); }
+    },
+
+    // ── Issue Comments ───────────────────────────────────────────────────────
+    async openCommentsModal(issueKey) {
+      this.commentsModal = { open: true, issue_key: issueKey, loading: true, error: '' };
+      this.commentForm = { text: '' };
+      await this.loadComments(issueKey);
+    },
+
+    async loadComments(issueKey) {
+      try {
+        this.commentsModal.loading = true;
+        const resp = await fetch(`/api/issues/${issueKey}/comments`);
+        if (resp.ok) {
+          const data = await resp.json();
+          this.comments = data.comments || [];
+          this.commentsModal.error = '';
+        } else {
+          this.commentsModal.error = 'Failed to load comments';
+        }
+      } catch(e) {
+        console.warn('loadComments failed', e);
+        this.commentsModal.error = 'Error loading comments';
+      } finally {
+        this.commentsModal.loading = false;
+      }
+    },
+
+    async addComment() {
+      if (!this.commentForm.text.trim()) {
+        this.addToast('Comment cannot be empty', 'warning');
+        return;
+      }
+
+      const issueKey = this.commentsModal.issue_key;
+      const userEmail = this.currentUserEmail || 'unknown@example.com';
+
+      try {
+        const resp = await fetch(`/api/issues/${issueKey}/comments?author_email=${encodeURIComponent(userEmail)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: this.commentForm.text })
+        });
+
+        if (resp.ok) {
+          this.commentForm.text = '';
+          await this.loadComments(issueKey);
+          this.addToast('Comment added', 'success');
+        } else {
+          this.addToast('Failed to add comment', 'error');
+        }
+      } catch(e) {
+        console.warn('addComment failed', e);
+        this.addToast('Error adding comment', 'error');
+      }
+    },
+
+    async deleteComment(commentId) {
+      if (!confirm('Delete this comment?')) return;
+
+      const issueKey = this.commentsModal.issue_key;
+
+      try {
+        const resp = await fetch(`/api/issues/${issueKey}/comments/${commentId}`, {
+          method: 'DELETE'
+        });
+
+        if (resp.ok) {
+          await this.loadComments(issueKey);
+          this.addToast('Comment deleted', 'success');
+        } else {
+          this.addToast('Failed to delete comment', 'error');
+        }
+      } catch(e) {
+        console.warn('deleteComment failed', e);
+        this.addToast('Error deleting comment', 'error');
+      }
     },
 
   };
@@ -6384,9 +6466,10 @@ function initApiTokens() {
                 <!-- Project name -->
                 <div style="font-size:10px;font-weight:600;color:var(--accent);" x-text="item.project"></div>
 
-                <!-- Key -->
-                <div style="min-width:0;">
-                  <a :href="item.web_url" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;" :title="item.key" x-text="item.key"></a>
+                <!-- Key + Comments -->
+                <div style="min-width:0;display:flex;align-items:center;gap:6px;">
+                  <a :href="item.web_url" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" :title="item.key" x-text="item.key"></a>
+                  <button @click="openCommentsModal(item.key)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-2);padding:2px 4px;border-radius:3px;" title="View comments" x-text="'💬'"></button>
                 </div>
 
                 <!-- Type -->
@@ -6448,6 +6531,57 @@ function initApiTokens() {
 
       </div><!-- end sprint-board -->
 
+      <!-- ══ COMMENTS MODAL ══ -->
+      <div x-show="commentsModal.open" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;" @click.self="commentsModal.open=false">
+        <div style="background:var(--surface);border-radius:12px;width:90%;max-width:700px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <!-- Header -->
+          <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);">
+            <div>
+              <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text-1);" x-text="'Comments · ' + commentsModal.issue_key"></h3>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Jira comments + local notes</div>
+            </div>
+            <button @click="commentsModal.open=false" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-2);">✕</button>
+          </div>
+
+          <!-- Loading / Error -->
+          <div x-show="commentsModal.loading" style="padding:40px;text-align:center;color:var(--text-3);">Loading comments…</div>
+          <div x-show="commentsModal.error" style="padding:20px;color:var(--red);" x-text="commentsModal.error"></div>
+
+          <!-- Comments list -->
+          <div x-show="!commentsModal.loading && comments.length > 0" style="padding:16px;">
+            <template x-for="comment in comments" :key="comment.id">
+              <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid" :style="comment.is_jira ? 'border-left-color:#2563eb' : 'border-left-color:#10b981'">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                  <div>
+                    <div style="font-size:12px;font-weight:600;color:var(--text-1);">
+                      <span x-text="comment.author"></span>
+                      <span style="font-size:10px;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:600;" :style="comment.is_jira ? 'background:#dbeafe;color:#2563eb' : 'background:#dcfce7;color:#16a34a'" x-text="comment.is_jira ? 'JIRA' : 'LOCAL'"></span>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-3);margin-top:2px;" x-text="comment.created_at"></div>
+                  </div>
+                  <button x-show="!comment.is_jira" @click="deleteComment(comment.id)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;font-weight:600;">Delete</button>
+                </div>
+                <div style="font-size:12px;color:var(--text-2);line-height:1.5;word-wrap:break-word;" x-text="comment.text"></div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Empty state -->
+          <div x-show="!commentsModal.loading && comments.length === 0" style="padding:40px;text-align:center;color:var(--text-3);">
+            <div style="font-size:40px;margin-bottom:12px;">💬</div>
+            <div>No comments yet</div>
+          </div>
+
+          <!-- Add comment form -->
+          <div style="padding:16px;border-top:1px solid var(--border);background:var(--surface);position:sticky;bottom:0;">
+            <textarea x-model="commentForm.text" placeholder="Add a local note (not posted to Jira)..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:12px;resize:vertical;min-height:60px;font-family:var(--font);background:var(--bg);color:var(--text-1);" @keydown.ctrl.enter="addComment()"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+              <button @click="commentsModal.open=false" style="padding:8px 16px;border:1px solid var(--border);background:var(--bg);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-1);">Close</button>
+              <button @click="addComment()" style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Add Comment</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ══ RESOURCING ══ -->
       <div x-show="view==='resourcing'" x-cloak class="p-4 space-y-4">
