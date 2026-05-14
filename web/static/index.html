@@ -2335,6 +2335,7 @@ function initApiTokens() {
     <span x-text="sidebarOpen.set ? '▾' : '▸'" style="font-size:10px;"></span>
   </div>
   <div x-show="sidebarOpen.set">
+    <div @click="nav('admin')"           :class="navCls('admin')">           <span class="nav-icon">⚙️</span><span>General Settings</span></div>
     <div @click="nav('api-tokens')"      :class="navCls('api-tokens')">      <span class="nav-icon">🔐</span><span>API Tokens</span></div>
     <div @click="nav('summaries')"       :class="navCls('summaries')">       <span class="nav-icon">📧</span><span>Email Briefing</span></div>
     <div @click="nav('activity-log')"    :class="navCls('activity-log')">    <span class="nav-icon">📜</span><span>Activity Log</span></div>
