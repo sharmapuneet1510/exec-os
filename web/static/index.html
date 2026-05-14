@@ -521,9 +521,15 @@ function app() {
       this.addToast('Release created', 'success');
     },
     async deleteApplication(id) {
-      if(!confirm('Delete this application? Projects linked to it will be unlinked.')) return;
+      const app = this.applications?.find(a => a.application_id === id);
+      const projectCount = this.projects?.filter(p => p.application_id === id).length || 0;
+      const msg = projectCount > 0
+        ? `⚠️ Delete "${app?.name}"?\n\nThis will PERMANENTLY delete:\n• The application\n• ${projectCount} project(s)\n• All tasks in those projects\n\nThis cannot be undone!`
+        : `Delete "${app?.name}"?`;
+
+      if(!confirm(msg)) return;
       await fetch(`/api/applications/${id}`,{method:'DELETE'});
-      this.addToast('Application deleted','info');
+      this.toast('success','Application and all child data deleted');
       await this.loadApplications(); await this.loadProjects();
     },
 
@@ -6552,6 +6558,51 @@ function initApiTokens() {
 
       <div x-show="view==='admin'" x-cloak>
         <div style="max-width:680px;">
+
+<!-- General Settings -->
+          <div class="card" style="margin-bottom:20px;" x-data="{settings:null}" x-init="fetch('/api/settings/general').then(r=>r.json()).then(d=>settings=d)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:18px;">⚙️</div>
+              <div>
+                <div style="font-size:15px;font-weight:800;color:var(--text-1);">General Settings</div>
+                <div style="font-size:12px;color:var(--text-3);">System configuration and backup information</div>
+              </div>
+            </div>
+            <div x-show="!settings" style="color:var(--text-3);font-size:13px;">Loading…</div>
+            <div x-show="settings" style="display:flex;flex-direction:column;gap:16px;">
+              <!-- Database Location -->
+              <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">📦 Database Location</div>
+                <div x-show="settings.database?.type==='sqlite'" style="display:flex;align-items:center;gap:8px;">
+                  <code style="flex:1;font-size:12px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-1);overflow:auto;white-space:normal;word-break:break-all;" x-text="settings.database?.path"></code>
+                  <button @click="navigator.clipboard.writeText(settings.database.path).then(()=>toast('success','Path copied'))" class="btn-icon" title="Copy">📋</button>
+                </div>
+                <div x-show="settings.database?.type!=='sqlite'" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);" x-text="'PostgreSQL: '+settings.database?.url_masked"></div>
+              </div>
+              <!-- Backup Config -->
+              <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">💾 Backup Configuration</div>
+                <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+                  <div><strong>Status:</strong> <span x-text="settings.backup?.enabled ? '✓ Enabled' : '✗ Disabled'" :style="'color:'+(settings.backup?.enabled?'#16a34a':'#dc2626')"></span></div>
+                  <div><strong>Location:</strong> <code style="font-family:var(--font-mono);font-size:11px;" x-text="settings.backup?.location"></code></div>
+                  <div><strong>Schedule:</strong> <span x-text="settings.backup?.schedule"></span></div>
+                  <div><strong>Retention:</strong> <span x-text="settings.backup?.retention_days + ' days'"></span></div>
+                </div>
+              </div>
+              <!-- Backup Recommendation -->
+              <div style="padding:10px 12px;border-radius:8px;background:#fef3c7;border:1px solid #fcd34d;font-size:12px;color:#92400e;">
+                <strong>📌 Action:</strong> <span x-text="settings.backup?.recommendation"></span>
+              </div>
+              <!-- System Info -->
+              <div style="border-top:1px solid var(--border);padding-top:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🖥️ System Information</div>
+                <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+                  <div><strong>Python:</strong> <code style="font-family:var(--font-mono);font-size:11px;" x-text="settings.system?.python_version"></code></div>
+                  <div><strong>Config:</strong> <code style="font-family:var(--font-mono);font-size:11px;" x-text="settings.system?.config_file"></code></div>
+                </div>
+              </div>
+            </div>
+          </div>
 
 <!-- System / Database Info -->
           <div class="card" style="margin-bottom:20px;" x-data="{info:null}" x-init="fetch('/api/system/info').then(r=>r.json()).then(d=>info=d)">
