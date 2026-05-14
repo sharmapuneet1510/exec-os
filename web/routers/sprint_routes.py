@@ -67,6 +67,7 @@ def _jira_get(cfg, path: str, params: dict = None):
             "Accept": "application/json",
             "Content-Type": "application/json",
         },
+        verify=False,
         timeout=20,
     )
     if resp.status_code == 401:
