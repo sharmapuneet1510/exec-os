@@ -30,7 +30,13 @@
       "Bash(python3 *)",
       "Bash(awk *)",
       "Bash(pkill -f \"python3 start.py\")",
-      "Bash(git commit -m 'fix: hide contentWrapper when displaying external views to eliminate spacing gap *)"
+      "Bash(git commit -m 'fix: hide contentWrapper when displaying external views to eliminate spacing gap *)",
+      "Bash(git commit -m 'chore: update database *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git commit *)"
     ]
   }
 }
