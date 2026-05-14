@@ -183,8 +183,8 @@ function app() {
         'jira-team':'Live Jira data · Open issues · Who is working on what',
         'team-workload':'Team workload across local tasks, Jira issues, and GitLab MRs',
         'gitlab-mrs':'Open MRs · By author · By project · Draft vs Ready',
-        admin:'Email · Jira · GitLab · Outlook · Integrations',
-        planner:'Schedule tasks · Outlook calendar · 2-hr reminders',
+        admin:'Email · Jira · GitLab · Integrations',
+        planner:'Schedule tasks · Task management · 2-hr reminders',
         'my-hub':'My assigned Jira issues · My MRs · Book of Work',
         'sprint-board':'Sprint items · Jira + GitLab correlation · MR review status',
         'proj-planner':'Hierarchy: Milestones → Tasks · Sequential & parallel · Real-time dates',
@@ -294,7 +294,7 @@ function app() {
       await Promise.all([
         this.loadDashboard(), this.loadTasks(), this.loadProjects(),
         this.loadMilestones(), this.loadReleases(), this.loadCommitments(), this.loadAlerts(),
-        this.loadSummaries(), this.loadEstimations(), this.loadEmailConfig(), this.loadOutlookConfig(),
+        this.loadSummaries(), this.loadEstimations(), this.loadEmailConfig(),
         this.loadApplications(),
       ]);
       this.loading = false;
@@ -315,7 +315,7 @@ function app() {
       }
       if(id==='sprint-board' && this.sprintAppId && !this.sprintData) this.onSprintAppChange();
       if(id==='admin') {
-        this.loadEmailConfig(); this.loadOutlookConfig();
+        this.loadEmailConfig();
         if (!this.settingsApp && this.applications.length) this.settingsApp = this.applications[0].application_id;
         this.loadSettingsAppConfig();
       }
@@ -6989,47 +6989,6 @@ function initApiTokens() {
               <div style="font-size:12px;color:var(--text-3);padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
                 Override via <code style="font-family:var(--font-mono);font-size:11.5px;background:rgba(79,70,229,0.08);padding:1px 5px;border-radius:4px;">DATABASE_URL</code> or <code style="font-family:var(--font-mono);font-size:11.5px;background:rgba(79,70,229,0.08);padding:1px 5px;border-radius:4px;">DB_PATH</code> in <code style="font-family:var(--font-mono);font-size:11.5px;background:rgba(79,70,229,0.08);padding:1px 5px;border-radius:4px;">.env</code> — restart required
               </div>
-            </div>
-          </div>
-
-          <!-- Outlook / Calendar config -->
-          <div class="card" style="margin-bottom:20px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🗓️</div>
-              <div>
-                <div style="font-size:15px;font-weight:800;color:var(--text-1);">Day Planner · Outlook Calendar</div>
-                <div style="font-size:12px;color:var(--text-3);">Paste your Outlook ICS feed URL to pull calendar events into your day plan</div>
-              </div>
-              <div style="margin-left:auto;" :class="outlookCfg.enabled?'chip chip-green':'chip chip-gray'" x-text="outlookCfg.enabled?'Connected':'Disabled'"></div>
-            </div>
-            <!-- How to get ICS URL -->
-            <div style="padding:10px 14px;border-radius:12px;background:#f5f3ff;border:1px solid #ddd6fe;margin-bottom:16px;font-size:12px;color:#6d28d9;line-height:1.6;">
-              <strong>How to get your Outlook ICS URL:</strong> Outlook Web → Settings → Calendar → Shared calendars → Publish a calendar → select your calendar → Copy the <em>ICS</em> link.
-            </div>
-            <div style="display:flex;flex-direction:column;gap:var(--card-gap);">
-              <div>
-                <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Outlook ICS Feed URL</label>
-                <input x-model="outlookCfg.ics_url" type="url" placeholder="https://outlook.live.com/owa/calendar/.../calendar.ics"
-                  style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;font-family:var(--font-mono);">
-                <div x-show="outlookCfg.ics_configured&&!outlookCfg.ics_url" style="font-size:11px;color:var(--green);margin-top:3px;">✓ URL saved (hidden for security)</div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div>
-                  <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Working Day Start</label>
-                  <input x-model="outlookCfg.working_start" type="time"
-                    style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                </div>
-                <div>
-                  <label style="font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px;">Working Day End</label>
-                  <input x-model="outlookCfg.working_end" type="time"
-                    style="width:100%;padding:8px 12px;border-radius:9px;border:1px solid var(--border);font-size:13px;color:var(--text-1);box-sizing:border-box;">
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="checkbox" x-model="outlookCfg.enabled" style="width:16px;height:16px;accent-color:var(--accent);">
-                <label style="font-size:13px;font-weight:600;color:var(--text-1);cursor:pointer;">Enable calendar sync in Day Planner</label>
-              </div>
-              <button @click="saveOutlookConfig()" class="btn-primary" style="align-self:flex-start;">Save Calendar Settings</button>
             </div>
           </div>
 
