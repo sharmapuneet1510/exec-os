@@ -392,3 +392,121 @@ def refresh_workload_cache():
     """Manually bust cache and reload data."""
     _cache_bust()
     return {"ok": True}
+
+
+@router.get("/sprint")
+def get_sprint_workload(app_id: str = Query(...), db: Session = Depends(_db)):
+    """
+    Return sprint workload: aggregated from ALL sprints in an application.
+    Groups Jira issues by sprint and calculates per-person workload.
+    """
+    from db.models import ApplicationORM
+    
+    cache_key = f"workload_sprint_{app_id}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    # Verify app exists
+    app = db.query(ApplicationORM).filter(ApplicationORM.application_id == app_id).first()
+    if not app:
+        raise HTTPException(404, "Application not found")
+
+    # Get team members
+    team_members = db.query(TeamMemberORM).filter(TeamMemberORM.is_active == True).all()
+
+    # Get Jira config
+    jira_cfg = db.query(JiraConfigORM).first()
+    app_jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+
+    sprint_issues_by_email: dict = {}
+    sprints_involved = set()
+
+    if jira_cfg and jira_cfg.enabled and jira_cfg.pat and jira_cfg.base_url and app_jira_cfg:
+        emails = [m.email for m in team_members if m.email]
+        if emails:
+            quoted_emails = ", ".join(f'"{e}"' for e in emails)
+            keys = json.loads(app_jira_cfg.project_keys or "[]")
+            parts = []
+
+            if keys:
+                parts.append(f"project in ({', '.join(chr(34)+k+chr(34) for k in keys)})")
+
+            # Get ALL issues from any sprint
+            jql = f'{" AND ".join(parts)} AND assignee in ({quoted_emails})' if parts else f'assignee in ({quoted_emails})'
+            fields = "summary,assignee,status,priority,sprint"
+
+            for issue in _jira_search_all(jira_cfg, jql, fields):
+                f = issue.get("fields", {})
+                email = ((f.get("assignee") or {}).get("emailAddress") or "").lower()
+                sprint = f.get("sprint") or {}
+                
+                # Handle sprint field - could be dict or list
+                if isinstance(sprint, dict):
+                    sprint_name = sprint.get("name", "Backlog")
+                elif isinstance(sprint, list) and sprint:
+                    sprint_name = sprint[0].get("name", "Backlog") if isinstance(sprint[0], dict) else "Backlog"
+                else:
+                    sprint_name = "Backlog"
+
+                if email:
+                    if email not in sprint_issues_by_email:
+                        sprint_issues_by_email[email] = {}
+                    if sprint_name not in sprint_issues_by_email[email]:
+                        sprint_issues_by_email[email][sprint_name] = []
+
+                    sprint_issues_by_email[email][sprint_name].append({
+                        "key": issue["key"],
+                        "summary": f.get("summary", ""),
+                        "status": (f.get("status") or {}).get("name", ""),
+                        "priority": (f.get("priority") or {}).get("name", ""),
+                    })
+                    sprints_involved.add(sprint_name)
+
+    # Build team data with sprint breakdown
+    team_data = []
+    total_jira = 0
+
+    for member in team_members:
+        sprints_breakdown = {}
+        member_total = 0
+
+        if member.email and member.email.lower() in sprint_issues_by_email:
+            for sprint_name, issues in sprint_issues_by_email[member.email.lower()].items():
+                sprints_breakdown[sprint_name] = {
+                    "count": len(issues),
+                    "issues": issues,
+                }
+                member_total += len(issues)
+                total_jira += len(issues)
+
+        capacity_status = (
+            "light" if member_total < 4
+            else "moderate" if member_total < 8
+            else "heavy"
+        )
+
+        team_data.append({
+            "member_id": member.member_id,
+            "name": member.name,
+            "email": member.email,
+            "role": member.role,
+            "jira_count": member_total,
+            "capacity_status": capacity_status,
+            "max_concurrent_tasks": member.max_concurrent_tasks,
+            "sprints_breakdown": sprints_breakdown,
+        })
+
+    result = {
+        "team": sorted(team_data, key=lambda x: -x["jira_count"]),
+        "sprints": sorted(list(sprints_involved)),
+        "summary": {
+            "total_members": len(team_members),
+            "total_jira_issues": total_jira,
+            "sprints_count": len(sprints_involved),
+            "last_updated": datetime.utcnow().isoformat(),
+        }
+    }
+
+    _cache_set(cache_key, result)
+    return result

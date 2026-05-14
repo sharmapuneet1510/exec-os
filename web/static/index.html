@@ -92,7 +92,7 @@ function app() {
     sprintCfg: { board_id:'', sprint_id:'', sprint_name:'' },
     sprintBoards: [], sprintList: [], sprintBoardsLoading: false,
     sprintData: null, sprintLoading: false, sprintError: '',
-    sprintFilter: '', sprintViewTab: 'all',
+    sprintFilter: '', sprintViewTab: 'all', sprintSelectedProject: '',
 
     workloadData: { team: [], summary: { total_members: 0, overloaded_count: 0, total_local_tasks: 0, total_jira_issues: 0, total_mrs: 0, last_updated: null } },
     workloadLoading: false,
@@ -100,6 +100,12 @@ function app() {
     workloadFilter: "",
     wlExpanded: {},
     wlDetail: {},
+
+    sprintWorkloadData: { team: [], sprints: [], summary: { total_members: 0, total_jira_issues: 0, sprints_count: 0, last_updated: null } },
+    sprintWorkloadLoading: false,
+    sprintWorkloadError: null,
+    sprintWorkloadFilter: "",
+    swlExpanded: {},
 
     teamList: [],
     tmModal: false,
@@ -1406,6 +1412,35 @@ function app() {
       }
     },
 
+    async loadSprintWorkload() {
+      if (!this.sprintAppId) {
+        this.sprintWorkloadError = 'Please select an application first';
+        return;
+      }
+      this.sprintWorkloadLoading = true;
+      this.sprintWorkloadError = null;
+      try {
+        const response = await fetch(`/api/workload/sprint?app_id=${this.sprintAppId}`);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        this.sprintWorkloadData = data;
+        console.log('Sprint workload loaded:', data);
+      } catch (err) {
+        this.sprintWorkloadError = err.message || 'Failed to load sprint workload';
+        console.error('Sprint workload error:', err);
+        this.sprintWorkloadData = { team: [], sprints: [], summary: { total_members: 0, total_jira_issues: 0, sprints_count: 0, last_updated: null } };
+      } finally {
+        this.sprintWorkloadLoading = false;
+      }
+    },
+
+    toggleSwlRow(memberId) {
+      this.swlExpanded[memberId] = !this.swlExpanded[memberId];
+    },
+
     async loadResourcing() {
       try {
         const data = await fetch('/api/resource-allocations/forecast').then(r => r.json());
@@ -2309,6 +2344,7 @@ function initApiTokens() {
   <div x-show="sidebarOpen.res">
     <div @click="nav('team-list')"       :class="navCls('team-list')">       <span class="nav-icon">👤</span><span>Team List</span></div>
     <div @click="nav('team-workload')"   :class="navCls('team-workload')">   <span class="nav-icon">📊</span><span>Workload</span></div>
+    <div @click="nav('sprint-workload')"  :class="navCls('sprint-workload')">  <span class="nav-icon">🏃</span><span>Sprint Load</span></div>
     <div @click="nav('resourcing')"      :class="navCls('resourcing')">      <span class="nav-icon">📈</span><span>Resourcing</span></div>
   </div>
 
@@ -5679,6 +5715,124 @@ function initApiTokens() {
 
       </div>
 
+      <!-- ══ SPRINT WORKLOAD ══ -->
+      <div x-show="view==='sprint-workload'" x-cloak>
+
+        <!-- Header -->
+        <div style="margin-bottom:24px;">
+          <h1 style="font-size:28px;font-weight:800;margin-bottom:8px;">Sprint Workload</h1>
+          <p style="color:var(--text-2);font-size:14px;">Aggregate workload across all sprints in an application — issues grouped by sprint.</p>
+        </div>
+
+        <!-- App selector + Toolbar -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <label style="font-size:12px;font-weight:700;color:var(--text-2);white-space:nowrap;">Application:</label>
+          <select x-model="sprintAppId" @change="loadSprintWorkload()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text-1);background:var(--bg);">
+            <option value="">— select —</option>
+            <template x-for="app in applications" :key="app.application_id">
+              <option :value="app.application_id" x-text="app.name"></option>
+            </template>
+          </select>
+
+          <button @click="loadSprintWorkload()" :disabled="sprintWorkloadLoading"
+            style="padding:8px 16px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;margin-left:auto;">
+            <span x-show="!sprintWorkloadLoading">↻ Refresh</span>
+            <span x-show="sprintWorkloadLoading">Loading…</span>
+          </button>
+
+          <input x-model="sprintWorkloadFilter" placeholder="Search member…"
+            style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;width:200px;color:var(--text-1);background:var(--bg);">
+        </div>
+
+        <!-- Error -->
+        <div x-show="sprintWorkloadError" style="padding:12px 16px;border-radius:8px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="sprintWorkloadError"></div>
+
+        <!-- Summary Strip -->
+        <div x-show="sprintWorkloadData.summary" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;">
+          <span style="color:var(--text-3);font-weight:600;margin-right:4px;">SPRINT WORKLOAD</span>
+          <span class="stat-chip indigo" x-text="sprintWorkloadData.summary.total_members + ' members'"></span>
+          <span class="stat-chip amber" x-text="sprintWorkloadData.summary.total_jira_issues + ' issues'"></span>
+          <span class="stat-chip blue" x-text="sprintWorkloadData.summary.sprints_count + ' sprints'"></span>
+          <span style="margin-left:auto;color:var(--text-3);font-size:11px;" x-text="sprintWorkloadData.summary.last_updated ? 'Updated ' + new Date(sprintWorkloadData.summary.last_updated).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''"></span>
+        </div>
+
+        <!-- Loading -->
+        <div x-show="sprintWorkloadLoading" style="padding:40px;text-align:center;color:var(--text-3);">Loading sprint workload…</div>
+
+        <!-- Empty -->
+        <div x-show="!sprintWorkloadLoading && !sprintWorkloadError && sprintWorkloadData.team.length===0" style="padding:40px;text-align:center;color:var(--text-3);">
+          <div style="font-size:40px;margin-bottom:12px;">📋</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text-2);">No sprint workload data</div>
+          <div style="font-size:12px;margin-top:6px;">Select an application to view sprint workload</div>
+        </div>
+
+        <!-- Team Workload Table -->
+        <table class="wl-table" x-show="!sprintWorkloadLoading && sprintWorkloadData.team.length > 0">
+          <thead>
+            <tr>
+              <th style="width:35%;">Name / Role</th>
+              <th style="width:10%;text-align:center;">Issues</th>
+              <th style="width:15%;">Status</th>
+              <th style="width:30%;">Sprints</th>
+              <th style="width:8%;text-align:center;">Expand</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="member in (sprintWorkloadData.team||[]).filter(m=>!sprintWorkloadFilter||m.name.toLowerCase().includes(sprintWorkloadFilter.toLowerCase()))" :key="member.member_id">
+              <!-- Member Row -->
+              <tr class="wl-row-header" @click="toggleSwlRow(member.member_id)">
+                <td style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;"
+                    x-text="member.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:var(--text-1);" x-text="member.name"></div>
+                    <div style="font-size:11px;color:var(--text-2);" x-text="member.role||'—'"></div>
+                  </div>
+                </td>
+                <td style="text-align:center;font-weight:700;" x-text="member.jira_count"></td>
+                <td>
+                  <span :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.capacity_status==='heavy'?'background:#fff1f2;color:#be123c;':member.capacity_status==='moderate'?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
+                    x-text="member.capacity_status==='heavy'?'Heavy':member.capacity_status==='moderate'?'Moderate':'Light'"></span>
+                </td>
+                <td style="font-size:11px;color:var(--text-2);">
+                  <span x-text="Object.keys(member.sprints_breakdown).join(', ') || '—'"></span>
+                </td>
+                <td style="text-align:center;color:var(--text-3);">
+                  <span x-text="swlExpanded[member.member_id]?'▼':'▶'" style="font-weight:700;"></span>
+                </td>
+              </tr>
+
+              <!-- Expanded Details -->
+              <tr x-show="swlExpanded[member.member_id]">
+                <td colspan="5" style="padding:12px 16px !important;background:rgba(99,102,241,0.03);">
+                  <div style="display:flex;flex-direction:column;gap:12px;">
+                    <template x-for="(sprint, sprintName) in member.sprints_breakdown" :key="sprintName">
+                      <div>
+                        <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">🎯 <span x-text="sprintName"></span></div>
+                        <div style="border-left:2px solid #e5e7eb;padding-left:10px;">
+                          <template x-for="issue in sprint.issues" :key="issue.key">
+                            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border);">
+                              <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+                                <span style="font-family:monospace;color:#d97706;flex-shrink:0;" x-text="issue.key"></span>
+                                <span x-text="issue.summary" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                              </div>
+                              <span style="font-size:9px;padding:2px 5px;border-radius:4px;margin-left:6px;flex-shrink:0;"
+                                :style="issue.priority==='Highest'||issue.priority==='Critical'?'background:#fff1f2;color:#dc2626':issue.priority==='High'?'background:#fff7ed;color:#c2410c':'background:#fef3c7;color:#d97706'"
+                                x-text="issue.priority"></span>
+                            </div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+
+      </div>
+
       <!-- ══ TEAM LIST ══ -->
       <div x-show="view==='team-list'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:8px;">
         <div style="padding:0 20px 10px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border);">
@@ -6179,8 +6333,22 @@ function initApiTokens() {
                 :style="sprintData?.sprint?.state==='active'?'background:#dcfce7;color:#16a34a':sprintData?.sprint?.state==='closed'?'background:#f3f4f6;color:#6b7280':'background:#dbeafe;color:#2563eb'"
                 x-text="sprintData?.sprint?.state||''"></span>
             </div>
-            <div style="display:flex;gap:6px;align-items:center;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <!-- Project selector -->
+              <select x-model="sprintSelectedProject" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:var(--font);outline:none;background:var(--surface);">
+                <option value="">All Projects</option>
+                <template x-for="proj in (()=>{
+                  const projects = new Set((sprintData?.items||[]).map(i => i.project));
+                  return Array.from(projects).sort();
+                })()" :key="proj">
+                  <option :value="proj" x-text="proj"></option>
+                </template>
+              </select>
+
+              <!-- Search filter -->
               <input x-model="sprintFilter" placeholder="Filter…" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:var(--font);width:140px;outline:none;">
+
+              <!-- Refresh button -->
               <button @click="loadSprintBoard(true)" :disabled="sprintLoading" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:11px;" x-text="sprintLoading?'…':'↻'"></button>
             </div>
           </div>
@@ -6197,31 +6365,21 @@ function initApiTokens() {
           <!-- Empty -->
           <div x-show="!sprintLoading && !sprintError && sprintData?.items?.length===0" style="padding:40px;text-align:center;color:var(--text-3);">No items in this sprint</div>
 
-          <!-- Rows grouped by project -->
-          <template x-for="(group, projectKey) in (()=>{
-            const filtered = (sprintData?.items||[]).filter(i => !sprintFilter || i.key.toLowerCase().includes(sprintFilter.toLowerCase()) || i.summary.toLowerCase().includes(sprintFilter.toLowerCase()) || i.assignee.toLowerCase().includes(sprintFilter.toLowerCase()));
-            const grouped = {};
-            filtered.forEach(item => {
-              if (!grouped[item.project]) grouped[item.project] = [];
-              grouped[item.project].push(item);
+          <!-- Rows filtered by project and search -->
+          <template x-for="item in (()=>{
+            let filtered = (sprintData?.items||[]).filter(i => {
+              const matchesSearch = !sprintFilter || i.key.toLowerCase().includes(sprintFilter.toLowerCase()) || i.summary.toLowerCase().includes(sprintFilter.toLowerCase()) || i.assignee.toLowerCase().includes(sprintFilter.toLowerCase());
+              const matchesProject = !sprintSelectedProject || i.project === sprintSelectedProject;
+              return matchesSearch && matchesProject;
             });
-            return grouped;
-          })()" :key="projectKey">
-
-            <!-- Project Group Header -->
-            <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:10px 12px;background:#fafaf9;border-bottom:1px solid var(--border);border-top:2px solid var(--accent);">
-              <div style="font-size:12px;font-weight:700;color:var(--accent);" x-text="projectKey"></div>
-              <div style="font-size:10px;color:var(--text-3);" x-text="'(' + group.length + ' items)'"></div>
-            </div>
-
-            <!-- Items in this project -->
-            <template x-for="item in group" :key="item.key">
+            return filtered;
+          })()" :key="item.key">
               <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:10px 12px;border-bottom:1px solid var(--border);align-items:center;transition:background .1s;"
                 style="overflow-wrap:break-word;word-break:break-word;"
                 onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='transparent'">
 
-                <!-- Project (hidden, shown in group header) -->
-                <div style="font-size:10px;font-weight:600;color:var(--text-3);"></div>
+                <!-- Project name -->
+                <div style="font-size:10px;font-weight:600;color:var(--accent);" x-text="item.project"></div>
 
                 <!-- Key -->
                 <div style="min-width:0;">
@@ -6275,8 +6433,6 @@ function initApiTokens() {
 
               </div>
             </template>
-
-          </template>
 
         </div>
 
