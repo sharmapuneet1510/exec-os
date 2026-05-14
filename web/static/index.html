@@ -107,10 +107,11 @@ function app() {
     sprintWorkloadFilter: "",
     swlExpanded: {},
 
-    commentsModal: { open: false, issue_key: '', loading: false, error: '' },
+    commentsModal: { open: false, entity_type: '', entity_id: '', loading: false, error: '' },
     comments: [],
     commentForm: { text: '' },
     currentUserEmail: localStorage.getItem('execos_user_email') || '',
+    assignmentForm: { assignee_email: '' },
 
     teamList: [],
     tmModal: false,
@@ -1811,17 +1812,18 @@ function app() {
       } catch(e) { console.warn('loadMyWorkTeam failed', e); }
     },
 
-    // ── Issue Comments ───────────────────────────────────────────────────────
-    async openCommentsModal(issueKey) {
-      this.commentsModal = { open: true, issue_key: issueKey, loading: true, error: '' };
+    // ── Entity Comments ──────────────────────────────────────────────────────
+    async openCommentsModal(entityType, entityId) {
+      this.commentsModal = { open: true, entity_type: entityType, entity_id: entityId, loading: true, error: '' };
       this.commentForm = { text: '' };
-      await this.loadComments(issueKey);
+      this.assignmentForm = { assignee_email: '' };
+      await this.loadComments(entityType, entityId);
     },
 
-    async loadComments(issueKey) {
+    async loadComments(entityType, entityId) {
       try {
         this.commentsModal.loading = true;
-        const resp = await fetch(`/api/issues/${issueKey}/comments`);
+        const resp = await fetch(`/api/entities/${entityType}/${entityId}/comments`);
         if (resp.ok) {
           const data = await resp.json();
           this.comments = data.comments || [];
@@ -1843,11 +1845,11 @@ function app() {
         return;
       }
 
-      const issueKey = this.commentsModal.issue_key;
+      const { entity_type, entity_id } = this.commentsModal;
       const userEmail = this.currentUserEmail || 'unknown@example.com';
 
       try {
-        const resp = await fetch(`/api/issues/${issueKey}/comments?author_email=${encodeURIComponent(userEmail)}`, {
+        const resp = await fetch(`/api/entities/${entity_type}/${entity_id}/comments?author_email=${encodeURIComponent(userEmail)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: this.commentForm.text })
@@ -1855,7 +1857,7 @@ function app() {
 
         if (resp.ok) {
           this.commentForm.text = '';
-          await this.loadComments(issueKey);
+          await this.loadComments(entity_type, entity_id);
           this.addToast('Comment added', 'success');
         } else {
           this.addToast('Failed to add comment', 'error');
@@ -1869,15 +1871,15 @@ function app() {
     async deleteComment(commentId) {
       if (!confirm('Delete this comment?')) return;
 
-      const issueKey = this.commentsModal.issue_key;
+      const { entity_type, entity_id } = this.commentsModal;
 
       try {
-        const resp = await fetch(`/api/issues/${issueKey}/comments/${commentId}`, {
+        const resp = await fetch(`/api/entities/${entity_type}/${entity_id}/comments/${commentId}`, {
           method: 'DELETE'
         });
 
         if (resp.ok) {
-          await this.loadComments(issueKey);
+          await this.loadComments(entity_type, entity_id);
           this.addToast('Comment deleted', 'success');
         } else {
           this.addToast('Failed to delete comment', 'error');
@@ -1885,6 +1887,37 @@ function app() {
       } catch(e) {
         console.warn('deleteComment failed', e);
         this.addToast('Error deleting comment', 'error');
+      }
+    },
+
+    async assignEntity() {
+      if (!this.assignmentForm.assignee_email.trim()) {
+        this.addToast('Please enter an email', 'warning');
+        return;
+      }
+
+      const { entity_type, entity_id } = this.commentsModal;
+
+      try {
+        const resp = await fetch(`/api/entities/${entity_type}/${entity_id}/assign?assignee_email=${encodeURIComponent(this.assignmentForm.assignee_email)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          this.assignmentForm.assignee_email = '';
+          this.addToast('Assignment updated', 'success');
+          // Reload relevant data
+          if (entity_type === 'task') {
+            await this.loadTasks();
+          }
+        } else {
+          this.addToast('Failed to assign', 'error');
+        }
+      } catch(e) {
+        console.warn('assignEntity failed', e);
+        this.addToast('Error assigning', 'error');
       }
     },
 
@@ -6469,7 +6502,7 @@ function initApiTokens() {
                 <!-- Key + Comments -->
                 <div style="min-width:0;display:flex;align-items:center;gap:6px;">
                   <a :href="item.web_url" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" :title="item.key" x-text="item.key"></a>
-                  <button @click="openCommentsModal(item.key)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-2);padding:2px 4px;border-radius:3px;" title="View comments" x-text="'💬'"></button>
+                  <button @click="openCommentsModal('issue', item.key)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-2);padding:2px 4px;border-radius:3px;" title="View comments" x-text="'💬'"></button>
                 </div>
 
                 <!-- Type -->
@@ -6537,10 +6570,19 @@ function initApiTokens() {
           <!-- Header -->
           <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);">
             <div>
-              <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text-1);" x-text="'Comments · ' + commentsModal.issue_key"></h3>
-              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Jira comments + local notes</div>
+              <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text-1);" x-text="(commentsModal.entity_type==='issue'?'Jira ':'Task ')+commentsModal.entity_id"></h3>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;" x-text="commentsModal.entity_type==='issue'?'Jira comments + local notes':'Comments & Assignment'"></div>
             </div>
             <button @click="commentsModal.open=false" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-2);">✕</button>
+          </div>
+
+          <!-- Assignment section (for tasks only) -->
+          <div x-show="commentsModal.entity_type==='task'" style="padding:16px;border-bottom:1px solid var(--border);background:var(--bg);">
+            <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:8px;">Assign To:</div>
+            <div style="display:flex;gap:8px;">
+              <input x-model="assignmentForm.assignee_email" placeholder="Enter email or member name…" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);background:var(--surface);color:var(--text-1);">
+              <button @click="assignEntity()" style="padding:8px 14px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Assign</button>
+            </div>
           </div>
 
           <!-- Loading / Error -->
@@ -6550,16 +6592,16 @@ function initApiTokens() {
           <!-- Comments list -->
           <div x-show="!commentsModal.loading && comments.length > 0" style="padding:16px;">
             <template x-for="comment in comments" :key="comment.id">
-              <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid" :style="comment.is_jira ? 'border-left-color:#2563eb' : 'border-left-color:#10b981'">
+              <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;border-left:3px solid" :style="comment.is_external ? 'border-left-color:#2563eb' : 'border-left-color:#10b981'">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
                   <div>
                     <div style="font-size:12px;font-weight:600;color:var(--text-1);">
                       <span x-text="comment.author"></span>
-                      <span style="font-size:10px;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:600;" :style="comment.is_jira ? 'background:#dbeafe;color:#2563eb' : 'background:#dcfce7;color:#16a34a'" x-text="comment.is_jira ? 'JIRA' : 'LOCAL'"></span>
+                      <span style="font-size:10px;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:600;" :style="comment.is_external ? 'background:#dbeafe;color:#2563eb' : 'background:#dcfce7;color:#16a34a'" x-text="comment.is_external ? 'JIRA' : 'LOCAL'"></span>
                     </div>
                     <div style="font-size:10px;color:var(--text-3);margin-top:2px;" x-text="comment.created_at"></div>
                   </div>
-                  <button x-show="!comment.is_jira" @click="deleteComment(comment.id)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;font-weight:600;">Delete</button>
+                  <button x-show="!comment.is_external" @click="deleteComment(comment.id)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;font-weight:600;">Delete</button>
                 </div>
                 <div style="font-size:12px;color:var(--text-2);line-height:1.5;word-wrap:break-word;" x-text="comment.text"></div>
               </div>
