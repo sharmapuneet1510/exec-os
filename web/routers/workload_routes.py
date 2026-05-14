@@ -62,7 +62,7 @@ def _db():
 
 
 # ── Jira HTTP helpers ─────────────────────────────────────────────────────────
-def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
+def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
     import requests, urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
@@ -160,29 +160,53 @@ def get_team_workload(app_id: str = Query(None), db: Session = Depends(_db)):
 
     # ── Real Jira: one call for all members ────────────────────────────────
     jira_by_email: dict = {}
-    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
-    if jira_cfg and jira_cfg.enabled and jira_cfg.pat and jira_cfg.base_url:
-        emails = [m.email for m in team_members if m.email]
-        if emails:
-            quoted_emails = ", ".join(f'"{e}"' for e in emails)
-            keys = json.loads(jira_cfg.project_keys or "[]")
-            parts = []
-            if keys:
-                parts.append(f"project in ({', '.join(chr(34)+k+chr(34) for k in keys)})")
-            parts.append('statusCategory != "Done"')
-            parts.append(f'assignee in ({quoted_emails})')
-            jql = " AND ".join(parts)
-            fields = "summary,assignee,status,priority"
-            for issue in _jira_search_all(jira_cfg, jql, fields):
-                f = issue.get("fields", {})
-                email = ((f.get("assignee") or {}).get("emailAddress") or "").lower()
-                if email:
-                    jira_by_email.setdefault(email, []).append({
-                        "key": issue["key"],
-                        "summary": f.get("summary", ""),
-                        "status": (f.get("status") or {}).get("name", ""),
-                        "priority": (f.get("priority") or {}).get("name", ""),
-                    })
+    jira_cfg = db.query(JiraConfigORM).first()
+    app_jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    jira_assignees = {}  # Track {email: display_name} for auto-creation
+
+    if jira_cfg and jira_cfg.enabled and jira_cfg.pat and jira_cfg.base_url and app_jira_cfg:
+        keys = json.loads(app_jira_cfg.project_keys or "[]")
+        parts = []
+        if keys:
+            parts.append(f"project in ({', '.join(chr(34)+k+chr(34) for k in keys)})")
+        parts.append('statusCategory != "Done"')
+        jql = " AND ".join(parts)
+        fields = "summary,assignee,status,priority"
+
+        # Fetch all open issues to discover assignees
+        for issue in _jira_search_all(jira_cfg, jql, fields):
+            f = issue.get("fields", {})
+            assignee = f.get("assignee") or {}
+            email = (assignee.get("emailAddress") or "").lower()
+            display_name = assignee.get("displayName", "")
+
+            if email:
+                # Track assignee for potential auto-creation
+                jira_assignees[email] = display_name
+
+                jira_by_email.setdefault(email, []).append({
+                    "key": issue["key"],
+                    "summary": f.get("summary", ""),
+                    "status": (f.get("status") or {}).get("name", ""),
+                    "priority": (f.get("priority") or {}).get("name", ""),
+                })
+
+        # Auto-create team members for Jira assignees not already in the system
+        for email, display_name in jira_assignees.items():
+            existing = db.query(TeamMemberORM).filter(TeamMemberORM.email == email).first()
+            if not existing:
+                new_member = TeamMemberORM(
+                    name=display_name or email.split('@')[0],
+                    email=email,
+                    role="Engineer",
+                    is_active=True,
+                    max_concurrent_tasks=8
+                )
+                db.add(new_member)
+        db.commit()
+
+        # Reload team members after auto-creation
+        team_members = db.query(TeamMemberORM).filter(TeamMemberORM.is_active == True).all()
 
     # ── Real GitLab: one pass across all projects ───────────────────────────
     gl_by_username: dict = {}

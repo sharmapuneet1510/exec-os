@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from db.base import get_db
-from db.models import ReleaseORM, ProjectORM, AppJiraConfigORM
+from db.models import ReleaseORM, ProjectORM, JiraConfigORM, AppJiraConfigORM
 
 router = APIRouter(prefix="/api/releases", tags=["releases"])
 
@@ -65,7 +65,7 @@ def _bust_dash():
     r.delete("dashboard:executive")
 
 
-def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
+def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
     import requests
     url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
     try:
@@ -131,9 +131,9 @@ def _to_out(rel: ReleaseORM, db: Session) -> dict:
 @router.get("/jira/projects", tags=["releases-jira"])
 def jira_projects(app_id: str = Query(...), db: Session = Depends(get_db)):
     """Fetch Jira projects for an application."""
-    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    jira_cfg = db.query(JiraConfigORM).first()
     if not jira_cfg or not jira_cfg.enabled or not jira_cfg.pat:
-        raise HTTPException(400, "Jira integration not configured for this application")
+        raise HTTPException(400, "Jira integration not configured")
 
     data = _jira_get(jira_cfg, "project")
     if not data:
@@ -153,7 +153,7 @@ def jira_versions(
     db: Session = Depends(get_db)
 ):
     """Fetch versions/releases for a Jira project."""
-    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    jira_cfg = db.query(JiraConfigORM).first()
     if not jira_cfg or not jira_cfg.enabled or not jira_cfg.pat:
         raise HTTPException(400, "Jira integration not configured")
 
@@ -182,7 +182,7 @@ def jira_issues_in_version(
     db: Session = Depends(get_db)
 ):
     """Fetch all issues fixed in a specific Jira version."""
-    jira_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    jira_cfg = db.query(JiraConfigORM).first()
     if not jira_cfg or not jira_cfg.enabled or not jira_cfg.pat:
         raise HTTPException(400, "Jira integration not configured")
 

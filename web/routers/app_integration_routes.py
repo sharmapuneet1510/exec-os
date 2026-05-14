@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from db.base import get_db
 from db.models import (
     ApplicationORM,
-    AppJiraConfigORM, AppGitLabConfigORM, AppSprintConfigORM,
+    JiraConfigORM, AppJiraConfigORM, AppGitLabConfigORM, AppSprintConfigORM,
 )
 
 router = APIRouter(prefix="/api/applications/{app_id}/integrations", tags=["app-integrations"])
@@ -31,46 +31,55 @@ class JiraIn(BaseModel):
     enabled: bool = False
 
 
-def _jira_out(c: AppJiraConfigORM) -> dict:
+def _jira_out(global_cfg: JiraConfigORM, app_cfg: AppJiraConfigORM) -> dict:
     return {
-        "base_url": c.base_url or "",
-        "pat": "••••" if c.pat else "",
-        "project_keys": json.loads(c.project_keys or "[]"),
-        "enabled": c.enabled,
-        "last_synced": c.last_synced,
+        "base_url": global_cfg.base_url or "" if global_cfg else "",
+        "pat": "••••" if (global_cfg and global_cfg.pat) else "",
+        "project_keys": json.loads(app_cfg.project_keys or "[]") if app_cfg else [],
+        "enabled": global_cfg.enabled if global_cfg else False,
+        "last_synced": global_cfg.last_synced if global_cfg else None,
     }
 
 
 @router.get("/jira")
 def get_jira(app_id: str, db: Session = Depends(get_db)):
     _get_app(app_id, db)
-    c = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
-    if not c:
-        return {"base_url": "", "pat": "", "project_keys": [], "enabled": False, "last_synced": None}
-    return _jira_out(c)
+    global_cfg = db.query(JiraConfigORM).first()
+    app_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    return _jira_out(global_cfg, app_cfg)
 
 
 @router.post("/jira")
 def save_jira(app_id: str, body: JiraIn, db: Session = Depends(get_db)):
     _get_app(app_id, db)
-    c = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
-    if not c:
-        c = AppJiraConfigORM(application_id=app_id)
-        db.add(c)
-    c.base_url = body.base_url.strip()
 
+    # Get or create global Jira config (shared across all apps)
+    global_cfg = db.query(JiraConfigORM).first()
+    if not global_cfg:
+        global_cfg = JiraConfigORM()
+        db.add(global_cfg)
+
+    global_cfg.base_url = body.base_url.strip()
     # PAT preservation: only update if it's a new value
     if body.pat and body.pat not in ("••••", ""):
-        c.pat = body.pat
-    elif body.pat == "" and not c.pat:
-        c.pat = ""
+        global_cfg.pat = body.pat
+    elif body.pat == "" and not global_cfg.pat:
+        global_cfg.pat = ""
     # If PAT is "••••", keep existing
+    global_cfg.enabled = body.enabled
 
-    c.project_keys = json.dumps(body.project_keys)
-    c.enabled = body.enabled
+    # Get or create app-specific Jira config (for project keys)
+    app_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if not app_cfg:
+        app_cfg = AppJiraConfigORM(application_id=app_id)
+        db.add(app_cfg)
+
+    app_cfg.project_keys = json.dumps(body.project_keys)
+
     db.commit()
-    db.refresh(c)
-    return _jira_out(c)
+    db.refresh(global_cfg)
+    db.refresh(app_cfg)
+    return _jira_out(global_cfg, app_cfg)
 
 
 # ── GitLab ────────────────────────────────────────────────────────────────────

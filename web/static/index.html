@@ -6186,8 +6186,8 @@ function initApiTokens() {
           </div>
 
           <!-- Column headers - Compact -->
-          <div style="display:grid;grid-template-columns:50px 55px 45px 2fr 65px 60px 85px 65px 1.2fr;gap:0;padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);overflow-x:auto;">
-            <div>Project</div><div>Key</div><div>Type</div><div>Summary</div><div>Status</div><div>Priority</div><div>Assignee</div><div>Due</div><div>MR</div>
+          <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">
+            <div>Project</div><div>Key</div><div>Type</div><div>Summary</div><div>Status</div><div>Priority</div><div>Assignee</div><div>Due</div><div>MR / Review</div>
           </div>
 
           <!-- Loading -->
@@ -6197,68 +6197,85 @@ function initApiTokens() {
           <!-- Empty -->
           <div x-show="!sprintLoading && !sprintError && sprintData?.items?.length===0" style="padding:40px;text-align:center;color:var(--text-3);">No items in this sprint</div>
 
-          <!-- Rows - Compact -->
-          <template x-for="item in (sprintData?.items||[]).filter(i => !sprintFilter || i.key.toLowerCase().includes(sprintFilter.toLowerCase()) || i.summary.toLowerCase().includes(sprintFilter.toLowerCase()) || i.assignee.toLowerCase().includes(sprintFilter.toLowerCase()))" :key="item.key">
-            <div style="display:grid;grid-template-columns:50px 55px 45px 2fr 65px 60px 85px 65px 1.2fr;gap:0;padding:8px 12px;border-bottom:1px solid var(--border);align-items:start;transition:background .1s;overflow-x:auto;"
-              onmouseenter="this.style.background='#f9f8f6'" onmouseleave="this.style.background='transparent'">
+          <!-- Rows grouped by project -->
+          <template x-for="(group, projectKey) in (()=>{
+            const filtered = (sprintData?.items||[]).filter(i => !sprintFilter || i.key.toLowerCase().includes(sprintFilter.toLowerCase()) || i.summary.toLowerCase().includes(sprintFilter.toLowerCase()) || i.assignee.toLowerCase().includes(sprintFilter.toLowerCase()));
+            const grouped = {};
+            filtered.forEach(item => {
+              if (!grouped[item.project]) grouped[item.project] = [];
+              grouped[item.project].push(item);
+            });
+            return grouped;
+          })()" :key="projectKey">
 
-              <!-- Project -->
-              <div style="font-size:10px;font-weight:600;color:var(--accent);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.project" x-text="item.project"></div>
-
-              <!-- Key -->
-              <div style="min-width:0;">
-                <a :href="item.web_url" target="_blank" style="font-size:10px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;" x-text="item.key"></a>
-              </div>
-
-              <!-- Type -->
-              <div style="font-size:9px;color:var(--text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.type" x-text="item.type"></div>
-
-              <!-- Summary with tooltip - Word wrapped -->
-              <div style="min-width:0;" :title="item.summary">
-                <div style="font-size:10px;font-weight:500;color:var(--text-1);line-height:1.3;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;max-height:2.6em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" x-text="item.summary"></div>
-              </div>
-
-              <!-- Status -->
-              <div style="min-width:0;">
-                <span style="font-size:9px;padding:2px 5px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
-                  :style="item.cat==='done'?'background:#dcfce7;color:#16a34a':item.cat==='indeterminate'?'background:#dbeafe;color:#2563eb':'background:#f3f4f6;color:#6b7280'"
-                  x-text="item.status"></span>
-              </div>
-
-              <!-- Priority -->
-              <div style="min-width:0;">
-                <span style="font-size:9px;padding:2px 5px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
-                  :style="item.priority==='Highest'||item.priority==='Critical'?'background:#fff1f2;color:#dc2626':item.priority==='High'?'background:#fff7ed;color:#c2410c':item.priority==='Low'||item.priority==='Lowest'?'background:#f9f8f6;color:var(--text-3)':'background:#fef9ec;color:#d97706'"
-                  x-text="item.priority"></span>
-              </div>
-
-              <!-- Assignee -->
-              <div style="font-size:10px;color:var(--text-2);line-height:1.3;min-width:0;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;" :title="item.assignee" x-text="item.assignee"></div>
-
-              <!-- Due Date -->
-              <div style="font-size:10px;color:var(--text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.due_date||'—'" x-text="item.due_date||'—'"></div>
-
-              <!-- GitLab MR - Compact -->
-              <div style="min-width:0;font-size:9px;">
-                <div x-show="!item.mr" style="color:var(--text-3);">—</div>
-                <div x-show="item.mr">
-                  <a :href="item.mr?.web_url" target="_blank" style="text-decoration:none;">
-                    <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;">
-                      <span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap;"
-                        :style="item.mr?.state==='merged'?'background:#f0fdf4;color:#16a34a;':item.mr?.draft?'background:#fef3c7;color:#92400e':'background:#eff6ff;color:#2563eb'"
-                        x-text="item.mr?.state==='merged'?'✓':item.mr?.draft?'D':'O'"></span>
-                      <span x-show="!item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:8px;padding:1px 3px;border-radius:3px;background:#fff7ed;color:#c2410c;font-weight:600;">NR</span>
-                    </div>
-                    <div style="font-size:8px;color:var(--text-3);margin-top:2px;word-wrap:break-word;overflow-wrap:break-word;white-space:normal;line-height:1.2;max-height:1.4em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;" :title="item.mr?.title" x-text="item.mr?.title"></div>
-                    <div style="font-size:10px;color:var(--text-3);">
-                      <span x-show="item.mr?.state==='merged'" x-text="'Merged: ' + item.mr?.merged_at"></span>
-                      <span x-show="item.mr?.state!=='merged'" x-text="'Raised: ' + item.mr?.created_at"></span>
-                    </div>
-                  </a>
-                </div>
-              </div>
-
+            <!-- Project Group Header -->
+            <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:10px 12px;background:#fafaf9;border-bottom:1px solid var(--border);border-top:2px solid var(--accent);">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);" x-text="projectKey"></div>
+              <div style="font-size:10px;color:var(--text-3);" x-text="'(' + group.length + ' items)'"></div>
             </div>
+
+            <!-- Items in this project -->
+            <template x-for="item in group" :key="item.key">
+              <div style="display:grid;grid-template-columns:minmax(60px,60px) minmax(70px,70px) minmax(50px,50px) 1fr minmax(80px,80px) minmax(80px,80px) minmax(100px,100px) minmax(70px,70px) minmax(150px,150px);gap:0;padding:10px 12px;border-bottom:1px solid var(--border);align-items:center;transition:background .1s;"
+                style="overflow-wrap:break-word;word-break:break-word;"
+                onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='transparent'">
+
+                <!-- Project (hidden, shown in group header) -->
+                <div style="font-size:10px;font-weight:600;color:var(--text-3);"></div>
+
+                <!-- Key -->
+                <div style="min-width:0;">
+                  <a :href="item.web_url" target="_blank" style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-mono);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;" :title="item.key" x-text="item.key"></a>
+                </div>
+
+                <!-- Type -->
+                <div style="font-size:10px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.type" x-text="item.type"></div>
+
+                <!-- Summary -->
+                <div style="min-width:0;padding-right:8px;">
+                  <div style="font-size:11px;font-weight:500;color:var(--text-1);line-height:1.4;word-wrap:break-word;" :title="item.summary" x-text="item.summary"></div>
+                </div>
+
+                <!-- Status -->
+                <div>
+                  <span style="font-size:10px;padding:3px 6px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
+                    :style="item.cat==='done'?'background:#dcfce7;color:#16a34a':item.cat==='indeterminate'?'background:#dbeafe;color:#2563eb':'background:#f3f4f6;color:#6b7280'"
+                    x-text="item.status"></span>
+                </div>
+
+                <!-- Priority -->
+                <div>
+                  <span style="font-size:10px;padding:3px 6px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
+                    :style="item.priority==='Highest'||item.priority==='Critical'?'background:#fff1f2;color:#dc2626':item.priority==='High'?'background:#fff7ed;color:#c2410c':item.priority==='Low'||item.priority==='Lowest'?'background:#f0f0f0;color:#6b7280':'background:#fef9ec;color:#d97706'"
+                    x-text="item.priority"></span>
+                </div>
+
+                <!-- Assignee -->
+                <div style="font-size:10px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.assignee" x-text="item.assignee||'Unassigned'"></div>
+
+                <!-- Due Date -->
+                <div style="font-size:10px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="item.due_date||'—'" x-text="item.due_date||'—'"></div>
+
+                <!-- GitLab MR -->
+                <div style="min-width:0;">
+                  <div x-show="!item.mr" style="color:var(--text-3);font-size:10px;">—</div>
+                  <div x-show="item.mr" style="min-width:0;">
+                    <a :href="item.mr?.web_url" target="_blank" style="text-decoration:none;display:block;">
+                      <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;flex-wrap:wrap;">
+                        <span style="font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;"
+                          :style="item.mr?.state==='merged'?'background:#f0fdf4;color:#16a34a;':item.mr?.draft?'background:#fef3c7;color:#92400e':'background:#eff6ff;color:#2563eb'"
+                          :title="item.mr?.state"
+                          x-text="item.mr?.state==='merged'?'✓ Merged':item.mr?.draft?'D Draft':'O Open'"></span>
+                        <span x-show="!item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:9px;padding:2px 5px;border-radius:3px;background:#fff7ed;color:#c2410c;font-weight:600;">Needs Review</span>
+                      </div>
+                      <div style="font-size:9px;color:var(--text-3);word-wrap:break-word;" :title="item.mr?.title" x-text="item.mr?.title"></div>
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+            </template>
+
           </template>
 
         </div>

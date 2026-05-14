@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import AppSprintConfigORM, AppJiraConfigORM, AppGitLabConfigORM
+from db.models import AppSprintConfigORM, JiraConfigORM, AppGitLabConfigORM
 
 log = logging.getLogger("execos.sprint")
 router = APIRouter(prefix="/api/sprint", tags=["sprint"])
@@ -43,10 +43,10 @@ def _get_cfg(app_id: str, db: Session) -> AppSprintConfigORM:
     return cfg
 
 
-def _get_jira_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
-    cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+def _get_jira_cfg(db: Session) -> JiraConfigORM:
+    cfg = db.query(JiraConfigORM).first()
     if not cfg or not cfg.enabled or not cfg.pat:
-        raise HTTPException(400, "Jira integration is not enabled for this application")
+        raise HTTPException(400, "Jira integration is not enabled in Settings")
     return cfg
 
 
@@ -98,7 +98,7 @@ def _gl_get(cfg, path: str, params: dict = None):
 @router.get("/boards")
 def list_boards(app_id: str = Query(...), db: Session = Depends(_db)):
     """List Jira boards (Software boards that have sprints)."""
-    jira_cfg = _get_jira_cfg(app_id, db)
+    jira_cfg = _get_jira_cfg(db)
 
     cached = _cache_get(f"boards_{app_id}")
     if cached:
@@ -116,7 +116,7 @@ def list_boards(app_id: str = Query(...), db: Session = Depends(_db)):
 @router.get("/sprints")
 def list_sprints(app_id: str = Query(...), board_id: str = Query(...), db: Session = Depends(_db)):
     """List sprints for a Jira board."""
-    jira_cfg = _get_jira_cfg(app_id, db)
+    jira_cfg = _get_jira_cfg(db)
 
     cache_key = f"sprints_{app_id}_{board_id}"
     cached = _cache_get(cache_key)
@@ -153,7 +153,7 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
         return cached
 
     cfg      = _get_cfg(app_id, db)
-    jira_cfg = _get_jira_cfg(app_id, db)
+    jira_cfg = _get_jira_cfg(db)
     try:
         gl_cfg = _get_gl_cfg(app_id, db)
     except HTTPException:

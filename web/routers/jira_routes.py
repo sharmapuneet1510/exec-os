@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
-from db.models import AppJiraConfigORM
+from db.models import JiraConfigORM, AppJiraConfigORM
 
 log = logging.getLogger("execos.jira")
 router = APIRouter(prefix="/api/jira", tags=["jira"])
@@ -35,14 +35,14 @@ def _cache_bust():
 
 
 # ── Jira Header Builder ───────────────────────────────────────────────────────
-def _jira_headers(cfg: AppJiraConfigORM) -> dict:
+def _jira_headers(cfg: JiraConfigORM) -> dict:
     """Return centralized Jira API headers with bearer token authentication.
 
     All Jira API requests should use these headers for authentication.
     Centralized here for easy maintenance and future changes.
 
     Args:
-        cfg: AppJiraConfigORM config with PAT
+        cfg: JiraConfigORM config with PAT
 
     Returns:
         dict: Headers including Authorization: Bearer <PAT>
@@ -63,7 +63,14 @@ def _db():
         db.close()
 
 
-def _get_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
+def _get_cfg(db: Session) -> JiraConfigORM:
+    cfg = db.query(JiraConfigORM).first()
+    if not cfg:
+        raise HTTPException(404, "Jira config not found — configure it in Settings first")
+    return cfg
+
+
+def _get_app_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
     cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
     if not cfg:
         raise HTTPException(404, f"No Jira config found for application '{app_id}' — configure it in Settings first")
@@ -71,7 +78,7 @@ def _get_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
 
 
 # ── Jira HTTP helpers ─────────────────────────────────────────────────────────
-def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
+def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
     """Make an authenticated GET to Jira API v2 with bearer token.
 
     Uses Jira REST API v2 with SSL verification disabled.
@@ -97,8 +104,8 @@ def _jira_get(cfg: AppJiraConfigORM, path: str, params: dict = None):
     return resp.json()
 
 
-def _build_jql(cfg: AppJiraConfigORM, extra: str = "") -> str:
-    keys = json.loads(cfg.project_keys or "[]")
+def _build_jql(app_cfg: AppJiraConfigORM, extra: str = "") -> str:
+    keys = json.loads(app_cfg.project_keys or "[]")
     parts = []
     if keys:
         quoted = ", ".join(f'"{k}"' for k in keys)
@@ -109,7 +116,7 @@ def _build_jql(cfg: AppJiraConfigORM, extra: str = "") -> str:
     return " AND ".join(parts)
 
 
-def _jira_search_all(cfg: AppJiraConfigORM, jql: str, fields: str) -> list:
+def _jira_search_all(cfg: JiraConfigORM, jql: str, fields: str) -> list:
     """Paginate through all Jira search results (max 500)."""
     all_issues = []
     start_at = 0
@@ -131,7 +138,7 @@ def _jira_search_all(cfg: AppJiraConfigORM, jql: str, fields: str) -> list:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 @router.post("/test")
 def test_connection(app_id: str = Query(...), db: Session = Depends(_db)):
-    cfg = _get_cfg(app_id, db)
+    cfg = _get_cfg(db)
     if not cfg.base_url or not cfg.pat:
         raise HTTPException(400, "Jira not configured — fill in URL and PAT first")
     data = _jira_get(cfg, "myself")
@@ -145,7 +152,7 @@ def test_connection(app_id: str = Query(...), db: Session = Depends(_db)):
 
 @router.get("/projects")
 def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
-    cfg = _get_cfg(app_id, db)
+    cfg = _get_cfg(db)
     if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled")
     cache_key = f"projects_{app_id}"
@@ -164,7 +171,7 @@ def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
 @router.get("/team")
 def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     """Return team workload: one entry per assignee with their open issues."""
-    cfg = _get_cfg(app_id, db)
+    cfg = _get_cfg(db)
     if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled")
 
@@ -173,7 +180,8 @@ def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     if cached:
         return cached
 
-    jql = _build_jql(cfg)
+    app_cfg = _get_app_cfg(app_id, db)
+    jql = _build_jql(app_cfg)
     fields = "summary,assignee,status,priority,issuetype,project,created,updated,duedate"
     issues = _jira_search_all(cfg, jql, fields)
 
