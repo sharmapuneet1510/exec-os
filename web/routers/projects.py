@@ -155,6 +155,11 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
     p = db.query(ProjectORM).filter(ProjectORM.project_id == project_id).first()
     if not p:
         raise HTTPException(404, "project not found")
+
+    # Cascade delete: remove all tasks for this project
+    db.query(TaskORM).filter(TaskORM.project_id == project_id).delete()
+
+    # Delete the project
     db.delete(p)
     db.commit()
     _bust_dash()

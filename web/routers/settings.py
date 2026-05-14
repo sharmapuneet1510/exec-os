@@ -1,15 +1,67 @@
-"""Global settings — Jira and GitLab credentials management."""
+"""Global settings — Jira, GitLab, and general system settings."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
 import json
+import os
+import pathlib
 
-from db.base import get_db
+from db.base import get_db, DATABASE_URL
 from db.models import JiraConfigORM, GitLabConfigORM
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+# ── General Settings ──────────────────────────────────────────────────────────
+
+@router.get("/general")
+def get_general_settings():
+    """Get general system settings including database info and backup config."""
+    db_type = "sqlite" if DATABASE_URL.startswith("sqlite") else "postgresql" if DATABASE_URL.startswith("postgres") else "other"
+    db_path = None
+    if db_type == "sqlite":
+        raw = DATABASE_URL.replace("sqlite:///", "")
+        db_path = os.path.abspath(raw) if raw else None
+
+    return {
+        "database": {
+            "type": db_type,
+            "path": db_path,
+            "url_masked": _mask_db_url(DATABASE_URL),
+        },
+        "backup": {
+            "enabled": True,
+            "location": os.path.expanduser("~/.commanddesk/"),
+            "schedule": "Daily at 2:00 AM",
+            "retention_days": 30,
+            "recommendation": "Backup execos.db file daily to external storage",
+        },
+        "system": {
+            "python_version": _get_python_version(),
+            "config_file": str(pathlib.Path(__file__).parent.parent.parent / ".env"),
+        }
+    }
+
+
+def _mask_db_url(url: str) -> str:
+    """Mask sensitive parts of database URL."""
+    if "@" in url:
+        scheme, rest = url.split("://", 1)
+        if "@" in rest:
+            userinfo, hostpart = rest.split("@", 1)
+            if ":" in userinfo:
+                user = userinfo.split(":")[0]
+                userinfo = f"{user}:••••"
+            url = f"{scheme}://{userinfo}@{hostpart}"
+    return url
+
+
+def _get_python_version() -> str:
+    """Get Python version."""
+    import sys
+    return f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
 
 # ── Jira ──────────────────────────────────────────────────────────────────────

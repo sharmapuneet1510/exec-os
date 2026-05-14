@@ -106,6 +106,11 @@ def delete_app(app_id: str, db: Session = Depends(get_db)):
     a = db.query(ApplicationORM).filter(ApplicationORM.application_id == app_id).first()
     if not a:
         raise HTTPException(404, "not found")
+
+    # Cascade delete: delete all projects for this application
+    db.query(ProjectORM).filter(ProjectORM.application_id == app_id).delete()
+
+    # Delete the application
     db.delete(a)
     db.commit()
 
