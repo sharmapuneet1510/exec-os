@@ -119,6 +119,31 @@ def _auto_create_team_from_jira(issues: list, db: Session):
     db.commit()
 
 
+def _extract_pr_from_jira_links(issue: dict) -> dict | None:
+    """Extract PR/MR info from Jira issue links (GitHub/GitLab PRs linked in Jira)."""
+    issuelinks = (issue.get("fields", {}) or {}).get("issuelinks") or []
+
+    for link in issuelinks:
+        link_type = (link.get("type") or {}).get("name", "").lower()
+        # Look for PR/MR related link types
+        if "pull request" in link_type or "relates to" in link_type or "blocks" in link_type:
+            summary = link.get("inwardIssue", {}).get("key", "") or link.get("outwardIssue", {}).get("key", "")
+            url = link.get("inwardIssue", {}).get("self", "") or link.get("outwardIssue", {}).get("self", "")
+
+            # Check if it's a PR link (contains /pull/ or /merge_requests/)
+            if "/pull/" in url or "/merge_requests/" in url:
+                title = link.get("inwardIssue", {}).get("fields", {}).get("summary", "") or \
+                        link.get("outwardIssue", {}).get("fields", {}).get("summary", "") or summary
+                return {
+                    "title": title,
+                    "web_url": url,
+                    "state": "linked",
+                    "draft": False,
+                }
+
+    return None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 @router.get("/boards")
 def list_boards(app_id: str = Query(...), db: Session = Depends(_db)):
@@ -203,7 +228,7 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
         sprint_info = {"id": cfg.sprint_id, "name": cfg.sprint_name or cfg.sprint_id}
 
     # ── Fetch sprint issues ──────────────────────────────────────────────────
-    fields = "summary,assignee,status,priority,issuetype,project,duedate,updated,created"
+    fields = "summary,assignee,status,priority,issuetype,project,duedate,updated,created,issuelinks"
     all_issues = []
     start_at = 0
     while True:
@@ -312,12 +337,16 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
         assignee = (f.get("assignee")  or {})
         jira_key = issue["key"]
 
-        # Find matching MRs
-        matching = [m for m in combined_mrs if _matches_key(m, jira_key)]
-        # Prefer open over merged in display; merged as fallback
-        open_mr   = next((m for m in matching if m["state"] == "opened"), None)
-        merged_mr = next((m for m in matching if m["state"] == "merged"), None)
-        mr_display = open_mr or merged_mr
+        # Check for PR linked directly in Jira first
+        mr_display = _extract_pr_from_jira_links(issue)
+
+        # If no Jira PR link, try matching against GitLab MRs
+        if not mr_display:
+            matching = [m for m in combined_mrs if _matches_key(m, jira_key)]
+            # Prefer open over merged in display; merged as fallback
+            open_mr   = next((m for m in matching if m["state"] == "opened"), None)
+            merged_mr = next((m for m in matching if m["state"] == "merged"), None)
+            mr_display = open_mr or merged_mr
 
         project_name = (f.get("project") or {}).get("key", "")
         item = {
@@ -348,7 +377,7 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
             stats["with_mr"] += 1
             if mr_display["state"] == "merged":
                 stats["merged"] += 1
-            elif not mr_display["is_reviewed"] and not mr_display["draft"]:
+            elif mr_display.get("is_reviewed") is False and not mr_display.get("draft", False):
                 stats["needs_review"] += 1
 
     # Sort: in_progress first, then todo, then done
