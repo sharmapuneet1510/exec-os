@@ -264,6 +264,66 @@ def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     return result
 
 
+@router.get("/filter")
+def jql_filter(
+    jql: str = Query(..., min_length=1, max_length=2000, description="Custom JQL query"),
+    app_id: str = Query(...),
+    db: Session = Depends(_db),
+):
+    """Execute a user-supplied JQL query and return results grouped by assignee."""
+    cfg = _get_cfg(db)
+    if not cfg.enabled or not cfg.pat:
+        raise HTTPException(400, "Jira integration is not enabled — configure it in Settings first")
+
+    import hashlib
+    cache_key = f"jql_{hashlib.md5(jql.encode()).hexdigest()}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    fields = "summary,assignee,status,priority,issuetype,project,created,updated,duedate"
+    issues = _jira_search_all(cfg, jql, fields)
+
+    by_assignee: dict = {}
+    for issue in issues:
+        f = issue.get("fields", {}) or {}
+        assignee = f.get("assignee") or {}
+        name  = assignee.get("displayName", "Unassigned")
+        akey  = assignee.get("accountId", "__unassigned__")
+        avatar = (assignee.get("avatarUrls") or {}).get("48x48")
+
+        if akey not in by_assignee:
+            by_assignee[akey] = {
+                "account_id":   akey,
+                "display_name": name,
+                "avatar_url":   avatar,
+                "issues":       [],
+                "total":        0,
+            }
+
+        by_assignee[akey]["issues"].append({
+            "key":      issue["key"],
+            "summary":  f.get("summary", ""),
+            "status":   (f.get("status")    or {}).get("name", ""),
+            "priority": (f.get("priority")  or {}).get("name", ""),
+            "type":     (f.get("issuetype") or {}).get("name", ""),
+            "project":  (f.get("project")   or {}).get("key", ""),
+            "due_date": f.get("duedate"),
+            "updated":  (f.get("updated")   or "")[:10],
+            "web_url":  f"{cfg.base_url.rstrip('/')}/browse/{issue['key']}",
+        })
+        by_assignee[akey]["total"] += 1
+
+    result = {
+        "jql":          jql,
+        "total":        len(issues),
+        "by_assignee":  sorted(by_assignee.values(), key=lambda x: -x["total"]),
+        "last_fetched": datetime.utcnow().isoformat(),
+    }
+    _cache_set(cache_key, result)
+    return result
+
+
 @router.post("/refresh")
 def refresh_cache(app_id: str = Query(...)):
     _cache.pop(f"team_{app_id}", None)
