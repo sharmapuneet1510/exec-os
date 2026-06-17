@@ -18,8 +18,12 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 log = logging.getLogger("execos.my_work")
 router = APIRouter(prefix="/api/my-work", tags=["my-work"])
 
-_HEADERS_JIRA = lambda pat: {"Authorization": f"Bearer {pat}", "Accept": "application/json"}
-_HEADERS_GL   = lambda tok: {"PRIVATE-TOKEN": tok, "Accept": "application/json"}
+def _headers_jira(pat: str) -> dict:
+    return {"Authorization": f"Bearer {pat}", "Accept": "application/json", "Content-Type": "application/json"}
+
+
+def _headers_gl(tok: str) -> dict:
+    return {"PRIVATE-TOKEN": tok, "Accept": "application/json"}
 
 
 def _get_sprint_cfg(db: Session) -> SprintConfigORM:
@@ -81,7 +85,7 @@ def my_work(db: Session = Depends(get_db)):
         try:
             resp = requests.get(
                 f"{jira_cfg.base_url.rstrip('/')}/rest/api/2/search",
-                headers=_HEADERS_JIRA(jira_cfg.pat),
+                headers=_headers_jira(jira_cfg.pat),
                 params={
                     "jql":        jql,
                     "maxResults": 100,
@@ -111,6 +115,7 @@ def my_work(db: Session = Depends(get_db)):
             jira_error = str(exc)
 
     mrs = []
+    gl_errors = []
     if my_gitlab and gl_cfgs:
         for gl_cfg in gl_cfgs:
             if not gl_cfg.access_token:
@@ -122,7 +127,7 @@ def my_work(db: Session = Depends(get_db)):
                 try:
                     resp = requests.get(
                         f"{base}/api/v4/projects/{encoded}/merge_requests",
-                        headers=_HEADERS_GL(gl_cfg.access_token),
+                        headers=_headers_gl(gl_cfg.access_token),
                         params={
                             "state":           "opened",
                             "author_username": my_gitlab,
@@ -147,6 +152,7 @@ def my_work(db: Session = Depends(get_db)):
                             })
                 except Exception as exc:
                     log.warning("GitLab MR fetch error for %s: %s", pid, exc)
+                    gl_errors.append(f"{pid}: {exc}")
 
     return {
         "my_jira_email":      my_email,
@@ -155,6 +161,7 @@ def my_work(db: Session = Depends(get_db)):
         "jira":               jira_issues,
         "mrs":                mrs,
         **({"error": jira_error} if jira_error else {}),
+        **({"gl_errors": gl_errors} if gl_errors else {}),
     }
 
 
