@@ -420,6 +420,54 @@ def sprint_board(app_id: str = Query(...), db: Session = Depends(_db)):
     return result
 
 
+@router.get("/{app_id}/boards")
+def list_boards_by_path(app_id: str, db: Session = Depends(_db)):
+    """List all Jira boards accessible with the configured PAT."""
+    _get_cfg(app_id, db)
+    jira_cfg = _get_jira_cfg(db)
+
+    data = _jira_get(jira_cfg, "rest/agile/1.0/board", {"maxResults": 50})
+    boards = [
+        {
+            "id":          b["id"],
+            "name":        b.get("name", ""),
+            "type":        b.get("type", ""),
+            "project_key": (b.get("location") or {}).get("projectKey", ""),
+        }
+        for b in data.get("values", [])
+    ]
+    return {"boards": boards}
+
+
+@router.get("/{app_id}/active-sprint")
+def active_sprint(
+    app_id: str,
+    board_id: str = Query(..., description="Jira board ID"),
+    db: Session = Depends(_db),
+):
+    """Return the active sprint for a board — eliminates manual sprint_id lookup."""
+    _get_cfg(app_id, db)
+    jira_cfg = _get_jira_cfg(db)
+
+    data    = _jira_get(jira_cfg, f"rest/agile/1.0/board/{board_id}/sprint", {"state": "active"})
+    sprints = data.get("values", [])
+
+    if not sprints:
+        return {"found": False, "sprint": None}
+
+    s = sprints[0]
+    return {
+        "found": True,
+        "sprint": {
+            "id":         s["id"],
+            "name":       s.get("name", ""),
+            "state":      s.get("state", ""),
+            "start_date": (s.get("startDate") or "")[:10],
+            "end_date":   (s.get("endDate")   or "")[:10],
+        },
+    }
+
+
 @router.post("/refresh")
 def refresh_cache(app_id: str = Query(...)):
     for key in (f"board_{app_id}", f"boards_{app_id}"):
