@@ -1,6 +1,6 @@
 """Jira integration — config, connection test, and live team workload."""
 
-import json, time, logging
+import hashlib, json, time, logging
 from datetime import datetime
 from typing import Optional, List
 
@@ -275,8 +275,7 @@ def jql_filter(
     if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled — configure it in Settings first")
 
-    import hashlib
-    cache_key = f"jql_{hashlib.md5(jql.encode()).hexdigest()}"
+    cache_key = f"jql_{app_id}_{hashlib.md5(jql.encode()).hexdigest()}"
     cached = _cache_get(cache_key)
     if cached:
         return cached
@@ -328,4 +327,8 @@ def jql_filter(
 def refresh_cache(app_id: str = Query(...)):
     _cache.pop(f"team_{app_id}", None)
     _cache.pop(f"projects_{app_id}", None)
+    # Clear all JQL filter cache entries (keyed by app_id prefix)
+    jql_keys = [k for k in list(_cache.keys()) if k.startswith(f"jql_{app_id}_")]
+    for k in jql_keys:
+        _cache.pop(k, None)
     return {"ok": True, "message": "Cache cleared — next fetch will pull live data"}

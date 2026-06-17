@@ -87,9 +87,11 @@ def test_filter_requires_jql_param(mock_get_cfg):
     assert resp.status_code == 422
 
 
+@patch("web.routers.jira_routes._jira_search_all")
 @patch("web.routers.jira_routes._get_cfg")
-def test_filter_returns_400_when_jira_disabled(mock_get_cfg):
+def test_filter_returns_400_when_jira_disabled(mock_get_cfg, mock_search):
     mock_get_cfg.return_value = _mock_jira_cfg(enabled=False)
+    mock_search.side_effect = AssertionError("search should not be called when Jira is disabled")
     resp = client.get("/api/jira/filter?jql=project%3DPROJ&app_id=app1")
     assert resp.status_code == 400
 
