@@ -81,6 +81,10 @@ function app() {
     jiraLoading: false, jiraError: '',
     jiraTestLoading: false, jiraTestMsg: '', jiraTestOk: false,
     jiraTeamFilter: '',
+    jiraJqlInput: '',
+    jiraJqlResults: null,
+    jiraJqlLoading: false,
+    jiraJqlError: '',
 
     gitlabCfg: { base_url:'https://gitlab.com', access_token:'', project_ids:'[]', project_ids_raw:'', enabled:false, last_synced:null },
     glData: { all_mrs:[], authors:[], projects:[], total_mrs:0, ready_mrs:0, draft_mrs:0, last_fetched:null },
@@ -1340,6 +1344,25 @@ function app() {
       this.jiraLoading = false;
     },
 
+    async fetchJiraJql() {
+      if (!this.jiraJqlInput.trim()) return;
+      this.jiraJqlLoading = true;
+      this.jiraJqlError = '';
+      this.jiraJqlResults = null;
+      try {
+        const appId = this.jiraAppId || (this.applications[0]?.application_id || '');
+        const url = `/api/jira/filter?jql=${encodeURIComponent(this.jiraJqlInput.trim())}&app_id=${encodeURIComponent(appId)}`;
+        const data = await fetch(url).then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.detail || 'Error'); });
+          return r.json();
+        });
+        this.jiraJqlResults = data;
+      } catch(e) {
+        this.jiraJqlError = e.message;
+      }
+      this.jiraJqlLoading = false;
+    },
+
     // ── GitLab ───────────────────────────────────────────────────────────────
     async loadGitLabMRs(bust=false) {
       if (!this.gitlabAppId) return;
@@ -1656,6 +1679,21 @@ function app() {
       try {
         this.sprintList = await fetch(`/api/sprint/sprints?app_id=${this.sprintAppId}&board_id=${this.sprintCfg.board_id}`).then(r=>r.json());
       } catch(e) {}
+    },
+    async detectActiveSprint() {
+      const boardId = this.sprintNewData?.board_id || this.sprintCfg?.board_id || '';
+      if (!boardId) { this.addToast('Enter a Board ID first', 'warning'); return; }
+      const appId = this.jiraAppId || this.sprintAppId || (this.applications[0]?.application_id || '');
+      try {
+        const data = await fetch(`/api/sprint/${appId}/active-sprint?board_id=${encodeURIComponent(boardId)}`).then(r=>r.json());
+        if (data.found) {
+          if (this.sprintNewData) { this.sprintNewData.sprint_id = String(data.sprint.id); }
+          if (this.sprintCfg) { this.sprintCfg.sprint_id = String(data.sprint.id); this.sprintCfg.sprint_name = data.sprint.name; }
+          this.addToast(`Active sprint: ${data.sprint.name} (ID ${data.sprint.id})`, 'success');
+        } else {
+          this.addToast(data.error || 'No active sprint found for this board', 'warning');
+        }
+      } catch(e) { this.addToast('Sprint detection failed: ' + e.message, 'error'); }
     },
     async loadSprintBoard(bust=false) {
       if (!this.sprintCfg.sprint_id || !this.sprintAppId) return;
@@ -5603,6 +5641,57 @@ function initApiTokens() {
             </div>
           </div>
 
+          <!-- JQL Filter Panel -->
+          <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:#4338ca;letter-spacing:.06em;margin-bottom:8px;">CUSTOM JQL FILTER</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input
+                x-model="jiraJqlInput"
+                @keydown.enter="fetchJiraJql()"
+                placeholder="e.g. assignee in (alice, bob) AND sprint in openSprints()"
+                style="flex:1;min-width:240px;padding:8px 12px;border:1px solid #c7d2fe;border-radius:7px;font-size:12px;font-family:monospace;background:#fff;color:#1e1b4b;outline:none;"
+              />
+              <button
+                @click="fetchJiraJql()"
+                :disabled="jiraJqlLoading || !jiraJqlInput.trim()"
+                style="padding:8px 18px;background:#6366f1;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;opacity:1;"
+                :style="(jiraJqlLoading || !jiraJqlInput.trim()) ? 'opacity:0.5;cursor:not-allowed;' : ''"
+              ><span x-show="!jiraJqlLoading">Run JQL</span><span x-show="jiraJqlLoading">Loading…</span></button>
+              <button x-show="jiraJqlResults" @click="jiraJqlResults=null;jiraJqlInput='';"
+                style="padding:8px 12px;background:#e2e8f0;color:#475569;border:none;border-radius:7px;font-size:13px;cursor:pointer;">Clear</button>
+            </div>
+            <div x-show="jiraJqlError" x-cloak style="color:#dc2626;font-size:12px;margin-top:6px;" x-text="jiraJqlError"></div>
+            <div x-show="jiraJqlResults" x-cloak style="font-size:12px;color:#4338ca;margin-top:6px;"
+                 x-text="'Found ' + (jiraJqlResults?.total||0) + ' issues across ' + (jiraJqlResults?.by_assignee?.length||0) + ' people'"></div>
+          </div>
+
+          <!-- JQL Results (shown instead of regular team when a JQL query is active) -->
+          <template x-if="jiraJqlResults">
+            <div>
+              <template x-for="person in (jiraJqlResults.by_assignee||[])" :key="person.account_id">
+                <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:10px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <img :src="person.avatar_url" x-show="person.avatar_url" style="width:32px;height:32px;border-radius:50%;object-fit:cover;"/>
+                    <div>
+                      <div style="font-weight:700;font-size:14px;" x-text="person.display_name"></div>
+                      <div style="font-size:12px;color:#64748b;" x-text="person.total + ' issue' + (person.total===1?'':'s')"></div>
+                    </div>
+                  </div>
+                  <template x-for="issue in person.issues" :key="issue.key">
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #f1f5f9;flex-wrap:wrap;">
+                      <a :href="issue.web_url" target="_blank"
+                         style="font-weight:700;color:#6366f1;font-size:12px;min-width:80px;text-decoration:none;font-family:monospace;"
+                         x-text="issue.key"></a>
+                      <span style="flex:1;font-size:13px;min-width:160px;" x-text="issue.summary"></span>
+                      <span style="font-size:11px;background:#f1f5f9;border-radius:5px;padding:2px 8px;color:#475569;white-space:nowrap;" x-text="issue.status"></span>
+                      <span style="font-size:11px;color:#94a3b8;white-space:nowrap;" x-text="issue.priority"></span>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+
           <!-- Error -->
           <div x-show="jiraError" style="padding:16px 20px;border-radius:12px;background:#fff1f2;border:1.5px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="jiraError"></div>
 
@@ -7781,6 +7870,12 @@ function initApiTokens() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
           <input x-model="sprintNewData.name" placeholder="e.g. Sprint 24 — May" style="padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:13px;" />
           <input x-model="sprintNewData.board_id" placeholder="Board ID (e.g. 42)" style="padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:13px;" />
+        </div>
+        <div style="margin-bottom:8px;">
+          <button @click="detectActiveSprint()"
+            style="padding:6px 14px;background:#10b981;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+            Detect Active Sprint
+          </button>
         </div>
         <div style="display:flex;gap:10px;margin-bottom:8px;">
           <input x-model="sprintNewData.sprint_id" placeholder="Sprint ID (e.g. 123)" style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:13px;" />
