@@ -4,14 +4,13 @@ import hashlib, json, time, logging
 from datetime import datetime
 from typing import Optional, List
 
-from web.config import get_ssl_verify
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
 from db.models import JiraConfigORM, AppJiraConfigORM, TeamMemberORM
+from web.config import get_ssl_verify
 
 log = logging.getLogger("execos.jira")
 router = APIRouter(prefix="/api/jira", tags=["jira"])
