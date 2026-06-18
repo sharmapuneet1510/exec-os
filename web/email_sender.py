@@ -1,12 +1,24 @@
 """Beautiful HTML email generator and SMTP sender for ExecOS SOD/EOD briefings."""
 
+import json
+import logging
 import smtplib
+import urllib.parse
+import urllib3
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
-from db.models import TaskORM, ProjectORM, MilestoneORM, CommitmentORM, EmailConfigORM, ApplicationORM
+import requests
+
+from db.models import (
+    TaskORM, ProjectORM, MilestoneORM, CommitmentORM, EmailConfigORM, ApplicationORM,
+    JiraConfigORM, AppGitLabConfigORM, SprintConfigORM,
+)
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+_email_log = logging.getLogger("execos.email")
 
 
 # ── tiny helpers ──────────────────────────────────────────────────────────────
@@ -184,12 +196,103 @@ def _task_row(title, priority, project="", note="", note_color="#94A3B8", check_
 </tr>"""
 
 
+# ── live-data helpers ────────────────────────────────────────────────────────
+
+def _get_sprint_cfg(db):
+    cfg = db.query(SprintConfigORM).first()
+    return cfg or SprintConfigORM()
+
+
+def _get_jira_cfg(db):
+    cfg = db.query(JiraConfigORM).first()
+    return cfg or JiraConfigORM()
+
+
+def _get_gl_configs(db):
+    return db.query(AppGitLabConfigORM).filter(AppGitLabConfigORM.enabled == True).all()
+
+
+def _fetch_my_jira_issues(db, jql: str) -> list:
+    from web.config import get_ssl_verify
+    jira_cfg = _get_jira_cfg(db)
+    if not getattr(jira_cfg, 'enabled', False) or not getattr(jira_cfg, 'pat', None):
+        return []
+    try:
+        resp = requests.get(
+            f"{jira_cfg.base_url.rstrip('/')}/rest/api/2/search",
+            headers={"Authorization": f"Bearer {jira_cfg.pat}", "Accept": "application/json"},
+            params={"jql": jql, "maxResults": 50,
+                    "fields": "summary,status,priority,issuetype,project,duedate,updated"},
+            timeout=10,
+            verify=get_ssl_verify(),
+        )
+        if resp.ok:
+            issues = []
+            for i in resp.json().get("issues", []):
+                f = i.get("fields", {}) or {}
+                issues.append({
+                    "key":      i["key"],
+                    "summary":  f.get("summary", ""),
+                    "status":   (f.get("status")    or {}).get("name", ""),
+                    "priority": (f.get("priority")  or {}).get("name", ""),
+                    "type":     (f.get("issuetype") or {}).get("name", ""),
+                    "project":  (f.get("project")   or {}).get("key", ""),
+                    "due_date": f.get("duedate"),
+                    "web_url":  f"{jira_cfg.base_url.rstrip('/')}/browse/{i['key']}",
+                })
+            return issues
+    except Exception as exc:
+        _email_log.warning("Jira fetch for email failed: %s", exc)
+    return []
+
+
+def _fetch_open_mrs_for_email(db) -> list:
+    from web.config import get_ssl_verify
+    gl_cfgs = _get_gl_configs(db)
+    mrs = []
+    for gl_cfg in gl_cfgs:
+        if not gl_cfg.access_token:
+            continue
+        raw_ids = json.loads(gl_cfg.project_ids or "[]")
+        base = gl_cfg.base_url.rstrip("/")
+        for pid in raw_ids[:10]:
+            encoded = urllib.parse.quote(str(pid), safe="")
+            try:
+                resp = requests.get(
+                    f"{base}/api/v4/projects/{encoded}/merge_requests",
+                    headers={"PRIVATE-TOKEN": gl_cfg.access_token},
+                    params={"state": "opened", "per_page": 20, "order_by": "updated_at"},
+                    timeout=8,
+                    verify=get_ssl_verify(),
+                )
+                if resp.ok:
+                    for mr in resp.json():
+                        mrs.append({
+                            "iid":     mr["iid"],
+                            "title":   mr.get("title", ""),
+                            "draft":   mr.get("draft", False),
+                            "web_url": mr.get("web_url", ""),
+                            "author":  (mr.get("author") or {}).get("name", ""),
+                            "project": str(pid),
+                        })
+            except Exception as exc:
+                _email_log.warning("GitLab fetch for email failed (%s): %s", pid, exc)
+    return mrs
+
+
 # ── SOD email ─────────────────────────────────────────────────────────────────
 
 def build_sod_html(db: Session) -> str:
     today = date.today()
     today_str = today.isoformat()
     week_str = (today + timedelta(days=7)).isoformat()
+
+    # ── live Jira + GitLab data ───────────────────────────────────────────────
+    sod_jql = ('assignee = currentUser() AND statusCategory != "Done" '
+               'AND duedate <= now() ORDER BY duedate ASC')
+    jira_issues = _fetch_my_jira_issues(db, sod_jql)
+    open_mrs = _fetch_open_mrs_for_email(db)
+
     proj_names = {p.project_id: p.name for p in db.query(ProjectORM).all()}
 
     overdue_tasks = _task_to_app_names((db.query(TaskORM)
@@ -343,7 +446,60 @@ def build_sod_html(db: Session) -> str:
 </div>"""
         com_section = _card("Open Commitments", "🤝", rows, "#EC4899")
 
-    body = header + overdue_section + today_section + carry_section + proj_section + ms_section + com_section
+    # ── Jira overdue/due-today section ───────────────────────────────────────
+    jira_section = ""
+    if jira_issues:
+        rows = "".join(
+            f'<tr>'
+            f'<td style="padding:5px 8px;font-weight:700;color:#6366f1;font-family:monospace;font-size:12px;">'
+            f'<a href="{i["web_url"]}" style="color:#6366f1;text-decoration:none;">{i["key"]}</a></td>'
+            f'<td style="padding:5px 8px;font-size:13px;">{i["summary"]}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{i["status"]}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#ef4444;">{i["priority"]}</td>'
+            f'</tr>'
+            for i in jira_issues[:15]
+        )
+        jira_section = (
+            f'<div style="margin:20px 0;">'
+            f'<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0 0 8px;">'
+            f'Jira — Overdue / Due Today ({len(jira_issues)})</h3>'
+            f'<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">'
+            f'<thead><tr style="background:#f8fafc;">'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">KEY</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">SUMMARY</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">STATUS</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">PRIORITY</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table></div>'
+        )
+
+    # ── GitLab open MRs section ───────────────────────────────────────────────
+    mrs_section = ""
+    if open_mrs:
+        draft_label = '<span style="color:#94a3b8;font-size:11px;">[Draft]</span>'
+        mr_rows = "".join(
+            f'<tr>'
+            f'<td style="padding:5px 8px;font-size:13px;">'
+            f'<a href="{m["web_url"]}" style="color:#6366f1;text-decoration:none;">{m["title"]}</a>'
+            f'{"&nbsp;" + draft_label if m["draft"] else ""}'
+            f'</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{m["author"]}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{m["project"]}</td>'
+            f'</tr>'
+            for m in open_mrs[:10]
+        )
+        mrs_section = (
+            f'<div style="margin:20px 0;">'
+            f'<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0 0 8px;">'
+            f'GitLab — Open MRs ({len(open_mrs)})</h3>'
+            f'<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">'
+            f'<thead><tr style="background:#f8fafc;">'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">TITLE</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">AUTHOR</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">PROJECT</th>'
+            f'</tr></thead><tbody>{mr_rows}</tbody></table></div>'
+        )
+
+    body = header + overdue_section + today_section + carry_section + proj_section + ms_section + com_section + jira_section + mrs_section
     preheader = f"{len(overdue_tasks)} overdue · {len(due_today)} due today — ExecOS Morning Briefing"
     return _wrap(body, preheader)
 
@@ -354,6 +510,12 @@ def build_eod_html(db: Session) -> str:
     today = date.today()
     today_str = today.isoformat()
     today_start = datetime.combine(today, datetime.min.time())
+
+    # ── live Jira done-today data ─────────────────────────────────────────────
+    eod_jql = (f'assignee = currentUser() AND status changed to Done '
+               f'after "{today.isoformat()}" ORDER BY updated DESC')
+    jira_done_today = _fetch_my_jira_issues(db, eod_jql)
+
     proj_names = {p.project_id: p.name for p in db.query(ProjectORM).all()}
 
     completed = _task_to_app_names((db.query(TaskORM)
@@ -455,7 +617,33 @@ def build_eod_html(db: Session) -> str:
         rows += "</table>"
         ov_section = _card(f"Overdue Backlog ({len(all_overdue)} items)", "⚠️", rows, "#EF4444")
 
-    body = header + completed_section + missed_section + carry_section + ov_section
+    # ── Jira done-today section ───────────────────────────────────────────────
+    jira_done_section = ""
+    if jira_done_today:
+        rows = "".join(
+            f'<tr>'
+            f'<td style="padding:5px 8px;font-weight:700;color:#6366f1;font-family:monospace;font-size:12px;">'
+            f'<a href="{i["web_url"]}" style="color:#6366f1;text-decoration:none;">{i["key"]}</a></td>'
+            f'<td style="padding:5px 8px;font-size:13px;">{i["summary"]}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{i["status"]}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#ef4444;">{i["priority"]}</td>'
+            f'</tr>'
+            for i in jira_done_today[:15]
+        )
+        jira_done_section = (
+            f'<div style="margin:20px 0;">'
+            f'<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0 0 8px;">'
+            f'Jira — Completed Today ({len(jira_done_today)})</h3>'
+            f'<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">'
+            f'<thead><tr style="background:#f8fafc;">'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">KEY</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">SUMMARY</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">STATUS</th>'
+            f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">PRIORITY</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table></div>'
+        )
+
+    body = header + completed_section + missed_section + carry_section + ov_section + jira_done_section
     preheader = f"{len(completed)} completed · {len(missed)} missed — ExecOS Day Summary"
     return _wrap(body, preheader)
 
