@@ -217,8 +217,124 @@ def open_mrs(app_id: str = Query(...), db: Session = Depends(_db)):
     return result
 
 
+@router.get("/all-mrs")
+def all_open_mrs_aggregate():
+    """Return ALL open MRs across every enabled GitLab config — no app_id required."""
+    import json as _json
+    import urllib.parse
+
+    cache_key = "all_mrs_aggregate"
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    db = SessionLocal()
+    try:
+        all_cfgs = db.query(AppGitLabConfigORM).filter(AppGitLabConfigORM.enabled == True).all()
+    finally:
+        db.close()
+
+    if not all_cfgs:
+        return {
+            "total_mrs":    0,
+            "ready_mrs":    0,
+            "draft_mrs":    0,
+            "all_mrs":      [],
+            "authors":      [],
+            "projects":     [],
+            "last_fetched": datetime.utcnow().isoformat(),
+        }
+
+    all_mrs = []
+    project_map: dict = {}
+
+    for cfg in all_cfgs:
+        if not cfg.access_token:
+            continue
+        raw_ids = _json.loads(cfg.project_ids or "[]")
+        for pid in raw_ids[:20]:
+            encoded = urllib.parse.quote(str(pid), safe="")
+            try:
+                proj, _ = _gl_get(cfg, f"projects/{encoded}")
+                project_map[proj["id"]] = {
+                    "name":    proj["name"],
+                    "path":    proj["path_with_namespace"],
+                    "web_url": proj.get("web_url", ""),
+                    "app_id":  cfg.application_id,
+                    "open":    0,
+                    "draft":   0,
+                }
+                mrs, _ = _gl_get(cfg, f"projects/{encoded}/merge_requests", {
+                    "state":    "opened",
+                    "per_page": 50,
+                    "order_by": "updated_at",
+                })
+                for mr in mrs:
+                    author   = mr.get("author") or {}
+                    is_draft = mr.get("draft", mr.get("work_in_progress", False))
+                    reviewers = [r.get("name", "") for r in (mr.get("reviewers") or [])]
+                    all_mrs.append({
+                        "id":            mr["iid"],
+                        "title":         mr.get("title", ""),
+                        "state":         mr.get("state", "opened"),
+                        "draft":         is_draft,
+                        "author":        author.get("name", ""),
+                        "author_avatar": author.get("avatar_url"),
+                        "author_user":   author.get("username", ""),
+                        "target_branch": mr.get("target_branch", ""),
+                        "source_branch": mr.get("source_branch", ""),
+                        "created_at":    (mr.get("created_at") or "")[:10],
+                        "updated_at":    (mr.get("updated_at") or "")[:10],
+                        "web_url":       mr.get("web_url", ""),
+                        "project_id":    proj["id"],
+                        "project_name":  proj["name"],
+                        "has_conflicts": mr.get("has_conflicts", False),
+                        "reviewers":     reviewers,
+                        "upvotes":       mr.get("upvotes", 0),
+                        "changes_count": str(mr.get("changes_count") or ""),
+                        "app_id":        cfg.application_id,
+                    })
+                    project_map[proj["id"]]["open"] += 1
+                    if is_draft:
+                        project_map[proj["id"]]["draft"] += 1
+            except HTTPException:
+                pass
+
+    # Group by author
+    by_author: dict = {}
+    for mr in all_mrs:
+        a = mr["author"] or "Unknown"
+        if a not in by_author:
+            by_author[a] = {
+                "name":     a,
+                "avatar":   mr["author_avatar"],
+                "username": mr["author_user"],
+                "total":    0,
+                "ready":    0,
+                "draft":    0,
+            }
+        by_author[a]["total"] += 1
+        if mr["draft"]:
+            by_author[a]["draft"] += 1
+        else:
+            by_author[a]["ready"] += 1
+
+    result = {
+        "total_mrs":    len(all_mrs),
+        "ready_mrs":    sum(1 for m in all_mrs if not m["draft"]),
+        "draft_mrs":    sum(1 for m in all_mrs if m["draft"]),
+        "authors":      sorted(by_author.values(), key=lambda x: -x["total"]),
+        "projects":     list(project_map.values()),
+        "all_mrs":      sorted(all_mrs, key=lambda x: x["updated_at"], reverse=True),
+        "last_fetched": datetime.utcnow().isoformat(),
+    }
+    _cache_set(cache_key, result)
+    return result
+
+
 @router.post("/refresh")
 def refresh_cache(app_id: str = Query(...)):
     _cache.pop(f"gl_mrs_{app_id}", None)
     _cache.pop(f"gl_projects_{app_id}", None)
+    _cache.pop("all_mrs_aggregate", None)
     return {"ok": True}
