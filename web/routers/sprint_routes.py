@@ -426,6 +426,11 @@ def list_boards_by_path(app_id: str, db: Session = Depends(_db)):
     _get_cfg(app_id, db)
     jira_cfg = _get_jira_cfg(db)
 
+    cache_key = f"boards_path_{app_id}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
     data = _jira_get(jira_cfg, "rest/agile/1.0/board", {"maxResults": 50})
     boards = [
         {
@@ -436,7 +441,9 @@ def list_boards_by_path(app_id: str, db: Session = Depends(_db)):
         }
         for b in data.get("values", [])
     ]
-    return {"boards": boards}
+    result = {"boards": boards}
+    _cache_set(cache_key, result)
+    return result
 
 
 @router.get("/{app_id}/active-sprint")
@@ -449,9 +456,14 @@ def active_sprint(
     _get_cfg(app_id, db)
     jira_cfg = _get_jira_cfg(db)
 
-    data    = _jira_get(jira_cfg, f"rest/agile/1.0/board/{board_id}/sprint", {"state": "active"})
-    sprints = data.get("values", [])
+    try:
+        data = _jira_get(jira_cfg, f"rest/agile/1.0/board/{board_id}/sprint", {"state": "active"})
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            return {"found": False, "sprint": None, "error": f"Board {board_id} not found in Jira"}
+        raise
 
+    sprints = data.get("values", [])
     if not sprints:
         return {"found": False, "sprint": None}
 

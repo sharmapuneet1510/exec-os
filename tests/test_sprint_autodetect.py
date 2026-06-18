@@ -96,3 +96,21 @@ def test_active_sprint_requires_board_id(mock_get_cfg, mock_jira_cfg):
 
     resp = client.get(f"/api/sprint/{APP_ID}/active-sprint")  # missing board_id
     assert resp.status_code == 422
+
+
+@patch("web.routers.sprint_routes._jira_get")
+@patch("web.routers.sprint_routes._get_jira_cfg")
+@patch("web.routers.sprint_routes._get_cfg")
+def test_active_sprint_unknown_board_returns_found_false(mock_get_cfg, mock_jira_cfg, mock_jira_get):
+    """When Jira returns 404 for an unknown board, active_sprint returns found=false not a 404."""
+    from fastapi import HTTPException as FastAPIHTTPException
+    mock_get_cfg.return_value  = _mock_sprint_cfg()
+    mock_jira_cfg.return_value = _mock_jira_cfg()
+    mock_jira_get.side_effect  = FastAPIHTTPException(status_code=404, detail="Board not found")
+
+    resp = client.get(f"/api/sprint/{APP_ID}/active-sprint?board_id=99999")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["found"] is False
+    assert data["sprint"] is None
+    assert "error" in data
