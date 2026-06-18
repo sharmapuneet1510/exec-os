@@ -1,6 +1,6 @@
 """GitLab integration — config, connection test, and open MR feed."""
 
-import json, time, logging
+import json, time, logging, urllib.parse
 from datetime import datetime
 from typing import Optional
 
@@ -109,7 +109,6 @@ def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
 
     projects = []
     for pid in raw_ids[:30]:
-        import urllib.parse
         encoded = urllib.parse.quote(str(pid), safe="")
         try:
             p, _ = _gl_get(cfg, f"projects/{encoded}")
@@ -142,7 +141,6 @@ def open_mrs(app_id: str = Query(...), db: Session = Depends(_db)):
     all_mrs = []
     project_map = {}
 
-    import urllib.parse
     for pid in raw_ids[:20]:
         encoded = urllib.parse.quote(str(pid), safe="")
         try:
@@ -220,9 +218,6 @@ def open_mrs(app_id: str = Query(...), db: Session = Depends(_db)):
 @router.get("/all-mrs")
 def all_open_mrs_aggregate():
     """Return ALL open MRs across every enabled GitLab config — no app_id required."""
-    import json as _json
-    import urllib.parse
-
     cache_key = "all_mrs_aggregate"
     cached = _cache_get(cache_key)
     if cached:
@@ -251,7 +246,7 @@ def all_open_mrs_aggregate():
     for cfg in all_cfgs:
         if not cfg.access_token:
             continue
-        raw_ids = _json.loads(cfg.project_ids or "[]")
+        raw_ids = json.loads(cfg.project_ids or "[]")
         for pid in raw_ids[:20]:
             encoded = urllib.parse.quote(str(pid), safe="")
             try:
@@ -291,6 +286,7 @@ def all_open_mrs_aggregate():
                         "has_conflicts": mr.get("has_conflicts", False),
                         "reviewers":     reviewers,
                         "upvotes":       mr.get("upvotes", 0),
+                        "downvotes":     mr.get("downvotes", 0),
                         "changes_count": str(mr.get("changes_count") or ""),
                         "app_id":        cfg.application_id,
                     })

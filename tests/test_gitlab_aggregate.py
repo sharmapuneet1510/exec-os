@@ -116,3 +116,67 @@ def test_all_mrs_groups_by_author(mock_session, mock_gl_get):
     assert authors["bob"] == 1
     # sorted by total desc — alice first
     assert data["authors"][0]["name"] == "alice"
+
+
+@patch("web.routers.gitlab_routes._gl_get")
+@patch("web.routers.gitlab_routes.SessionLocal")
+def test_all_mrs_tolerates_one_bad_project(mock_session, mock_gl_get):
+    """A 401 on one project should not kill the entire aggregate."""
+    from fastapi import HTTPException as FE
+    db = MagicMock()
+    mock_session.return_value = db
+    db.query.return_value.filter.return_value.all.return_value = [
+        _gl_cfg("app1", project_ids='["g/good","g/bad"]'),
+    ]
+
+    call_args = {"n": 0}
+
+    def gl_side(cfg, path, params=None):
+        call_args["n"] += 1
+        if "g%2Fbad" in path or "bad" in path:
+            raise FE(401, "Unauthorized")
+        if "merge_requests" in path:
+            return [_mr(iid=1, author="alice")], {}
+        return {"id": 1, "name": "good", "path_with_namespace": "g/good", "web_url": ""}, {}
+
+    mock_gl_get.side_effect = gl_side
+
+    resp = client.get("/api/gitlab/all-mrs")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_mrs"] == 1
+    assert data["all_mrs"][0]["author"] == "alice"
+
+
+@patch("web.routers.gitlab_routes._gl_get")
+@patch("web.routers.gitlab_routes.SessionLocal")
+def test_all_mrs_merges_multiple_configs(mock_session, mock_gl_get):
+    """MRs from two different app configs must both appear in all_mrs."""
+    db = MagicMock()
+    mock_session.return_value = db
+    db.query.return_value.filter.return_value.all.return_value = [
+        _gl_cfg("app1", project_ids='["g/repo1"]'),
+        _gl_cfg("app2", project_ids='["g/repo2"]'),
+    ]
+
+    proj_ids = {"g/repo1": 10, "g/repo2": 20}
+
+    def gl_side(cfg, path, params=None):
+        for pid_str, proj_id in proj_ids.items():
+            encoded = pid_str.replace("/", "%2F")
+            if encoded in path and "merge_requests" not in path:
+                return {"id": proj_id, "name": pid_str.split("/")[1],
+                        "path_with_namespace": pid_str, "web_url": ""}, {}
+            if encoded in path and "merge_requests" in path:
+                return [_mr(iid=proj_id, author=f"user_{proj_id}")], {}
+        return {}, {}
+
+    mock_gl_get.side_effect = gl_side
+
+    resp = client.get("/api/gitlab/all-mrs")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_mrs"] == 2
+    app_ids = {m["app_id"] for m in data["all_mrs"]}
+    assert "app1" in app_ids
+    assert "app2" in app_ids
