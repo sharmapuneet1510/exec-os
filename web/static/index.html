@@ -86,6 +86,10 @@ function app() {
     jiraJqlLoading: false,
     jiraJqlError: '',
 
+    allMrsData: null,
+    allMrsLoading: false,
+    allMrsError: '',
+
     gitlabCfg: { base_url:'https://gitlab.com', access_token:'', project_ids:'[]', project_ids_raw:'', enabled:false, last_synced:null },
     glData: { all_mrs:[], authors:[], projects:[], total_mrs:0, ready_mrs:0, draft_mrs:0, last_fetched:null },
     glLoading: false, glError: '',
@@ -309,6 +313,7 @@ function app() {
       if(id==='applications') { this.appDrillLevel='apps'; this.appDrillApp=null; this.appDrillProject=null; }
       if(id==='jira-team' && this.jiraAppId && !this.jiraData.team.length) this.onJiraAppChange();
       if(id==='gitlab-mrs' && this.gitlabAppId && !this.glData.all_mrs.length) this.onGitLabAppChange();
+      if(id==='gitlab-mrs' && !this.allMrsData) this.loadAllMrs(false);
       if(id==='my-hub' && !this.myHubData) this.loadMyHub();
       if(id==='team-workload' && !Object.keys(this.workloadData).length) this.loadTeamWorkload();
       if(id==='team-list' && !this.teamList.length) this.loadTeamList();
@@ -1361,6 +1366,22 @@ function app() {
         this.jiraJqlError = e.message;
       }
       this.jiraJqlLoading = false;
+    },
+
+    async loadAllMrs(bust) {
+      this.allMrsLoading = true;
+      this.allMrsError = '';
+      try {
+        if (bust) await fetch('/api/gitlab/refresh', {method:'POST'});
+        const data = await fetch('/api/gitlab/all-mrs').then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.detail || 'Error loading MRs'); });
+          return r.json();
+        });
+        this.allMrsData = data;
+      } catch(e) {
+        this.allMrsError = e.message;
+      }
+      this.allMrsLoading = false;
     },
 
     // ── GitLab ───────────────────────────────────────────────────────────────
@@ -5409,6 +5430,25 @@ function initApiTokens() {
 
       <!-- ══ GITLAB OPEN MRS ══ -->
       <div x-show="view==='gitlab-mrs'" x-cloak style="padding:0 20px;padding-top:8px;">
+
+        <!-- Aggregate stats header -->
+        <div x-show="allMrsData" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;min-width:100px;text-align:center;">
+            <div style="font-size:26px;font-weight:800;font-family:monospace;color:#1e293b;" x-text="allMrsData?.total_mrs??0"></div>
+            <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Total Open</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;min-width:100px;text-align:center;">
+            <div style="font-size:26px;font-weight:800;font-family:monospace;color:#10b981;" x-text="allMrsData?.ready_mrs??0"></div>
+            <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Ready</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;min-width:100px;text-align:center;">
+            <div style="font-size:26px;font-weight:800;font-family:monospace;color:#f59e0b;" x-text="allMrsData?.draft_mrs??0"></div>
+            <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Draft</div>
+          </div>
+          <button @click="loadAllMrs(true)" style="padding:8px 14px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-left:auto;">Refresh All</button>
+        </div>
+        <div x-show="allMrsLoading" style="color:#6366f1;font-size:14px;padding:8px 0;">Loading MRs...</div>
+        <div x-show="allMrsError" style="color:#ef4444;font-size:13px;padding:8px 0;" x-text="allMrsError"></div>
 
         <!-- App selector -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
