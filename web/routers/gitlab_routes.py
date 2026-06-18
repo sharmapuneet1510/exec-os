@@ -4,6 +4,8 @@ import json, time, logging
 from datetime import datetime
 from typing import Optional
 
+from web.config import get_ssl_verify
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -59,7 +61,7 @@ def _gl_get(cfg: AppGitLabConfigORM, path: str, params: dict = None):
         params=params or {},
         headers={"PRIVATE-TOKEN": cfg.access_token, "Accept": "application/json"},
         timeout=15,
-        verify=False,  # Disable SSL verification for corporate proxies/self-signed certs
+        verify=get_ssl_verify(),  # Controlled via EXECOS_SSL_VERIFY env var
     )
     if resp.status_code == 401:
         raise HTTPException(401, "GitLab auth failed — check your access token")

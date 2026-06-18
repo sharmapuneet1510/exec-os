@@ -12,6 +12,7 @@ from datetime import date
 
 from db.base import get_db
 from db.models import TaskORM, JiraConfigORM, AppGitLabConfigORM, SprintConfigORM
+from web.config import get_ssl_verify
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -92,7 +93,7 @@ def my_work(db: Session = Depends(get_db)):
                     "fields":     "summary,status,priority,issuetype,project,duedate,updated",
                 },
                 timeout=15,
-                verify=False,
+                verify=get_ssl_verify(),
             )
             if resp.ok:
                 for issue in resp.json().get("issues", []):
@@ -135,7 +136,7 @@ def my_work(db: Session = Depends(get_db)):
                             "order_by":        "updated_at",
                         },
                         timeout=10,
-                        verify=False,
+                        verify=get_ssl_verify(),
                     )
                     if resp.ok:
                         for mr in resp.json():

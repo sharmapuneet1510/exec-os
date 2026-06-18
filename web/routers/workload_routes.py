@@ -4,6 +4,8 @@ import json
 import time
 from datetime import datetime
 from typing import Optional
+
+from web.config import get_ssl_verify
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -69,7 +71,7 @@ def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
     resp = requests.get(url, params=params or {},
         headers={"Authorization": f"Bearer {cfg.pat}", "Accept": "application/json",
                  "Content-Type": "application/json"},
-        timeout=15, verify=False)
+        timeout=15, verify=get_ssl_verify())
     if not resp.ok:
         return None
     return resp.json()
@@ -223,7 +225,16 @@ def get_team_workload(app_id: str = Query(None), db: Session = Depends(_db)):
     total_jira = 0
     total_mrs = 0
 
+    # Deduplicate team members by email (in case database has duplicates)
+    seen_emails = set()
+    unique_members = []
     for member in team_members:
+        email_key = (member.email or "").lower()
+        if email_key not in seen_emails:
+            seen_emails.add(email_key)
+            unique_members.append(member)
+
+    for member in unique_members:
         # Local tasks
         local_tasks = db.query(TaskORM).filter(
             TaskORM.assignee_id == member.member_id
@@ -467,7 +478,16 @@ def get_sprint_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     team_data = []
     total_jira = 0
 
+    # Deduplicate team members by email (in case database has duplicates)
+    seen_emails = set()
+    unique_members = []
     for member in team_members:
+        email_key = (member.email or "").lower()
+        if email_key not in seen_emails:
+            seen_emails.add(email_key)
+            unique_members.append(member)
+
+    for member in unique_members:
         sprints_breakdown = {}
         member_total = 0
 

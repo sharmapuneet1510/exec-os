@@ -4,6 +4,8 @@ import hashlib, json, time, logging
 from datetime import datetime
 from typing import Optional, List
 
+from web.config import get_ssl_verify
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -85,7 +87,7 @@ def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
     """
     import requests
     import urllib3
-    # Disable SSL warnings since verify=False
+    # Disable SSL warnings — may be suppressed when verify=False
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     url = f"{cfg.base_url.rstrip('/')}/rest/api/2/{path.lstrip('/')}"
     resp = requests.get(
@@ -93,7 +95,7 @@ def _jira_get(cfg: JiraConfigORM, path: str, params: dict = None):
         params=params or {},
         headers=_jira_headers(cfg),
         timeout=15,
-        verify=False,
+        verify=get_ssl_verify(),
     )
     if resp.status_code == 401:
         raise HTTPException(401, "Jira auth failed — check PAT and permissions")

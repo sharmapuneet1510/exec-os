@@ -4,6 +4,8 @@ import json, time, logging
 from datetime import datetime
 from typing import Optional
 
+from web.config import get_ssl_verify
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -67,7 +69,7 @@ def _jira_get(cfg, path: str, params: dict = None):
             "Accept": "application/json",
             "Content-Type": "application/json",
         },
-        verify=False,
+        verify=get_ssl_verify(),
         timeout=20,
     )
     if resp.status_code == 401:
