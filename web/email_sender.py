@@ -8,6 +8,7 @@ import urllib3
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import date, datetime, timedelta
+from html import escape as _he
 from sqlalchemy.orm import Session
 
 import requests
@@ -16,6 +17,7 @@ from db.models import (
     TaskORM, ProjectORM, MilestoneORM, CommitmentORM, EmailConfigORM, ApplicationORM,
     JiraConfigORM, AppGitLabConfigORM, SprintConfigORM,
 )
+from web.config import get_ssl_verify
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _email_log = logging.getLogger("execos.email")
@@ -213,7 +215,6 @@ def _get_gl_configs(db):
 
 
 def _fetch_my_jira_issues(db, jql: str) -> list:
-    from web.config import get_ssl_verify
     jira_cfg = _get_jira_cfg(db)
     if not getattr(jira_cfg, 'enabled', False) or not getattr(jira_cfg, 'pat', None):
         return []
@@ -247,7 +248,6 @@ def _fetch_my_jira_issues(db, jql: str) -> list:
 
 
 def _fetch_open_mrs_for_email(db) -> list:
-    from web.config import get_ssl_verify
     gl_cfgs = _get_gl_configs(db)
     mrs = []
     for gl_cfg in gl_cfgs:
@@ -452,10 +452,10 @@ def build_sod_html(db: Session) -> str:
         rows = "".join(
             f'<tr>'
             f'<td style="padding:5px 8px;font-weight:700;color:#6366f1;font-family:monospace;font-size:12px;">'
-            f'<a href="{i["web_url"]}" style="color:#6366f1;text-decoration:none;">{i["key"]}</a></td>'
-            f'<td style="padding:5px 8px;font-size:13px;">{i["summary"]}</td>'
-            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{i["status"]}</td>'
-            f'<td style="padding:5px 8px;font-size:12px;color:#ef4444;">{i["priority"]}</td>'
+            f'<a href="{i["web_url"]}" style="color:#6366f1;text-decoration:none;">{_he(i["key"])}</a></td>'
+            f'<td style="padding:5px 8px;font-size:13px;">{_he(i["summary"])}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{_he(i["status"])}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#ef4444;">{_he(i["priority"])}</td>'
             f'</tr>'
             for i in jira_issues[:15]
         )
@@ -479,11 +479,11 @@ def build_sod_html(db: Session) -> str:
         mr_rows = "".join(
             f'<tr>'
             f'<td style="padding:5px 8px;font-size:13px;">'
-            f'<a href="{m["web_url"]}" style="color:#6366f1;text-decoration:none;">{m["title"]}</a>'
+            f'<a href="{m["web_url"]}" style="color:#6366f1;text-decoration:none;">{_he(m["title"])}</a>'
             f'{"&nbsp;" + draft_label if m["draft"] else ""}'
             f'</td>'
-            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{m["author"]}</td>'
-            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{m["project"]}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{_he(m["author"])}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{_he(m["project"])}</td>'
             f'</tr>'
             for m in open_mrs[:10]
         )
@@ -623,10 +623,10 @@ def build_eod_html(db: Session) -> str:
         rows = "".join(
             f'<tr>'
             f'<td style="padding:5px 8px;font-weight:700;color:#6366f1;font-family:monospace;font-size:12px;">'
-            f'<a href="{i["web_url"]}" style="color:#6366f1;text-decoration:none;">{i["key"]}</a></td>'
-            f'<td style="padding:5px 8px;font-size:13px;">{i["summary"]}</td>'
-            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{i["status"]}</td>'
-            f'<td style="padding:5px 8px;font-size:12px;color:#ef4444;">{i["priority"]}</td>'
+            f'<a href="{i["web_url"]}" style="color:#6366f1;text-decoration:none;">{_he(i["key"])}</a></td>'
+            f'<td style="padding:5px 8px;font-size:13px;">{_he(i["summary"])}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{_he(i["status"])}</td>'
+            f'<td style="padding:5px 8px;font-size:12px;color:#ef4444;">{_he(i["priority"])}</td>'
             f'</tr>'
             for i in jira_done_today[:15]
         )
