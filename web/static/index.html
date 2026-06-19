@@ -3804,7 +3804,7 @@ function initApiTokens() {
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <!-- Show/hide read toggle -->
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text-2);user-select:none;">
-              <input type="checkbox" x-model="showRead" style="accent-color:#6366f1;width:14px;height:14px;">
+              <input type="checkbox" x-model="showRead" style="accent-color:#475569;width:14px;height:14px;">
               Show read
             </label>
             <button class="btn-secondary" style="font-size:12px;"
@@ -7937,7 +7937,7 @@ function initApiTokens() {
 <!-- ══ REMINDER MODAL ══ -->
 <div x-show="reminderModal.open" x-cloak class="modal-backdrop" @click.self="reminderModal.open=false">
   <div class="modal-box">
-    <div class="modal-header" style="background:linear-gradient(135deg,#6366f1,#a5b4fc);">
+    <div class="modal-header">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:18px;font-weight:800;">New Reminder</div>
@@ -7985,11 +7985,11 @@ function initApiTokens() {
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);user-select:none;">
-          <input type="checkbox" x-model="reminderModal.data.include_in_sod" style="accent-color:#6366f1;width:14px;height:14px;">
+          <input type="checkbox" x-model="reminderModal.data.include_in_sod" style="accent-color:#475569;width:14px;height:14px;">
           Include in Start-of-Day email
         </label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);user-select:none;">
-          <input type="checkbox" x-model="reminderModal.data.include_in_eod" style="accent-color:#6366f1;width:14px;height:14px;">
+          <input type="checkbox" x-model="reminderModal.data.include_in_eod" style="accent-color:#475569;width:14px;height:14px;">
           Include in End-of-Day email
         </label>
       </div>
