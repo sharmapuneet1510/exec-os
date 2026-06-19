@@ -74,6 +74,35 @@ def create_app(body: AppIn, db: Session = Depends(get_db)):
     return _out(a)
 
 
+@router.get("/cleanup-preview")
+def cleanup_preview(db: Session = Depends(get_db)):
+    """Return active applications that match test/dev naming patterns."""
+    import re
+    TEST_PATTERNS = [
+        re.compile(r"TestApp_\d+",   re.IGNORECASE),
+        re.compile(r"^(test|demo|temp|tmp|ewe|hh|asd|abc|foo|bar|baz|qux)$", re.IGNORECASE),
+        re.compile(r"(Modal Test|Final Test|test\s*\d+)",   re.IGNORECASE),
+    ]
+
+    active_apps = (db.query(ApplicationORM)
+                   .filter(ApplicationORM.status == "active")
+                   .all())
+    candidates = []
+    for a in active_apps:
+        if any(p.search(a.name) for p in TEST_PATTERNS):
+            candidates.append({
+                "application_id": a.application_id,
+                "name":           a.name,
+                "reason":         "name matches test/dev pattern",
+            })
+
+    return {
+        "total_active":    len(active_apps),
+        "candidate_count": len(candidates),
+        "candidates":      candidates,
+    }
+
+
 @router.get("/{app_id}")
 def get_app(app_id: str, db: Session = Depends(get_db)):
     a = db.query(ApplicationORM).filter(ApplicationORM.application_id == app_id).first()
@@ -136,3 +165,15 @@ def list_projects_for_app(app_id: str, db: Session = Depends(get_db)):
         }
         for p in projects
     ]
+
+
+@router.post("/{app_id}/archive")
+def archive_application(app_id: str, db: Session = Depends(get_db)):
+    """Soft-delete: mark application as archived (hidden but not permanently deleted)."""
+    a = db.query(ApplicationORM).filter(ApplicationORM.application_id == app_id).first()
+    if not a:
+        raise HTTPException(status_code=404, detail=f"Application '{app_id}' not found")
+    a.status = "archived"
+    db.commit()
+    db.refresh(a)
+    return _out(a)
