@@ -33,7 +33,8 @@ def setup_status():
             sprint_cfg.my_jira_email or sprint_cfg.my_gitlab_username
         ))
         app_ok      = app_count > 0
-        email_ok    = bool(email_cfg and email_cfg.smtp_host and email_cfg.enabled)
+        email_ok    = bool(email_cfg and email_cfg.smtp_host
+                           and (email_cfg.sod_enabled or email_cfg.eod_enabled))
 
         checks = [
             _check("has_app",  "Create at least one Application",

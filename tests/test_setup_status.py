@@ -39,8 +39,9 @@ def test_setup_status_complete_when_all_configured(mock_session):
     sprint_cfg.my_gitlab_username = "pm_gl"
 
     email_cfg = MagicMock()
-    email_cfg.smtp_host = "smtp.example.com"
-    email_cfg.enabled   = True
+    email_cfg.smtp_host   = "smtp.example.com"
+    email_cfg.sod_enabled = True
+    email_cfg.eod_enabled = True
 
     def query_side(model):
         from db.models import JiraConfigORM, SprintConfigORM, AppGitLabConfigORM, ApplicationORM, EmailConfigORM
