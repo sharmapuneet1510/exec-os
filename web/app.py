@@ -43,6 +43,8 @@ from services.backup_scheduler import start_backup_scheduler, shutdown_backup_sc
 
 app = FastAPI(title="ExecOS", version="1.0.0", description="Personal Execution System")
 
+_reminder_scheduler = None
+
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -111,6 +113,7 @@ app.include_router(jira_sync_router)
 app.include_router(settings_router)
 app.include_router(issue_comments_router)
 app.include_router(setup_router)
+app.include_router(reminders.router)
 
 _static = pathlib.Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static)), name="static")
@@ -121,6 +124,7 @@ def on_startup():
     create_all()
     _start_scheduler()
     start_backup_scheduler()
+    _start_reminder_scheduler()
 
 
 def _start_scheduler():
@@ -140,9 +144,26 @@ def _start_scheduler():
         pass
 
 
+def _start_reminder_scheduler():
+    global _reminder_scheduler
+    try:
+        _reminder_scheduler = create_scheduler_job()
+        _reminder_scheduler.start()
+    except Exception as exc:
+        import logging
+        logging.getLogger("execos").warning("Reminder scheduler failed to start: %s", exc)
+        _reminder_scheduler = None
+
+
 @app.on_event("shutdown")
 def on_shutdown():
     shutdown_backup_scheduler()
+    global _reminder_scheduler
+    if _reminder_scheduler:
+        try:
+            _reminder_scheduler.stop()
+        except Exception:
+            pass
 
 
 @app.get("/", include_in_schema=False)
