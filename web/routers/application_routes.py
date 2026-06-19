@@ -1,5 +1,6 @@
 """Applications — top-level entity above Projects."""
 
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -77,7 +78,6 @@ def create_app(body: AppIn, db: Session = Depends(get_db)):
 @router.get("/cleanup-preview")
 def cleanup_preview(db: Session = Depends(get_db)):
     """Return active applications that match test/dev naming patterns."""
-    import re
     TEST_PATTERNS = [
         re.compile(r"TestApp_\d+",   re.IGNORECASE),
         re.compile(r"^(test|demo|temp|tmp|ewe|hh|asd|abc|foo|bar|baz|qux)$", re.IGNORECASE),
