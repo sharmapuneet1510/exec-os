@@ -38,6 +38,11 @@ def test_release_out_fields():
         "project_name": "My Project",
         "application_id": None,
         "due_date": None,
+        "start_date": None,
+        "uat_date": None,
+        "sign_off_date": None,
+        "jira_project_key": "",
+        "load_release_option": "",
         "status": "planned",
         "description": "Initial release",
         "days_until_due": None,
@@ -48,6 +53,8 @@ def test_release_out_fields():
     r = ReleaseOut(**data)
     assert r.release_id == "rel-123"
     assert r.status == "planned"
+    assert r.start_date is None
+    assert r.jira_project_key == ""
 
 
 def test_to_out_with_orm_object(db):
