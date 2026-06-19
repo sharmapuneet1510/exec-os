@@ -32,12 +32,23 @@ class JiraIn(BaseModel):
 
 
 def _jira_out(global_cfg: JiraConfigORM, app_cfg: AppJiraConfigORM) -> dict:
+    effective_url = (
+        (app_cfg.base_url if app_cfg and app_cfg.base_url else None) or
+        (global_cfg.base_url if global_cfg else None) or ""
+    )
+    has_pat = bool(
+        (app_cfg.pat if app_cfg else None) or
+        (global_cfg.pat if global_cfg else None)
+    )
     return {
-        "base_url": global_cfg.base_url or "" if global_cfg else "",
-        "pat": "••••" if (global_cfg and global_cfg.pat) else "",
+        "base_url":     effective_url,
+        "pat":          "••••" if has_pat else "",
         "project_keys": json.loads(app_cfg.project_keys or "[]") if app_cfg else [],
-        "enabled": global_cfg.enabled if global_cfg else False,
-        "last_synced": global_cfg.last_synced if global_cfg else None,
+        "enabled":      bool(
+            (app_cfg.enabled if app_cfg else False) or
+            (global_cfg.enabled if global_cfg else False)
+        ),
+        "last_synced":  global_cfg.last_synced if global_cfg else None,
     }
 
 
@@ -75,6 +86,12 @@ def save_jira(app_id: str, body: JiraIn, db: Session = Depends(get_db)):
         db.add(app_cfg)
 
     app_cfg.project_keys = json.dumps(body.project_keys)
+
+    # Write per-app credentials (isolates this app from others)
+    app_cfg.base_url = body.base_url.strip()
+    if body.pat and body.pat not in ("••••", ""):
+        app_cfg.pat = body.pat
+    app_cfg.enabled = body.enabled
 
     db.commit()
     db.refresh(global_cfg)

@@ -2,6 +2,7 @@
 
 import hashlib, json, time, logging
 from datetime import datetime
+from types import SimpleNamespace
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -76,6 +77,19 @@ def _get_app_cfg(app_id: str, db: Session) -> AppJiraConfigORM:
     if not cfg:
         raise HTTPException(404, f"No Jira config found for application '{app_id}' — configure it in Settings first")
     return cfg
+
+
+def _effective_jira_cfg(app_id: str, db: Session):
+    """Return per-app Jira credentials if configured; fall back to global JiraConfigORM."""
+    app_cfg = db.query(AppJiraConfigORM).filter(AppJiraConfigORM.application_id == app_id).first()
+    if app_cfg and app_cfg.base_url and app_cfg.pat:
+        return SimpleNamespace(
+            base_url=app_cfg.base_url,
+            pat=app_cfg.pat,
+            enabled=app_cfg.enabled,
+            last_synced=None,
+        )
+    return _get_cfg(db)
 
 
 # ── Jira HTTP helpers ─────────────────────────────────────────────────────────
@@ -177,7 +191,7 @@ def test_connection(app_id: str = Query(...), db: Session = Depends(_db)):
 
 @router.get("/projects")
 def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
-    cfg = _get_cfg(db)
+    cfg = _effective_jira_cfg(app_id, db)
     if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled")
     cache_key = f"projects_{app_id}"
@@ -196,7 +210,7 @@ def list_projects(app_id: str = Query(...), db: Session = Depends(_db)):
 @router.get("/team")
 def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
     """Return team workload: one entry per assignee with their open issues."""
-    cfg = _get_cfg(db)
+    cfg = _effective_jira_cfg(app_id, db)
     if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled")
 
@@ -272,7 +286,7 @@ def jql_filter(
     db: Session = Depends(_db),
 ):
     """Execute a user-supplied JQL query and return results grouped by assignee."""
-    cfg = _get_cfg(db)
+    cfg = _effective_jira_cfg(app_id, db)
     if not cfg.enabled or not cfg.pat:
         raise HTTPException(400, "Jira integration is not enabled — configure it in Settings first")
 
