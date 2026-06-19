@@ -15,7 +15,7 @@ import requests
 
 from db.models import (
     TaskORM, ProjectORM, MilestoneORM, CommitmentORM, EmailConfigORM, ApplicationORM,
-    JiraConfigORM, AppGitLabConfigORM, SprintConfigORM,
+    JiraConfigORM, AppGitLabConfigORM, SprintConfigORM, ReminderORM,
 )
 from web.config import get_ssl_verify
 
@@ -280,6 +280,36 @@ def _fetch_open_mrs_for_email(db) -> list:
     return mrs
 
 
+def _get_active_reminders(db) -> list:
+    try:
+        return db.query(ReminderORM).filter(ReminderORM.is_active == True).all()
+    except Exception as exc:
+        _email_log.warning("Reminder fetch for email failed: %s", exc)
+        return []
+
+
+def _reminders_section(reminders, accent="#8B5CF6") -> str:
+    if not reminders:
+        return ""
+    rows = "".join(
+        f'<tr>'
+        f'<td style="padding:5px 8px;font-size:13px;">{_he(r.title)}</td>'
+        f'<td style="padding:5px 8px;font-size:12px;color:#64748b;">{_he(r.trigger_value)}</td>'
+        f'</tr>'
+        for r in reminders
+    )
+    return (
+        f'<div style="margin:20px 0;">'
+        f'<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0 0 8px;">'
+        f'Reminders ({len(reminders)})</h3>'
+        f'<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">'
+        f'<thead><tr style="background:#f8fafc;">'
+        f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">REMINDER</th>'
+        f'<th style="padding:5px 8px;text-align:left;font-size:11px;color:#64748b;">SCHEDULE</th>'
+        f'</tr></thead><tbody>{rows}</tbody></table></div>'
+    )
+
+
 # ── SOD email ─────────────────────────────────────────────────────────────────
 
 def build_sod_html(db: Session) -> str:
@@ -292,6 +322,7 @@ def build_sod_html(db: Session) -> str:
                'AND duedate <= now() ORDER BY duedate ASC')
     jira_issues = _fetch_my_jira_issues(db, sod_jql)
     open_mrs = _fetch_open_mrs_for_email(db)
+    sod_reminders = [r for r in _get_active_reminders(db) if r.include_in_sod]
 
     proj_names = {p.project_id: p.name for p in db.query(ProjectORM).all()}
 
@@ -499,7 +530,10 @@ def build_sod_html(db: Session) -> str:
             f'</tr></thead><tbody>{mr_rows}</tbody></table></div>'
         )
 
-    body = header + overdue_section + today_section + carry_section + proj_section + ms_section + com_section + jira_section + mrs_section
+    # ── reminders section ─────────────────────────────────────────────────────
+    reminders_section = _reminders_section(sod_reminders)
+
+    body = header + overdue_section + today_section + carry_section + proj_section + ms_section + com_section + jira_section + mrs_section + reminders_section
     preheader = f"{len(overdue_tasks)} overdue · {len(due_today)} due today — ExecOS Morning Briefing"
     return _wrap(body, preheader)
 
@@ -515,6 +549,7 @@ def build_eod_html(db: Session) -> str:
     eod_jql = (f'assignee = currentUser() AND status changed to Done '
                f'after "{today.isoformat()}" ORDER BY updated DESC')
     jira_done_today = _fetch_my_jira_issues(db, eod_jql)
+    eod_reminders = [r for r in _get_active_reminders(db) if r.include_in_eod]
 
     proj_names = {p.project_id: p.name for p in db.query(ProjectORM).all()}
 
@@ -643,7 +678,10 @@ def build_eod_html(db: Session) -> str:
             f'</tr></thead><tbody>{rows}</tbody></table></div>'
         )
 
-    body = header + completed_section + missed_section + carry_section + ov_section + jira_done_section
+    # ── reminders section ─────────────────────────────────────────────────────
+    reminders_section = _reminders_section(eod_reminders)
+
+    body = header + completed_section + missed_section + carry_section + ov_section + jira_done_section + reminders_section
     preheader = f"{len(completed)} completed · {len(missed)} missed — ExecOS Day Summary"
     return _wrap(body, preheader)
 
