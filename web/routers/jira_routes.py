@@ -37,7 +37,7 @@ def _cache_bust():
 
 
 # ── Jira Header Builder ───────────────────────────────────────────────────────
-def _jira_headers(cfg: JiraConfigORM) -> dict:
+def _jira_headers(cfg) -> dict:
     """Return centralized Jira API headers with bearer token authentication.
 
     All Jira API requests should use these headers for authentication.
@@ -273,8 +273,11 @@ def team_workload(app_id: str = Query(...), db: Session = Depends(_db)):
 
     _cache_set(cache_key, result)
 
-    cfg.last_synced = datetime.utcnow()
-    db.commit()
+    # stamp last_synced on the persistent config record (cfg may be a SimpleNamespace)
+    global_cfg = db.query(JiraConfigORM).first()
+    if global_cfg:
+        global_cfg.last_synced = datetime.utcnow()
+        db.commit()
 
     return result
 

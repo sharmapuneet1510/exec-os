@@ -91,6 +91,8 @@ def save_jira(app_id: str, body: JiraIn, db: Session = Depends(get_db)):
     app_cfg.base_url = body.base_url.strip()
     if body.pat and body.pat not in ("••••", ""):
         app_cfg.pat = body.pat
+    elif body.pat == "" and not app_cfg.pat:
+        app_cfg.pat = ""
     app_cfg.enabled = body.enabled
 
     db.commit()
