@@ -87,6 +87,9 @@ function app() {
     jiraJqlError: '',
 
     allMrsData: null,
+    reminders: [],
+    remindersLoading: false,
+    reminderModal: { open: false, data: {} },
     allMrsLoading: false,
     allMrsError: '',
 
@@ -175,7 +178,7 @@ function app() {
     get pageTitle() {
       return { dashboard:'Operational Dashboard', executive:'Executive Dashboard',
         tasks:'Tasks', inbox:'Inbox', projects:'Projects', milestones:'Milestones',
-        releases:'Releases', commitments:'Commitments', alerts:'Alerts', summaries:'Daily Summaries',
+        releases:'Releases', commitments:'Commitments', alerts:'Alerts', reminders:'Reminders', summaries:'Daily Summaries',
         estimate:'Story Estimator', 'project-tracker':'Project Tracker',
         'jira-team':'Team Workload', 'team-workload':'Team Workload', 'gitlab-mrs':'Open Merge Requests', resourcing:'Resourcing', admin:'Settings',
         planner:'Day Planner', 'my-hub':'My Hub', 'sprint-board':'Sprint Board',
@@ -188,7 +191,7 @@ function app() {
         projects:'Project tracking & health',
         milestones:'Key milestones & deadlines', releases:'Product releases & versions',
         commitments:'Tracked promises',
-        alerts:'System & execution alerts', summaries:'Start & end of day briefings',
+        alerts:'System & execution alerts', reminders:'Scheduled nudges into your alerts and briefings', summaries:'Start & end of day briefings',
         estimate:'Multi-item · Weighted · Holidays · Release paperwork',
         'project-tracker':'Gantt timeline · Current status · Export to PNG',
         'jira-team':'Live Jira data · Open issues · Who is working on what',
@@ -318,6 +321,7 @@ function app() {
       if(id==='jira-team' && this.jiraAppId && !this.jiraData.team.length) this.onJiraAppChange();
       if(id==='gitlab-mrs' && this.gitlabAppId && !this.glData.all_mrs.length) this.onGitLabAppChange();
       if(id==='gitlab-mrs' && !this.allMrsData) this.loadAllMrs(false);
+      if(id==='reminders') this.loadReminders();
       if(id==='my-hub' && !this.myHubData) this.loadMyHub();
       if(id==='team-workload' && !Object.keys(this.workloadData).length) this.loadTeamWorkload();
       if(id==='team-list' && !this.teamList.length) this.loadTeamList();
@@ -1386,6 +1390,55 @@ function app() {
         this.allMrsError = e.message;
       }
       this.allMrsLoading = false;
+    },
+
+    async loadReminders() {
+      this.remindersLoading = true;
+      try { this.reminders = await fetch('/api/reminders').then(r => r.json()); }
+      catch(e) { this.addToast('Failed to load reminders: ' + e.message, 'error'); }
+      this.remindersLoading = false;
+    },
+    openReminderModal() {
+      this.reminderModal = { open: true, data: {
+        title: '', description: '', trigger_type: 'fixed_time',
+        trigger_value: '09:00', due_date: '', priority: 'medium',
+        include_in_sod: true, include_in_eod: true,
+      }};
+    },
+    async saveReminder() {
+      const d = this.reminderModal.data;
+      if (!d.title || !d.title.trim()) { this.addToast('Title is required', 'warning'); return; }
+      const body = {
+        title: d.title.trim(), description: d.description || '',
+        reminder_type: 'independent', trigger_type: d.trigger_type,
+        trigger_value: d.trigger_value, priority: d.priority,
+        include_in_sod: !!d.include_in_sod, include_in_eod: !!d.include_in_eod,
+      };
+      if (d.trigger_type === 'relative_interval') body.due_date = d.due_date || null;
+      try {
+        const r = await fetch('/api/reminders', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+        if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'Error'); }
+        this.reminderModal.open = false;
+        this.addToast('Reminder created', 'success');
+        await this.loadReminders();
+      } catch(e) { this.addToast('Failed: ' + e.message, 'error'); }
+    },
+    async toggleReminder(rid, active) {
+      try { await fetch(`/api/reminders/${rid}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({is_active: active})}); await this.loadReminders(); }
+      catch(e) { this.addToast('Failed: ' + e.message, 'error'); }
+    },
+    async snoozeReminder(rid) {
+      try { await fetch(`/api/reminders/${rid}/snooze?minutes=60`, {method:'POST'}); this.addToast('Snoozed 1 hour', 'info'); await this.loadReminders(); }
+      catch(e) { this.addToast('Failed: ' + e.message, 'error'); }
+    },
+    async deleteReminder(rid) {
+      if (!confirm('Delete this reminder?')) return;
+      try { await fetch(`/api/reminders/${rid}`, {method:'DELETE'}); this.addToast('Reminder deleted', 'success'); await this.loadReminders(); }
+      catch(e) { this.addToast('Failed: ' + e.message, 'error'); }
+    },
+    async testFireReminder(rid) {
+      try { await fetch(`/api/reminders/${rid}/trigger`, {method:'POST'}); this.addToast('Reminder fired — check Alerts', 'reminder'); if (typeof this.loadAlerts === 'function') await this.loadAlerts(); }
+      catch(e) { this.addToast('Failed: ' + e.message, 'error'); }
     },
 
     async loadSetupStatus() {
@@ -2522,6 +2575,7 @@ function initApiTokens() {
       <span class="nav-icon">🔔</span><span style="flex:1;">Alerts</span>
       <span x-show="unreadAlerts>0" style="background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:99px;padding:1px 6px;" x-text="unreadAlerts"></span>
     </div>
+    <div @click="nav('reminders')"       :class="navCls('reminders')"><span class="nav-icon">⏰</span><span>Reminders</span></div>
     <div @click="nav('planner')"         :class="navCls('planner')">         <span class="nav-icon">🗓️</span><span>Day Planner</span></div>
   </div>
 
@@ -2663,7 +2717,7 @@ function initApiTokens() {
     </style>
 
     <!-- Content -->
-    <div x-show="['dashboard','executive','tasks','inbox','projects','applications','project-tracker','milestones','releases','commitments','alerts','activity-log','planner','summaries','estimate','proj-planner','delivery'].includes(view)" style="flex:1;overflow-y:auto;padding:24px 28px;box-sizing:border-box;">
+    <div x-show="['dashboard','executive','tasks','inbox','projects','applications','project-tracker','milestones','releases','commitments','alerts','reminders','activity-log','planner','summaries','estimate','proj-planner','delivery'].includes(view)" style="flex:1;overflow-y:auto;padding:24px 28px;box-sizing:border-box;">
 
       <!-- ══ COMMAND CENTRE DASHBOARD ══ -->
       <div x-show="view==='dashboard'" x-cloak style="flex:1;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;">
@@ -3822,6 +3876,48 @@ function initApiTokens() {
           </div>
         </template>
         <style>.al-card:hover .al-actions{opacity:1!important;} .al-card:hover{border-color:var(--border-hover)!important;box-shadow:0 4px 16px rgba(0,0,0,.06);}</style>
+      </div>
+
+      <!-- ══ REMINDERS ══ -->
+      <div x-show="view==='reminders'" x-cloak>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:18px;">
+          <button @click="loadReminders()" class="btn-secondary" style="font-size:12px;">Refresh</button>
+          <button @click="openReminderModal()" class="btn-primary">+ New Reminder</button>
+        </div>
+
+        <!-- Empty state -->
+        <div x-show="!reminders.length && !remindersLoading" class="card" style="text-align:center;padding:64px 24px;">
+          <div style="font-size:44px;margin-bottom:10px;">⏰</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text-1);">No reminders yet</div>
+          <div style="font-size:13px;color:var(--text-3);margin-top:4px;">Create a reminder to get scheduled nudges in your alerts and daily briefings.</div>
+        </div>
+
+        <!-- List -->
+        <div x-show="reminders.length" style="display:flex;flex-direction:column;gap:10px;">
+          <template x-for="r in reminders" :key="r.reminder_id">
+            <div class="card rm-row" style="display:flex;align-items:center;gap:14px;padding:14px 16px;" :style="!r.is_active ? 'opacity:0.55;' : ''">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                  <span style="font-size:14px;font-weight:700;color:var(--text-1);" x-text="r.title"></span>
+                  <span :class="'chip ' + (r.trigger_type==='fixed_time' ? 'chip-blue' : 'chip-purple')"
+                    x-text="(r.trigger_type==='fixed_time' ? '🕘 ' : '⏳ ') + r.trigger_value"></span>
+                  <span :class="'chip ' + (r.priority==='critical' ? 'chip-red' : r.priority==='high' ? 'chip-orange' : r.priority==='medium' ? 'chip-blue' : 'chip-gray')"
+                    x-text="r.priority"></span>
+                  <span x-show="!r.is_active" class="chip chip-gray">Paused</span>
+                </div>
+                <div x-show="r.description" style="font-size:12.5px;color:var(--text-3);line-height:1.4;" x-text="r.description"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <button @click="toggleReminder(r.reminder_id, !r.is_active)" class="btn-secondary" style="font-size:11.5px;"
+                  x-text="r.is_active ? 'Pause' : 'Activate'" :title="r.is_active ? 'Pause this reminder' : 'Activate this reminder'"></button>
+                <button @click="snoozeReminder(r.reminder_id)" class="btn-secondary" style="font-size:11.5px;" title="Snooze 1 hour">Snooze</button>
+                <button @click="testFireReminder(r.reminder_id)" class="btn-secondary" style="font-size:11.5px;" title="Fire now to test">Test</button>
+                <button @click="deleteReminder(r.reminder_id)" class="btn-danger" style="font-size:11.5px;" title="Delete">Delete</button>
+              </div>
+            </div>
+          </template>
+        </div>
+        <style>.rm-row:hover{border-color:var(--border-hover)!important;box-shadow:0 4px 16px rgba(0,0,0,.06);}</style>
       </div>
 
       <!-- ══ ACTIVITY LOG ══ -->
@@ -7834,6 +7930,73 @@ function initApiTokens() {
     <div class="modal-footer">
       <button @click="alertModal.open=false" class="btn-secondary">Cancel</button>
       <button @click="saveAlert()" class="btn-primary">Create Alert</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ REMINDER MODAL ══ -->
+<div x-show="reminderModal.open" x-cloak class="modal-backdrop" @click.self="reminderModal.open=false">
+  <div class="modal-box">
+    <div class="modal-header" style="background:linear-gradient(135deg,#6366f1,#a5b4fc);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:18px;font-weight:800;">New Reminder</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;">Schedule a nudge into your alerts &amp; briefings</div>
+        </div>
+        <button @click="reminderModal.open=false" style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Title *</label>
+        <input x-model="reminderModal.data.title" class="input" placeholder="e.g. Review open MRs" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Description</label>
+        <textarea x-model="reminderModal.data.description" class="input" style="height:60px;" placeholder="Optional details…"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Trigger</label>
+          <select x-model="reminderModal.data.trigger_type" class="input">
+            <option value="fixed_time">At a fixed time</option>
+            <option value="relative_interval">Before a due date</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;"
+            x-text="reminderModal.data.trigger_type==='fixed_time' ? 'Time (HH:MM)' : 'Offset'"></label>
+          <input x-model="reminderModal.data.trigger_value" class="input"
+            :placeholder="reminderModal.data.trigger_type==='fixed_time' ? '09:00' : '-1d, 2h, +1w, 1m'" />
+        </div>
+      </div>
+      <div x-show="reminderModal.data.trigger_type==='relative_interval'">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Due Date</label>
+        <input type="date" x-model="reminderModal.data.due_date" class="input" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Priority</label>
+        <select x-model="reminderModal.data.priority" class="input">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);user-select:none;">
+          <input type="checkbox" x-model="reminderModal.data.include_in_sod" style="accent-color:#6366f1;width:14px;height:14px;">
+          Include in Start-of-Day email
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);user-select:none;">
+          <input type="checkbox" x-model="reminderModal.data.include_in_eod" style="accent-color:#6366f1;width:14px;height:14px;">
+          Include in End-of-Day email
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button @click="reminderModal.open=false" class="btn-secondary">Cancel</button>
+      <button @click="saveReminder()" class="btn-primary">Create</button>
     </div>
   </div>
 </div>
