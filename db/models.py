@@ -307,6 +307,8 @@ class DeliveryTemplateItemORM(Base):
     category         = Column(String(30), default="pre_release")  # pre_release | release | post_release
     responsible_role = Column(String(255), default="")
     is_required      = Column(Boolean, default=True)
+    stage               = Column(String(40), default="development")
+    planned_offset_days = Column(Integer, nullable=True)
 
 
 class DeliveryReleaseORM(Base):
@@ -346,6 +348,19 @@ class DeliveryReleaseItemORM(Base):
     notes            = Column(Text, default="")
     is_required      = Column(Boolean, default=True)
     completed_at     = Column(DateTime, nullable=True)
+    stage            = Column(String(40), nullable=True)
+    planned_date     = Column(Date, nullable=True)
+
+
+class DeliveryReleaseSprintORM(Base):
+    __tablename__ = "delivery_release_sprints"
+
+    attach_id   = Column(String, primary_key=True, default=_uuid)
+    release_id  = Column(String, ForeignKey("delivery_releases.release_id", ondelete="CASCADE"), nullable=False)
+    board_id    = Column(String(100), default="")
+    sprint_id   = Column(String(100), default="")
+    sprint_name = Column(String(255), default="")
+    added_at    = Column(DateTime, default=datetime.utcnow)
 
 
 class SprintConfigORM(Base):

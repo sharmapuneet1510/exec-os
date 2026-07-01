@@ -1,13 +1,16 @@
 """Delivery Management — templates + releases with per-item tracking."""
 
-from datetime import datetime
+from datetime import datetime, date as _date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from db.models import DeliveryTemplateORM, DeliveryTemplateItemORM, DeliveryReleaseORM, DeliveryReleaseItemORM
+from db.models import (DeliveryTemplateORM, DeliveryTemplateItemORM, DeliveryReleaseORM,
+                       DeliveryReleaseItemORM, DeliveryReleaseSprintORM, SprintConfigORM)
+from services.release_health import release_health
+from services.jira_service import get_jira_service
 
 router = APIRouter(prefix="/api/delivery", tags=["delivery"])
 
@@ -57,6 +60,8 @@ class ReleaseItemPatch(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     responsible_role: Optional[str] = None
+    planned_date: Optional[str] = None
+    stage: Optional[str] = None
 
 
 # ── Serialisers ───────────────────────────────────────────────────────────────
@@ -121,6 +126,8 @@ def _rel_item_out(i: DeliveryReleaseItemORM) -> dict:
         "notes":            i.notes or "",
         "is_required":      i.is_required,
         "completed_at":     i.completed_at.isoformat() if i.completed_at else None,
+        "stage":            i.stage,
+        "planned_date":     i.planned_date.isoformat() if i.planned_date else None,
     }
 
 
@@ -304,6 +311,7 @@ def create_release(body: ReleaseIn, db: Session = Depends(get_db)):
                 category=ti.category,
                 responsible_role=ti.responsible_role or "",
                 is_required=ti.is_required,
+                stage=ti.stage,
             )
             db.add(ri)
         db.commit()
@@ -319,6 +327,7 @@ def get_release(release_id: str, db: Session = Depends(get_db)):
     items = db.query(DeliveryReleaseItemORM).filter(DeliveryReleaseItemORM.release_id == release_id).order_by(DeliveryReleaseItemORM.category, DeliveryReleaseItemORM.order).all()
     d = _rel_out(r)
     d["items"] = [_rel_item_out(i) for i in items]
+    d["health"] = release_health(items, _date.today())
     return d
 
 
@@ -385,6 +394,10 @@ def update_release_item(release_id: str, item_id: str, body: ReleaseItemPatch, d
         i.description = body.description
     if body.responsible_role is not None:
         i.responsible_role = body.responsible_role
+    if body.planned_date is not None:
+        i.planned_date = _date.fromisoformat(body.planned_date) if body.planned_date else None
+    if body.stage is not None:
+        i.stage = body.stage
     db.commit()
     db.refresh(i)
     return _rel_item_out(i)
@@ -422,3 +435,71 @@ def delete_release_item(release_id: str, item_id: str, db: Session = Depends(get
         raise HTTPException(404, "item not found")
     db.delete(i)
     db.commit()
+
+
+# ── Jira sprint attachment (curated, multiple per release) ──────────────────
+
+class SprintAttachIn(BaseModel):
+    board_id: str = ""
+    sprint_id: str
+    sprint_name: str = ""
+
+
+def _my_jira_email(db) -> str:
+    cfg = db.query(SprintConfigORM).first()
+    return (cfg.my_jira_email or "").lower() if cfg else ""
+
+
+@router.post("/releases/{release_id}/sprints", status_code=201)
+def attach_sprint(release_id: str, body: SprintAttachIn, db: Session = Depends(get_db)):
+    if not db.query(DeliveryReleaseORM).filter(DeliveryReleaseORM.release_id == release_id).first():
+        raise HTTPException(404, "release not found")
+    row = DeliveryReleaseSprintORM(release_id=release_id, board_id=body.board_id,
+                                   sprint_id=body.sprint_id, sprint_name=body.sprint_name)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"attach_id": row.attach_id, "sprint_id": row.sprint_id, "sprint_name": row.sprint_name}
+
+
+@router.get("/releases/{release_id}/sprints")
+def list_sprints(release_id: str, db: Session = Depends(get_db)):
+    release = db.query(DeliveryReleaseORM).filter(DeliveryReleaseORM.release_id == release_id).first()
+    if not release:
+        raise HTTPException(404, "release not found")
+    my_email = _my_jira_email(db)
+    jira = get_jira_service(release.application_id, db) if release.application_id else None
+    out = []
+    rows = db.query(DeliveryReleaseSprintORM).filter(
+        DeliveryReleaseSprintORM.release_id == release_id).all()
+    for s in rows:
+        issues = []
+        if jira and release.jira_project_key and s.sprint_id:
+            try:
+                raw = jira.get_sprint_issues(release.jira_project_key, int(s.sprint_id))
+            except Exception:
+                raw = []
+            for it in raw:
+                f = it.get("fields", {})
+                ass = (f.get("assignee") or {}).get("emailAddress", "") or ""
+                issues.append({
+                    "key": it.get("key", ""),
+                    "summary": f.get("summary", ""),
+                    "status": (f.get("status") or {}).get("name", ""),
+                    "mine": bool(my_email) and ass.lower() == my_email,
+                })
+        out.append({"attach_id": s.attach_id, "board_id": s.board_id, "sprint_id": s.sprint_id,
+                    "sprint_name": s.sprint_name, "issues": issues})
+    return {"release_id": release_id, "sprints": out}
+
+
+@router.delete("/releases/{release_id}/sprints/{attach_id}", status_code=204)
+def detach_sprint(release_id: str, attach_id: str, db: Session = Depends(get_db)):
+    row = db.query(DeliveryReleaseSprintORM).filter(
+        DeliveryReleaseSprintORM.attach_id == attach_id,
+        DeliveryReleaseSprintORM.release_id == release_id).first()
+    if not row:
+        raise HTTPException(404, "attachment not found")
+    db.delete(row)
+    db.commit()
+    return None

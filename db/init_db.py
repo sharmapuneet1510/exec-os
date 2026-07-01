@@ -50,9 +50,43 @@ def create_all(populate_data=False):
         print(f"Migration warning: {e}")
     _migrate_jira_config()
     _migrate()
+    _db = SessionLocal()
+    try:
+        _seed_default_template(_db)
+    except Exception as e:
+        print(f"Default template seed warning: {e}")
+    finally:
+        _db.close()
     print("Database tables created.")
     if populate_data:
         _populate_dummy_data()
+
+
+def _seed_default_template(db):
+    """Idempotently seed the default stage-gated release template."""
+    existing = db.query(models.DeliveryTemplateORM).filter(
+        models.DeliveryTemplateORM.name == "Standard Release").first()
+    if existing:
+        return
+    tmpl = models.DeliveryTemplateORM(
+        name="Standard Release", is_default=True,
+        description="Default stage-gated release pipeline")
+    db.add(tmpl)
+    db.commit()
+    db.refresh(tmpl)
+    gates = [
+        ("Requirement Cut", "requirement_gathering", "pre_release"),
+        ("Dev Completion",  "development",           "pre_release"),
+        ("QA Completion",   "qa",                    "pre_release"),
+        ("UAT Completion",  "uat",                   "pre_release"),
+        ("UAT Sign-off",    "uat",                   "release"),
+        ("Release Date",    "in_prod",               "release"),
+    ]
+    for order, (title, stage, category) in enumerate(gates):
+        db.add(models.DeliveryTemplateItemORM(
+            template_id=tmpl.template_id, order=order,
+            title=title, stage=stage, category=category, is_required=True))
+    db.commit()
 
 
 def _populate_dummy_data():
@@ -164,6 +198,11 @@ def _migrate():
         "ALTER TABLE delivery_releases ADD COLUMN uat_date DATE",
         "ALTER TABLE delivery_releases ADD COLUMN sign_off_date DATE",
         "ALTER TABLE delivery_releases ADD COLUMN jira_project_key TEXT DEFAULT ''",
+        # delivery items: stage + planned date (Release Planner)
+        "ALTER TABLE delivery_template_items ADD COLUMN stage TEXT DEFAULT 'development'",
+        "ALTER TABLE delivery_template_items ADD COLUMN planned_offset_days INTEGER",
+        "ALTER TABLE delivery_release_items ADD COLUMN stage TEXT",
+        "ALTER TABLE delivery_release_items ADD COLUMN planned_date DATE",
         # team_members table: add is_team_member flag
         "ALTER TABLE team_members ADD COLUMN is_team_member BOOLEAN DEFAULT 0",
     ]

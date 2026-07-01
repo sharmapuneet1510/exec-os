@@ -200,6 +200,21 @@ def _task_row(title, priority, project="", note="", note_color="#94A3B8", check_
 
 # ── live-data helpers ────────────────────────────────────────────────────────
 
+def _releases_at_risk_section(db) -> str:
+    """Render breached/at-risk release gates as an email card (empty string if none)."""
+    from web.routers.dashboard import _releases_at_risk
+    rows = _releases_at_risk(db)
+    if not rows:
+        return ""
+    body = ""
+    for r in rows:
+        color = "#DC2626" if r["state"] == "breached" else "#D97706"
+        label = f'{"Breached" if r["state"] == "breached" else "At risk"} {r["days"]}d'
+        body += _task_row(f'{r["name"]} — {r["item"]}', "", note=label, note_color=color)
+    table = f'<table width="100%" cellpadding="0" cellspacing="0" role="presentation">{body}</table>'
+    return _card("Releases at risk", "🚦", table, accent="#DC2626")
+
+
 def _get_sprint_cfg(db):
     cfg = db.query(SprintConfigORM).first()
     return cfg or SprintConfigORM()
@@ -532,8 +547,9 @@ def build_sod_html(db: Session) -> str:
 
     # ── reminders section ─────────────────────────────────────────────────────
     reminders_section = _reminders_section(sod_reminders)
+    releases_section = _releases_at_risk_section(db)
 
-    body = header + overdue_section + today_section + carry_section + proj_section + ms_section + com_section + jira_section + mrs_section + reminders_section
+    body = header + overdue_section + today_section + carry_section + proj_section + ms_section + com_section + jira_section + mrs_section + releases_section + reminders_section
     preheader = f"{len(overdue_tasks)} overdue · {len(due_today)} due today — ExecOS Morning Briefing"
     return _wrap(body, preheader)
 
@@ -680,8 +696,9 @@ def build_eod_html(db: Session) -> str:
 
     # ── reminders section ─────────────────────────────────────────────────────
     reminders_section = _reminders_section(eod_reminders)
+    releases_section = _releases_at_risk_section(db)
 
-    body = header + completed_section + missed_section + carry_section + ov_section + jira_done_section + reminders_section
+    body = header + completed_section + missed_section + carry_section + ov_section + jira_done_section + releases_section + reminders_section
     preheader = f"{len(completed)} completed · {len(missed)} missed — ExecOS Day Summary"
     return _wrap(body, preheader)
 

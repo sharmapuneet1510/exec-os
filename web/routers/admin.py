@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect, text
@@ -101,13 +101,22 @@ def import_database(data: dict, db: Session = Depends(get_db)):
             # Insert rows
             inserted = 0
             for row_dict in rows:
-                # Parse datetime strings back to datetime objects
-                for key, val in row_dict.items():
-                    if isinstance(val, str) and val and 'T' in val:
-                        try:
+                # Coerce date/datetime string columns back to Python objects,
+                # keyed on the model's column types (handles both 'T'- and
+                # space-separated timestamps produced by the export).
+                for col in model_class.__table__.columns:
+                    key = col.name
+                    val = row_dict.get(key)
+                    if not isinstance(val, str) or not val:
+                        continue
+                    col_type = col.type.__class__.__name__
+                    try:
+                        if col_type == "DateTime":
                             row_dict[key] = datetime.fromisoformat(val)
-                        except (ValueError, TypeError):
-                            pass
+                        elif col_type == "Date":
+                            row_dict[key] = date.fromisoformat(val[:10])
+                    except (ValueError, TypeError):
+                        pass
 
                 try:
                     obj = model_class(**row_dict)
