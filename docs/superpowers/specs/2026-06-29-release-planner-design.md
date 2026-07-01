@@ -1,159 +1,165 @@
-# Release Planner — Design Spec
+# Release Planner — Design Spec (v2, on Delivery subsystem)
 
-**Date:** 2026-06-29
+**Date:** 2026-06-29 (revised 2026-07-01)
 **Status:** Draft for review
+**Branch:** `feat/release-planner`
 **Workstream:** 1 of 2 (Release Planner). The Command Deck UI overhaul is a separate spec.
+
+## Why v2
+
+The original v1 spec added gate columns to the simple `releases` table (`ReleaseORM`). Investigation
+found a fuller **Delivery subsystem** already exists and is the correct foundation:
+
+- `DeliveryTemplate` → `DeliveryTemplateItem`: a template is an ordered checklist of steps
+  (`category` = pre_release/release/post_release, `responsible_role`, `is_required`).
+- `DeliveryRelease` → `DeliveryReleaseItem`: a release instantiates a template; each item tracks
+  `status` (pending/in_progress/done/skipped/blocked), `assignee`, `notes`, and **`completed_at`**
+  (auto-set when marked done). Release has `target_date`, `release_date`, `uat_date`, `sign_off_date`,
+  `release_manager`, `status`.
+- Jira sprint endpoints (`/api/jira/sprints/{release_id}`, `.../{sprint_id}/issues`) already run on
+  `DeliveryRelease`.
+
+We build on Delivery. This reduces new schema and reuses completion timestamps + sprint wiring.
 
 ## Goal
 
-Extend the existing `releases` feature into a **Release Planner** that tracks each release through a
-fixed delivery pipeline with **planned vs. actual gate dates**, derives an overall status, detects
-**breached** and **at-risk** gates, and surfaces those breaches in the **SOD/EOD briefings**.
+Turn Delivery into a **Release Planner** with: named delivery **stages**, **planned vs. actual** gate
+dates, a **derived TODO/IN_PROGRESS/COMPLETED status**, **breach / at-risk** detection surfaced in
+**SOD/EOD** briefings, **curated multi-sprint attachment** (issues become the release work list, with
+"mine" flagged), and a **completion history** timeline.
 
 ## Scope
 
-In scope:
-- New stage-gate date columns on `releases` (planned + actual per gate).
-- A `stage` field (pipeline phase) that drives a derived `status`.
-- Breach / at-risk computation per gate and rolled up per release.
-- Release Planner UI: stage stepper + planned/actual gate timeline + edit modal.
-- SOD/EOD endpoints + email briefings gain a "Releases at risk" section.
+In scope: schema additions to Delivery items + a sprint-attachment table; a seeded default stage
+template; health/status derivation service; sprint attach/detach + issues API; SOD/EOD breach section;
+Delivery view UI (stepper, planned/actual gate timeline, sprint attach, completion history).
 
-Out of scope (separate workstream):
-- The Command Deck dark visual overhaul. The Planner UI is built with the existing component
-  classes (`.card`, `.chip`, `.btn-primary`, plus new `.stepper`/`.gate` classes defined via design
-  tokens) so it inherits whatever theme is active — graphite today, Command Deck after the overhaul.
+Out of scope: the Command Deck dark reskin (separate workstream); removing the legacy `ReleaseORM` /
+`releases` view (left intact; a later cleanup can consolidate).
 
-## Data Model
-
-### Pipeline stages (ordered)
+## Pipeline stages
 
 ```
 requirement_gathering → development → qa → uat → in_prod
 ```
 
-Stored in a new `stage` column (`String`, default `"requirement_gathering"`).
+Stored as a new `stage` column on template items and release items.
 
-### Gates (each = planned + actual date)
+## Data Model Changes
 
-| Gate              | Ends stage             | Planned column            | Actual column            | Legacy source        |
-|-------------------|------------------------|---------------------------|--------------------------|----------------------|
-| Requirement Cut   | requirement_gathering  | `requirement_cut_planned` | `requirement_cut_actual` | —                    |
-| Dev Completion    | development            | `dev_done_planned`        | `dev_done_actual`        | —                    |
-| QA Completion     | qa                     | `qa_done_planned`         | `qa_done_actual`         | —                    |
-| UAT Completion    | uat                    | `uat_done_planned`        | `uat_done_actual`        | `uat_date` → planned |
-| UAT Sign-off      | uat                    | `uat_signoff_planned`     | `uat_signoff_actual`     | `sign_off_date` → actual |
-| Release Date      | in_prod                | `due_date` (reused)       | `release_actual`         | —                    |
+### `DeliveryTemplateItemORM`
+- add `stage TEXT DEFAULT 'development'`
+- add `planned_offset_days INTEGER` (nullable) — days from release `start_date`/`target_date` used to
+  seed an item's planned date when a release is created from the template (optional convenience).
 
-Notes:
-- `due_date` already represents the planned go-live; it **is** the Release-Date planned value (no new
-  planned column — keep one source of truth). A new `release_actual` records actual go-live.
-- Legacy `uat_date` and `sign_off_date` are copied into the new columns by the migration and then left
-  in place for backward compatibility (no destructive drop).
-- All new columns are `Date`, nullable.
+### `DeliveryReleaseItemORM`
+- add `stage TEXT` (copied from template item on instantiation)
+- add `planned_date DATE` (nullable) — the gate's **planned** date. `completed_at` is the **actual**.
 
-### Status derivation (stage drives status)
+### New: `DeliveryReleaseSprintORM` (`delivery_release_sprints`)
+Curated sprint attachment (a release ↔ many sprints):
+```
+attach_id    String PK
+release_id   FK → delivery_releases.release_id (CASCADE)
+board_id     String
+sprint_id    String
+sprint_name  String
+added_at     DateTime
+```
+(The existing `/api/jira/sprints/{release_id}` lists *all* project sprints — used only to populate the
+attach picker. Attached sprints are the curated subset stored here.)
 
-`status` is **computed**, not hand-set, exposed in `ReleaseOut`:
-- `COMPLETED` — `release_actual` is set (shipped).
-- `TODO` — `stage == requirement_gathering` AND no gate actuals recorded.
-- `IN_PROGRESS` — anything in between.
+### Seed: default stage template
+On startup (idempotent), ensure a `"Standard Release"` template exists with 6 items, each mapped to a
+stage/category:
 
-The legacy free-text `status` column is retained but no longer authoritative; the API returns the
-derived value. (We keep the column to avoid a destructive migration and to not break existing filters
-immediately; a follow-up can remove it.)
+| Item              | stage                 | category     |
+|-------------------|-----------------------|--------------|
+| Requirement Cut   | requirement_gathering | pre_release  |
+| Dev Completion    | development           | pre_release  |
+| QA Completion     | qa                    | pre_release  |
+| UAT Completion    | uat                   | pre_release  |
+| UAT Sign-off      | uat                   | release      |
+| Release Date      | in_prod               | release      |
 
-## Breach / At-Risk Computation
+## Derivation & Health (pure service: `services/release_health.py`)
 
-A pure service function `compute_release_health(release, today)` returns, per gate:
+`derive_status(items)`:
+- `COMPLETED` — all required items `done` (or the `in_prod` item done).
+- `TODO` — no item `in_progress`/`done`.
+- `IN_PROGRESS` — otherwise.
 
-- `done` — actual date is set.
-- `breached` — actual empty AND planned `< today`.
-- `at_risk` — actual empty AND `today <= planned <= today + RISK_WINDOW` (default 3 days) AND the
-  gate's stage has not yet been completed.
-- `upcoming` — actual empty AND planned `> today + RISK_WINDOW`.
-- `unset` — no planned date.
+`current_stage(items)` — stage of the earliest non-done required item; `in_prod` if all done.
 
-Rolled up to a release-level health:
-- `breached` if any gate is breached,
-- else `at_risk` if any gate is at risk,
-- else `on_track`.
+`item_health(item, today, RISK_WINDOW=3)`:
+- `done` — status `done` (uses `completed_at` as actual).
+- `breached` — `planned_date < today` and status not `done`/`skipped`.
+- `at_risk` — `today ≤ planned_date ≤ today+RISK_WINDOW`, status `pending`, stage not yet reached.
+- `upcoming` / `unset` otherwise.
 
-`RISK_WINDOW` is a module constant (3 days) so it's trivially tunable.
+`release_health(...)` rolls up: `breached` if any item breached, else `at_risk` if any at risk, else
+`on_track`. `RISK_WINDOW` is a module constant.
 
-## API Changes
+## API Changes (`/api/delivery`)
 
-- `ReleaseOut` gains: all new planned/actual columns, `stage`, derived `status`, and a `health` block:
-  `{ level: "on_track|at_risk|breached", gates: [{ key, label, planned, actual, state, days }] }`.
-- `POST /api/releases` and `PATCH /api/releases/{id}` accept the new gate dates and `stage`.
-- No new endpoints required for CRUD; health is computed on read.
+- `ReleaseItemPatch` gains `planned_date` and `stage`; `_rel_item_out` returns both.
+- `TemplateItemIn` / template-item output gain `stage`, `planned_offset_days`.
+- Release detail (`GET /releases/{id}`) and list gain a computed `health` block:
+  `{ level, derived_status, current_stage, items:[{item_id,title,stage,planned_date,completed_at,state,days}] }`.
+- Sprint attachment:
+  - `GET  /releases/{id}/sprints` → attached sprints, each with issues (via `jira_service.get_sprint_issues`),
+    flagging `mine` when issue assignee matches the configured user identity.
+  - `POST /releases/{id}/sprints` `{board_id, sprint_id, sprint_name}` → attach.
+  - `DELETE /releases/{id}/sprints/{attach_id}` → detach.
 
 ### SOD / EOD
-
-`GET /api/dashboard/sod` and `/eod` gain a `releases_at_risk` array:
-
+`GET /api/dashboard/sod` and `/eod` gain `releases_at_risk`:
 ```json
-"releases_at_risk": [
-  { "release_id": "...", "name": "Platform v2.0 — GA", "gate": "Dev Completion",
-    "state": "breached", "planned": "2026-06-20", "days": 9 }
-]
+{ "release_id":"…","name":"Platform v2.0","item":"Dev Completion",
+  "stage":"development","state":"breached","planned":"2026-06-20","days":9 }
 ```
+Built by iterating non-completed delivery releases, running `release_health`, emitting one entry per
+breached/at-risk item. The email briefing renderer adds a "Releases at risk" section when non-empty,
+honoring existing SOD/EOD enable flags.
 
-Built by iterating active releases (status != COMPLETED), running `compute_release_health`, and
-emitting one entry per breached/at-risk gate. The email briefing renderer adds a "Releases at risk"
-section when this array is non-empty, honoring the existing SOD/EOD enable flags.
+## UI — Delivery view (Release Planner)
 
-## UI — Release Planner View
+Extend the existing `delivery` view (built with existing component classes so it inherits the Command
+Deck theme when that workstream lands). Per release:
+- header: name, version, Jira version, application, target date, sprint summary (`N sprints · M issues`);
+- badges: release health, derived status, current stage;
+- **stage stepper** (5 stages; done/current/breached);
+- **gate timeline**: items grouped/ordered by stage, each showing Planned (`planned_date`) vs Actual
+  (`completed_at`) + a state pill;
+- **Jira Sprints** panel: attached sprints + their issues (`mine` flagged), attach/detach;
+- **Completion History**: items with `completed_at`, chronological.
 
-Reachable from the existing `releases` / `planner` nav. Per release card:
-- Header: name, version, **Jira version**, application, target date.
-- Badges: release health (`On Track`/`At Risk`/`Breached`), derived status, current stage.
-- **Stage stepper**: 5 steps (Req Gathering → Dev → QA → UAT → In Prod); done = check, current =
-  filled, a stage whose gate is breached = red.
-- **Gate timeline**: 6 gate tiles, each showing Planned vs Actual and a state pill
-  (`Done` / `In Progress` / `At Risk · Nd` / `Breached Nd` / `Upcoming`).
-- Filters: by application and by health.
+Item edit: set `status` (auto-stamps `completed_at`), `planned_date`, `assignee`, `notes`.
 
-### Edit modal
-
-Existing release modal extended with: a `stage` selector and, per gate, a **Planned** and **Actual**
-date input. Status is shown read-only (derived). Saving PATCHes the new fields.
-
-## Migration
-
-Append idempotent statements to the existing `_migrate()` list in `db/init_db.py` (each wrapped by the
-existing duplicate-column-tolerant executor):
+## Migration (`db/init_db.py._migrate()` — idempotent)
 
 ```sql
-ALTER TABLE releases ADD COLUMN stage TEXT DEFAULT 'requirement_gathering';
-ALTER TABLE releases ADD COLUMN requirement_cut_planned DATE;
-ALTER TABLE releases ADD COLUMN requirement_cut_actual  DATE;
-ALTER TABLE releases ADD COLUMN dev_done_planned DATE;
-ALTER TABLE releases ADD COLUMN dev_done_actual  DATE;
-ALTER TABLE releases ADD COLUMN qa_done_planned DATE;
-ALTER TABLE releases ADD COLUMN qa_done_actual  DATE;
-ALTER TABLE releases ADD COLUMN uat_done_planned DATE;
-ALTER TABLE releases ADD COLUMN uat_done_actual  DATE;
-ALTER TABLE releases ADD COLUMN uat_signoff_planned DATE;
-ALTER TABLE releases ADD COLUMN uat_signoff_actual  DATE;
-ALTER TABLE releases ADD COLUMN release_actual DATE;
+ALTER TABLE delivery_template_items ADD COLUMN stage TEXT DEFAULT 'development';
+ALTER TABLE delivery_template_items ADD COLUMN planned_offset_days INTEGER;
+ALTER TABLE delivery_release_items  ADD COLUMN stage TEXT;
+ALTER TABLE delivery_release_items  ADD COLUMN planned_date DATE;
 ```
-
-Plus a one-time backfill (guarded so it only runs when targets are null):
-`uat_done_planned := uat_date`, `uat_signoff_actual := sign_off_date`.
+Plus `create_all` creates `delivery_release_sprints`, and a guarded seeder inserts the default
+"Standard Release" template if absent.
 
 ## Testing
 
-- `compute_release_health` unit tests: each gate state (done/breached/at_risk/upcoming/unset) and the
-  rollup, with a fixed `today` and boundary cases (planned == today, planned == today+RISK_WINDOW).
-- Status derivation tests (TODO / IN_PROGRESS / COMPLETED).
-- API test: create release with gate dates → `health` block correct; PATCH actual flips a gate to done.
-- SOD/EOD test: a breached + an at-risk release appear in `releases_at_risk`; completed releases excluded.
-- Migration test: columns exist after `create_all`; legacy backfill populates new columns.
+- `release_health` / `derive_status` / `current_stage` unit tests: each item state, rollup, boundary
+  cases (`planned == today`, `planned == today+RISK_WINDOW`), and status derivation.
+- API: create release from default template → items carry stage + can set `planned_date`; PATCH item to
+  `done` stamps `completed_at` and flips health.
+- Sprint attach/detach: attach two sprints → both returned with issues; `mine` flag correct; detach removes.
+- SOD/EOD: a breached + an at-risk release appear in `releases_at_risk`; completed releases excluded.
+- Migration/seed: new columns exist; default template seeded exactly once.
 
 ## Assumptions
 
-- `RISK_WINDOW` = 3 calendar days (not business days) for v1.
-- "Stage drives status" — stage is the single field users set to advance the pipeline; status is never
-  written directly.
-- Existing releases with only legacy dates still render (missing gates show as `unset`, not breached).
+- `RISK_WINDOW` = 3 calendar days.
+- "mine" = Jira issue assignee matches the configured sprint/user identity (existing `my_work` identity).
+- Legacy `releases` table and `ReleaseORM` remain; not migrated in this workstream.
+- Attaching a sprint stores board/sprint id + name; issues are fetched live from Jira on read.
