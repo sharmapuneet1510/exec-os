@@ -7373,15 +7373,6 @@ function initApiTokens() {
             </div>
             <div x-show="!settings" style="color:var(--text-3);font-size:13px;">Loading…</div>
             <div x-show="settings" style="display:flex;flex-direction:column;gap:16px;">
-              <!-- Database Location -->
-              <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
-                <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">📦 Database Location</div>
-                <div x-show="settings.database?.type==='sqlite'" style="display:flex;align-items:center;gap:8px;">
-                  <code style="flex:1;font-size:12px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-1);overflow:auto;white-space:normal;word-break:break-all;" x-text="settings.database?.path"></code>
-                  <button @click="navigator.clipboard.writeText(settings.database.path).then(()=>toast('success','Path copied'))" class="btn-icon" title="Copy">📋</button>
-                </div>
-                <div x-show="settings.database?.type!=='sqlite'" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);" x-text="'PostgreSQL: '+settings.database?.url_masked"></div>
-              </div>
               <!-- Backup Config -->
               <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
                 <div style="font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">💾 Backup Configuration</div>
@@ -7407,34 +7398,55 @@ function initApiTokens() {
             </div>
           </div>
 
-<!-- System / Database Info -->
-          <div class="card" style="margin-bottom:20px;" x-data="{info:null}" x-init="fetch('/api/system/info').then(r=>r.json()).then(d=>info=d)">
+<!-- Database location (editable) -->
+          <div class="card" style="margin-bottom:20px;"
+               x-data="{info:null, dbPath:'', copyCurrent:true, saving:false, msg:'', ok:false,
+                        async load(){ this.info=await fetch('/api/system/info').then(r=>r.json()).catch(()=>null); if(this.info?.db_type==='sqlite'){ this.dbPath=this.info.db_path||''; } },
+                        async save(){ const p=(this.dbPath||'').trim(); if(!p){ this.ok=false; this.msg='Enter a file path ending in .db'; return; } this.saving=true; this.msg='';
+                          try{ const r=await fetch('/api/settings/database',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db_path:p,copy_current:this.copyCurrent})}); const d=await r.json();
+                               if(r.ok){ this.ok=true; this.msg=d.message + (d.copied_current_db?' Your current data was copied.':''); } else { this.ok=false; this.msg=d.detail||'Save failed'; }
+                          }catch(e){ this.ok=false; this.msg='Error: '+e.message; } finally{ this.saving=false; } } }"
+               x-init="load()">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
               <div style="width:36px;height:36px;border-radius:10px;background:#172431;display:flex;align-items:center;justify-content:center;font-size:18px;">🗄️</div>
               <div>
                 <div style="font-size:15px;font-weight:800;color:var(--text-1);">Database</div>
-                <div style="font-size:12px;color:var(--text-3);">Storage location and connection settings</div>
+                <div style="font-size:12px;color:var(--text-3);">Change where your SQLite database file lives</div>
               </div>
               <div style="margin-left:auto;">
                 <span x-show="info" :class="info?.db_type==='sqlite' ? 'chip chip-blue' : 'chip chip-green'" x-text="info?.db_type?.toUpperCase()"></span>
               </div>
             </div>
             <div x-show="!info" style="color:var(--text-3);font-size:13px;">Loading…</div>
-            <div x-show="info" style="display:flex;flex-direction:column;gap:10px;">
-              <div x-show="info?.db_type==='sqlite'">
-                <div style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">SQLite File Path</div>
+
+            <!-- SQLite: editable path -->
+            <div x-show="info?.db_type==='sqlite'" style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SQLite File Path</div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                  <code style="flex:1;font-size:12px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="info?.db_path"></code>
-                  <button @click="navigator.clipboard.writeText(info.db_path).then(()=>toast('success','Copied path'))" class="btn-icon" title="Copy">📋</button>
+                  <input class="input" x-model="dbPath" spellcheck="false" placeholder="/Users/you/.commanddesk/execos.db" style="flex:1;font-family:var(--font-mono);font-size:12.5px;"/>
+                  <button @click="navigator.clipboard.writeText(dbPath).then(()=>toast('success','Path copied'))" class="btn-icon" title="Copy">📋</button>
                 </div>
               </div>
-              <div x-show="info?.db_type!=='sqlite'">
-                <div style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Connection URL</div>
-                <code style="display:block;font-size:12px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-1);" x-text="info?.database_url_masked"></code>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);cursor:pointer;">
+                <input type="checkbox" x-model="copyCurrent" style="width:15px;height:15px;accent-color:var(--accent);"/>
+                Copy my current database to this location
+              </label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button class="btn-primary" @click="save()" :disabled="saving" :style="saving?'opacity:.6;cursor:wait;':''" x-text="saving ? 'Saving…' : 'Save path'"></button>
+                <span x-show="msg" x-cloak x-text="msg" :style="ok ? 'color:#3ddba3;font-size:12.5px;' : 'color:#f15c78;font-size:12.5px;'"></span>
               </div>
-              <div style="font-size:12px;color:var(--text-3);padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
-                Override via <code style="font-family:var(--font-mono);font-size:11.5px;background:rgba(79,70,229,0.08);padding:1px 5px;border-radius:4px;">DATABASE_URL</code> or <code style="font-family:var(--font-mono);font-size:11.5px;background:rgba(79,70,229,0.08);padding:1px 5px;border-radius:4px;">DB_PATH</code> in <code style="font-family:var(--font-mono);font-size:11.5px;background:rgba(79,70,229,0.08);padding:1px 5px;border-radius:4px;">.env</code> — restart required
+              <div style="font-size:11.5px;color:var(--text-3);padding:9px 12px;background:var(--bg-tint);border-radius:8px;border:1px solid var(--border);">
+                ⚠︎ Changes take effect after you <strong>restart the app</strong> — the database connection is bound at startup. Saved to
+                <code style="font-family:var(--font-mono);background:var(--accent-soft);padding:1px 5px;border-radius:4px;">DATABASE_URL</code> in <code style="font-family:var(--font-mono);background:var(--accent-soft);padding:1px 5px;border-radius:4px;">.env</code>.
               </div>
+            </div>
+
+            <!-- Non-sqlite: read-only connection URL -->
+            <div x-show="info && info.db_type!=='sqlite'" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;">Connection URL</div>
+              <code style="display:block;font-size:12px;font-family:var(--font-mono);background:var(--bg-tint);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-1);" x-text="info?.database_url_masked"></code>
+              <div style="font-size:11.5px;color:var(--text-3);">Set <code style="font-family:var(--font-mono);">DATABASE_URL</code> in <code style="font-family:var(--font-mono);">.env</code> — restart required.</div>
             </div>
           </div>
 
