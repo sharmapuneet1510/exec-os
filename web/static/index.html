@@ -959,13 +959,13 @@ function app() {
       const done  = this.tasks.filter(t=>t.project_id===p.project_id&&t.status==='done').length;
       const pct   = total > 0 ? done / total : 0;
       const te    = Math.max(0, Math.min(1, (Date.now() - start) / (end - start)));
-      if (pct >= 1)       return {label:'✓ Complete',   bg:'#f0fdf4',color:'#15803d',border:'#bbf7d0'};
+      if (pct >= 1)       return {label:'✓ Complete',   bg:'#15271f',color:'#15803d',border:'#bbf7d0'};
       if (te <= 0)        return {label:'◎ Not Started',bg:'#283040', color:'#6b6860',border:'#e5e2db'};
-      if (te >= 1)        return {label:'✕ Overdue',    bg:'#fff1f2',color:'#be123c',border:'#fecdd3'};
+      if (te >= 1)        return {label:'✕ Overdue',    bg:'#2a1a1e',color:'#be123c',border:'#3a1e24'};
       const gap = pct - te;
-      if (gap >= -0.1)    return {label:'✓ On Track',   bg:'#f0fdf4',color:'#15803d',border:'#bbf7d0'};
-      if (gap >= -0.25)   return {label:'⚠ At Risk',    bg:'#fffbeb',color:'#b45309',border:'#fde68a'};
-      return               {label:'✕ Behind',           bg:'#fff1f2',color:'#be123c',border:'#fecdd3'};
+      if (gap >= -0.1)    return {label:'✓ On Track',   bg:'#15271f',color:'#15803d',border:'#bbf7d0'};
+      if (gap >= -0.25)   return {label:'⚠ At Risk',    bg:'#241f12',color:'#b45309',border:'#3a2f15'};
+      return               {label:'✕ Behind',           bg:'#2a1a1e',color:'#be123c',border:'#3a1e24'};
     },
 
     buildGanttSvg(project) {
@@ -1018,8 +1018,8 @@ function app() {
       let o = `<svg id="gantt-${project.project_id}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;max-width:none;min-width:${W}px;" data-today-x="${todayX.toFixed(1)}">`;
       o += `<rect width="${W}" height="${H}" fill="#FAFAFA"/>`;
       o += `<rect x="0" y="0" width="${W}" height="${HH}" fill="#F1F5F9"/>`;
-      o += `<line x1="${LW}" y1="0" x2="${LW}" y2="${H}" stroke="#E2E8F0" stroke-width="1"/>`;
-      o += `<line x1="0" y1="${HH}" x2="${W}" y2="${HH}" stroke="#E2E8F0" stroke-width="1.5"/>`;
+      o += `<line x1="${LW}" y1="0" x2="${LW}" y2="${H}" stroke="#2b3342" stroke-width="1"/>`;
+      o += `<line x1="0" y1="${HH}" x2="${W}" y2="${HH}" stroke="#2b3342" stroke-width="1.5"/>`;
 
       // Week gridlines (subtle, every Monday)
       const wk = new Date(rs);
@@ -1036,7 +1036,7 @@ function app() {
       while(mc<=re){
         const x=cx(mc.toISOString().slice(0,10));
         if(x>LW&&x<W){
-          o+=`<line x1="${x.toFixed(1)}" y1="${HH}" x2="${x.toFixed(1)}" y2="${H}" stroke="#E2E8F0" stroke-width="1" opacity="0.8"/>`;
+          o+=`<line x1="${x.toFixed(1)}" y1="${HH}" x2="${x.toFixed(1)}" y2="${H}" stroke="#2b3342" stroke-width="1" opacity="0.8"/>`;
           o+=`<text x="${(x+3).toFixed(1)}" y="18" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="600" fill="#94A3B8">${mc.toLocaleDateString('en-US',{month:'short'})}</text>`;
           o+=`<text x="${(x+3).toFixed(1)}" y="33" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="#CBD5E1">${mc.getFullYear()}</text>`;
         }
@@ -1056,7 +1056,7 @@ function app() {
       const pex = project.due_date ? cx(project.due_date) : todayX;
       const pw  = Math.max(pex-psx, 8);
       const bH  = RH-14;
-      o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#EEF2FF"/>`;
+      o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#1c2531"/>`;
       o+=`<text x="10" y="${(y+RH/2+4.5).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="#3730A3">${e(tr(project.name,22))}</text>`;
       // Full bar (dim background)
       o+=`<rect x="${psx.toFixed(1)}" y="${(y+7).toFixed(1)}" width="${pw.toFixed(1)}" height="${bH}" rx="5" fill="#6366F1" opacity="0.25"/>`;
@@ -1118,28 +1118,28 @@ function app() {
           // Swimlane header
           o+=`<rect x="0" y="${y}" width="${W}" height="${SH}" fill="${g.bg}"/>`;
           o+=`<rect x="0" y="${y}" width="4" height="${SH}" fill="${g.strip}"/>`;
-          o+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#E2E8F0" stroke-width="1"/>`;
+          o+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#2b3342" stroke-width="1"/>`;
           o+=`<text x="12" y="${(y+SH/2+4).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700" fill="${g.textCol}" letter-spacing="0.04em">${g.icon}  ${e(g.label)}  (${g.tasks.length})</text>`;
           // Extend gridlines across header
           if(todayX>LW&&todayX<W)
             o+=`<line x1="${todayX.toFixed(1)}" y1="${y}" x2="${todayX.toFixed(1)}" y2="${y+SH}" stroke="#EF4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>`;
           y+=SH;
         }
-        g.tasks.forEach((t,i)=>drawTaskRow(t, i%2===0?'#FFFFFF':'#F8FAFC'));
+        g.tasks.forEach((t,i)=>drawTaskRow(t, i%2===0?'#212733':'#1c212c'));
       });
 
       // ── Milestones section ──
       if(hasMilestones){
         // Section header
-        o+=`<rect x="0" y="${y}" width="${W}" height="${SH}" fill="#FFFBEB"/>`;
+        o+=`<rect x="0" y="${y}" width="${W}" height="${SH}" fill="#241f12"/>`;
         o+=`<rect x="0" y="${y}" width="4" height="${SH}" fill="#F59E0B"/>`;
-        o+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#E2E8F0" stroke-width="1"/>`;
+        o+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#2b3342" stroke-width="1"/>`;
         o+=`<text x="12" y="${(y+SH/2+4).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700" fill="#92400E" letter-spacing="0.04em">◆  Milestones  (${pMs.length})</text>`;
         if(todayX>LW&&todayX<W)
           o+=`<line x1="${todayX.toFixed(1)}" y1="${y}" x2="${todayX.toFixed(1)}" y2="${y+SH}" stroke="#EF4444" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>`;
         y+=SH;
         pMs.forEach(m=>{
-          o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#FFFBEB"/>`;
+          o+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#241f12"/>`;
           const mOverdue=m.due_date&&m.due_date<todayIso&&m.status!=='completed';
           const mColor=mOverdue?'#EF4444':'#92400E';
           o+=`<text x="10" y="${(y+RH/2+4).toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="${RH>=30?11:10}" fill="${mColor}">${m.status==='completed'?'✓':'◆'} ${e(tr(m.title,28))}</text>`;
@@ -1163,7 +1163,7 @@ function app() {
         o+=`<rect x="${(todayX-18).toFixed(1)}" y="2" width="36" height="18" rx="4" fill="#EF4444"/>`;
         o+=`<text x="${todayX.toFixed(1)}" y="14" font-family="Arial,Helvetica,sans-serif" font-size="8.5" fill="white" text-anchor="middle" font-weight="700">TODAY</text>`;
       }
-      o+=`<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#E2E8F0" stroke-width="1"/>`;
+      o+=`<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#2b3342" stroke-width="1"/>`;
       o+='</svg>';
       return o;
     },
@@ -1178,7 +1178,7 @@ function app() {
       canvas.height = vb.height * scale;
       const ctx = canvas.getContext('2d');
       ctx.scale(scale, scale);
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#171b24';
       ctx.fillRect(0, 0, vb.width, vb.height);
       const svgStr = new XMLSerializer().serializeToString(svgEl);
       const img = new Image();
@@ -1890,7 +1890,7 @@ function app() {
     riskLabel(r)          { return {none:'None',low:'Low',medium:'Medium',high:'High',critical:'Critical'}[r]||r; },
     riskChip(r)           { return {none:'chip-green',low:'chip-blue',medium:'chip-yellow',high:'chip-orange',critical:'chip-red'}[r]||'chip-gray'; },
     integrationLabel(v)   { return {none:'None',simple:'Simple',moderate:'Moderate',complex:'Complex'}[v]||v; },
-    confidenceColor(n)    { return n>=75?'linear-gradient(90deg,#10b981,#34d399)':n>=55?'linear-gradient(90deg,#f59e0b,#fcd34d)':'linear-gradient(90deg,#ef4444,#fb7185)'; },
+    confidenceColor(n)    { return n>=75?'linear-gradient(90deg,#10b981,#34d399)':n>=55?'linear-gradient(90deg,#f59e0b,#5a4a1e)':'linear-gradient(90deg,#ef4444,#fb7185)'; },
 
     // ── Team List ────────────────────────────────────────────────────────────
     async loadTeamList() {
@@ -2327,6 +2327,12 @@ function initApiTokens() {
     .input::placeholder { color: var(--text-3); }
     select.input { cursor: pointer; }
     textarea.input { resize: none; }
+    /* Dark-theme catch-all: any input without an explicit background */
+    input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea {
+      background: var(--bg-tint); color: var(--text-1);
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-3); }
+    input[type=date], input[type=time] { color-scheme: dark; }
 
     /* ── Progress bar ── */
     .progress-track {
@@ -2471,7 +2477,7 @@ function initApiTokens() {
     }
     .risk-none     { background: rgba(16,185,129,0.18);  color: #6ee7b7; }
     .risk-low      { background: rgba(99,102,241,0.18);  color: #a5b4fc; }
-    .risk-medium   { background: rgba(245,158,11,0.2);   color: #fde68a; }
+    .risk-medium   { background: rgba(245,158,11,0.2);   color: #3a2f15; }
     .risk-high     { background: rgba(239,68,68,0.2);    color: #fca5a5; }
     .risk-critical { background: rgba(217,70,219,0.22);  color: #f5d0fe; animation: pulse 1.5s infinite; }
     .insight-row {
@@ -2500,7 +2506,7 @@ function initApiTokens() {
     }
     .toast-info    { background:#141419; color:#e4e4e7; border-left:2px solid #2dd4e6; }
     .toast-success { background:#052012; color:#bbf7d0; border-left:2px solid #22c55e; }
-    .toast-warning { background:#1c1000; color:#fde68a; border-left:2px solid #f59e0b; }
+    .toast-warning { background:#1c1000; color:#3a2f15; border-left:2px solid #f59e0b; }
     .toast-error   { background:#1c0000; color:#fecaca; border-left:2px solid #ef4444; }
     .toast-reminder{ background:#0e0c1e; color:#c7d2fe; border-left:2px solid #818cf8; }
     .toast-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
@@ -2531,7 +2537,7 @@ function initApiTokens() {
     tailwind.config = {
       theme: { extend: {
         colors: {
-          primary: { 50:'#1c2531', 100:'#e0e7ff', 500:'#2dd4e6', 600:'#22b8c9', 700:'#22b8c9' }
+          primary: { 50:'#1c2531', 100:'#1e2440', 500:'#2dd4e6', 600:'#22b8c9', 700:'#22b8c9' }
         },
         borderRadius: { '2xl':'16px', '3xl':'24px', '4xl':'32px' }
       }}
@@ -2797,7 +2803,7 @@ function initApiTokens() {
                        :style="t.priority==='critical'||t.priority==='high' ? 'background:#dc2626' : t.priority==='medium' ? 'background:#f59e0b' : 'background:#2dd4e6'"></div>
                   <div style="flex:1;font-size:11px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></div>
                   <span style="font-size:9px;padding:1px 5px;border-radius:4px;"
-                        :style="t.priority==='critical'||t.priority==='high' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706'"
+                        :style="t.priority==='critical'||t.priority==='high' ? 'background:#2a1a1e;color:#dc2626' : 'background:#2a2214;color:#d97706'"
                         x-text="t.priority"></span>
                 </div>
               </template>
@@ -2841,7 +2847,7 @@ function initApiTokens() {
                 <div style="display:flex;align-items:center;gap:7px;padding:5px 12px;border-bottom:1px solid var(--border);">
                   <span style="font-size:9px;color:#d97706;font-family:monospace;flex-shrink:0;" x-text="j.key"></span>
                   <div style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="j.summary"></div>
-                  <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#fef3c7;color:#d97706;" x-text="j.status"></span>
+                  <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#2a2214;color:#d97706;" x-text="j.status"></span>
                 </div>
               </template>
               <template x-if="dashJira.filter(j=>j.status==='To Do').length">
@@ -2881,7 +2887,7 @@ function initApiTokens() {
                 <div style="display:flex;align-items:center;gap:7px;padding:5px 12px;border-bottom:1px solid var(--border);">
                   <span style="font-size:9px;color:var(--text-3);font-family:monospace;flex-shrink:0;" x-text="'!'+m.iid"></span>
                   <div style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="m.title"></div>
-                  <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#d1fae5;color:#059669;" x-text="m.state"></span>
+                  <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#173026;color:#059669;" x-text="m.state"></span>
                 </div>
               </template>
               <div x-show="!dashMrs.length" style="text-align:center;padding:32px;color:var(--text-3);font-size:13px;">No open MRs</div>
@@ -2915,7 +2921,7 @@ function initApiTokens() {
                 <div style="display:flex;align-items:center;gap:7px;padding:5px 12px;border-bottom:1px solid var(--border);">
                   <div style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="a.title"></div>
                   <span style="font-size:9px;padding:1px 5px;border-radius:4px;"
-                        :style="a.severity==='critical' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706'"
+                        :style="a.severity==='critical' ? 'background:#2a1a1e;color:#dc2626' : 'background:#2a2214;color:#d97706'"
                         x-text="a.severity"></span>
                 </div>
               </template>
@@ -2982,7 +2988,7 @@ function initApiTokens() {
                   </div>
                   <div class="progress-track">
                     <div class="progress-fill"
-                      :style="'width:'+p.completion_pct+'%;background:'+(p.health==='green'?'linear-gradient(90deg,#10b981,#34d399)':p.health==='yellow'?'linear-gradient(90deg,#f59e0b,#fcd34d)':'linear-gradient(90deg,#ef4444,#fb7185)')"></div>
+                      :style="'width:'+p.completion_pct+'%;background:'+(p.health==='green'?'linear-gradient(90deg,#10b981,#34d399)':p.health==='yellow'?'linear-gradient(90deg,#f59e0b,#5a4a1e)':'linear-gradient(90deg,#ef4444,#fb7185)')"></div>
                   </div>
                   <div style="font-size:11.5px;color:var(--text-3);margin-top:7px;" x-text="p.task_count+' tasks'"></div>
                 </div>
@@ -3005,7 +3011,7 @@ function initApiTokens() {
                 <div class="progress-fill"
                   :style="'width:'+(exDash?(exDash.commitment_risk_score*100):0)+'%;background:'+(
                     (exDash?.commitment_risk_score||0)>0.5?'linear-gradient(90deg,#ef4444,#fb7185)':
-                    (exDash?.commitment_risk_score||0)>0.25?'linear-gradient(90deg,#f59e0b,#fcd34d)':
+                    (exDash?.commitment_risk_score||0)>0.25?'linear-gradient(90deg,#f59e0b,#5a4a1e)':
                     'linear-gradient(90deg,#10b981,#34d399)')"></div>
               </div>
             </div>
@@ -3236,7 +3242,7 @@ function initApiTokens() {
                     <td style="padding:12px 14px;" x-text="app.owner||'—'"></td>
                     <td style="padding:12px 14px;">
                       <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;"
-                            :style="app.status==='active' ? 'background:#d1fae5;color:#059669' : app.status==='on_hold' ? 'background:#fef3c7;color:#d97706' : 'background:#283040;color:#6b7280'"
+                            :style="app.status==='active' ? 'background:#173026;color:#059669' : app.status==='on_hold' ? 'background:#2a2214;color:#d97706' : 'background:#283040;color:#6b7280'"
                             x-text="(app.status||'active').replace('_',' ')"></span>
                     </td>
                     <td style="padding:12px 14px;text-align:center;color:var(--text-2);">
@@ -3338,7 +3344,7 @@ function initApiTokens() {
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
                   <div style="font-size:14px;font-weight:700;color:var(--text-1);" x-text="p.name"></div>
                   <span style="font-size:10px;padding:2px 7px;border-radius:10px;"
-                        :style="p.status==='active'||p.status==='in_progress' ? 'background:#d1fae5;color:#059669' : p.status==='completed' ? 'background:#dbeafe;color:#2563eb' : 'background:#fef3c7;color:#d97706'"
+                        :style="p.status==='active'||p.status==='in_progress' ? 'background:#173026;color:#059669' : p.status==='completed' ? 'background:#1b2a3a;color:#2563eb' : 'background:#2a2214;color:#d97706'"
                         x-text="p.status"></span>
                 </div>
                 <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;" x-text="p.description||'No description'"></div>
@@ -3415,7 +3421,7 @@ function initApiTokens() {
                     <div style="font-size:11px;color:var(--text-3);margin-top:2px;" x-text="r.description||''"></div>
                   </div>
                   <span style="font-size:10px;padding:2px 8px;border-radius:10px;"
-                        :style="r.status==='in_progress' ? 'background:#fef3c7;color:#d97706' : r.status==='completed' ? 'background:#d1fae5;color:#059669' : 'background:#dbeafe;color:#2563eb'"
+                        :style="r.status==='in_progress' ? 'background:#2a2214;color:#d97706' : r.status==='completed' ? 'background:#173026;color:#059669' : 'background:#1b2a3a;color:#2563eb'"
                         x-text="r.status"></span>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;font-size:10px;color:var(--text-3);">
@@ -3493,7 +3499,7 @@ function initApiTokens() {
 
           <!-- Swimlane toggle -->
           <button @click="ganttSwimlanes=!ganttSwimlanes"
-            :style="ganttSwimlanes?'background:#eff6ff;border-color:#bfdbfe;color:#2563eb;':''"
+            :style="ganttSwimlanes?'background:#172431;border-color:#bfdbfe;color:#2563eb;':''"
             style="padding:5px 14px;border-radius:8px;border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-2);background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;">
             <span>☰</span><span x-text="ganttSwimlanes?'Swimlanes On':'Swimlanes Off'"></span>
           </button>
@@ -3522,9 +3528,9 @@ function initApiTokens() {
           <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;opacity:.75;"></span>Overdue</span>
           <span style="width:1px;height:18px;background:var(--border);"></span>
           <span style="font-weight:700;color:var(--text-3);text-transform:uppercase;font-size:10px;letter-spacing:.06em;margin-right:2px;">Health</span>
-          <span style="padding:1px 8px;border-radius:10px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-size:10.5px;font-weight:700;">✓ On Track</span>
-          <span style="padding:1px 8px;border-radius:10px;background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-size:10.5px;font-weight:700;">⚠ At Risk</span>
-          <span style="padding:1px 8px;border-radius:10px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;font-size:10.5px;font-weight:700;">✕ Behind</span>
+          <span style="padding:1px 8px;border-radius:10px;background:#15271f;color:#15803d;border:1px solid #bbf7d0;font-size:10.5px;font-weight:700;">✓ On Track</span>
+          <span style="padding:1px 8px;border-radius:10px;background:#241f12;color:#b45309;border:1px solid #3a2f15;font-size:10.5px;font-weight:700;">⚠ At Risk</span>
+          <span style="padding:1px 8px;border-radius:10px;background:#2a1a1e;color:#be123c;border:1px solid #3a1e24;font-size:10.5px;font-weight:700;">✕ Behind</span>
         </div>
 
         <!-- Per-project Gantt cards -->
@@ -3539,7 +3545,7 @@ function initApiTokens() {
                   <div style="font-size:16px;font-weight:800;color:var(--text-1);" x-text="p.name"></div>
                   <!-- Days remaining / overdue badge -->
                   <template x-if="p.due_date">
-                    <span :style="'padding:2px 9px;border-radius:12px;font-size:10.5px;font-weight:700;'+(p.due_date<todayStr?'background:#fff1f2;color:#e11d48;':p.due_date<=(new Date(Date.now()+7*864e5)).toISOString().slice(0,10)?'background:#fff7ed;color:#c2410c;':'background:#f0fdf4;color:#15803d;')">
+                    <span :style="'padding:2px 9px;border-radius:12px;font-size:10.5px;font-weight:700;'+(p.due_date<todayStr?'background:#2a1a1e;color:#e11d48;':p.due_date<=(new Date(Date.now()+7*864e5)).toISOString().slice(0,10)?'background:#2a2015;color:#c2410c;':'background:#15271f;color:#15803d;')">
                       <span x-text="(()=>{const d=Math.round((new Date(p.due_date)-new Date(todayStr))/864e5);return d<0?Math.abs(d)+'d overdue':d===0?'Due today':d+'d left';})()"></span>
                     </span>
                   </template>
@@ -3597,7 +3603,7 @@ function initApiTokens() {
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
               <button @click="toggleProjectCollapse(p.project_id)"
                 style="padding:4px 12px;border-radius:7px;border:1px solid var(--border);font-size:11.5px;font-weight:600;color:var(--text-2);background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:5px;"
-                :style="collapsedProjects[p.project_id]?'background:#eff6ff;border-color:#bfdbfe;color:#2563eb;':''">
+                :style="collapsedProjects[p.project_id]?'background:#172431;border-color:#bfdbfe;color:#2563eb;':''">
                 <span x-text="collapsedProjects[p.project_id]?'▶':'▼'"></span>
                 <span x-text="collapsedProjects[p.project_id]?'Expand':'Collapse'"></span>
               </button>
@@ -3648,7 +3654,7 @@ function initApiTokens() {
               <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:var(--surface);transition:background .15s;"
                 onmouseenter="this.style.background='#1c212c'" onmouseleave="this.style.background='var(--surface)'" class="group-row">
                 <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;"
-                  :style="'background:' + (m.status==='completed'?'#ecfdf5':m.is_overdue?'#fff1f2':'#eff6ff')">
+                  :style="'background:' + (m.status==='completed'?'#15271f':m.is_overdue?'#2a1a1e':'#172431')">
                   <span x-text="m.status==='completed'?'✅':m.is_overdue?'⚠️':'🏁'"></span>
                 </div>
                 <div style="flex:1;min-width:0;">
@@ -3755,7 +3761,7 @@ function initApiTokens() {
                 <div style="display:flex;align-items:center;gap:8px;">
                   <span :class="'chip ' + commitmentChip(c.status)" x-text="c.status"></span>
                   <button x-show="c.status==='pending'" @click="fulfillCommitment(c.commitment_id)"
-                    style="padding:6px 12px;border-radius:10px;background:#f0fdf4;color:#16a34a;font-size:12px;font-weight:600;border:none;cursor:pointer;">
+                    style="padding:6px 12px;border-radius:10px;background:#15271f;color:#16a34a;font-size:12px;font-weight:600;border:none;cursor:pointer;">
                     ✓ Done
                   </button>
                   <div class="cm-del" style="opacity:0;transition:opacity .15s;">
@@ -3775,21 +3781,21 @@ function initApiTokens() {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
           <!-- Severity stats (unread counts) -->
           <div style="display:flex;gap:10px;flex-wrap:wrap;flex:1;">
-            <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:14px;background:#fff1f2;border:1px solid #fecaca;">
+            <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:14px;background:#2a1a1e;border:1px solid #fecaca;">
               <span style="font-size:18px;">🚨</span>
               <div>
                 <div style="font-size:20px;font-weight:800;color:#dc2626;line-height:1;font-family:var(--font-mono);" x-text="alerts.filter(a=>a.severity==='critical'&&!a.is_read).length"></div>
                 <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.08em;">Critical</div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:14px;background:#fffbeb;border:1px solid #fde68a;">
+            <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:14px;background:#241f12;border:1px solid #3a2f15;">
               <span style="font-size:18px;">⚠️</span>
               <div>
                 <div style="font-size:20px;font-weight:800;color:#d97706;line-height:1;font-family:var(--font-mono);" x-text="alerts.filter(a=>a.severity==='warning'&&!a.is_read).length"></div>
                 <div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.08em;">Warning</div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:14px;background:#eff6ff;border:1px solid #bfdbfe;">
+            <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:14px;background:#172431;border:1px solid #bfdbfe;">
               <span style="font-size:18px;">ℹ️</span>
               <div>
                 <div style="font-size:20px;font-weight:800;color:#2563eb;line-height:1;font-family:var(--font-mono);" x-text="alerts.filter(a=>a.severity==='info'&&!a.is_read).length"></div>
@@ -3835,9 +3841,9 @@ function initApiTokens() {
 
         <!-- Alert groups -->
         <template x-for="group in [
-          {sev:'critical', label:'Critical', icon:'🚨', bg:'#fff1f2', border:'#fecaca', color:'#dc2626', dotColor:'#ef4444'},
-          {sev:'warning',  label:'Warning',  icon:'⚠️', bg:'#fffbeb', border:'#fde68a', color:'#d97706', dotColor:'#f59e0b'},
-          {sev:'info',     label:'Info',     icon:'ℹ️', bg:'#eff6ff', border:'#bfdbfe', color:'#2563eb', dotColor:'#2dd4e6'}
+          {sev:'critical', label:'Critical', icon:'🚨', bg:'#2a1a1e', border:'#fecaca', color:'#dc2626', dotColor:'#ef4444'},
+          {sev:'warning',  label:'Warning',  icon:'⚠️', bg:'#241f12', border:'#3a2f15', color:'#d97706', dotColor:'#f59e0b'},
+          {sev:'info',     label:'Info',     icon:'ℹ️', bg:'#172431', border:'#bfdbfe', color:'#2563eb', dotColor:'#2dd4e6'}
         ]" :key="group.sev">
           <div x-show="alerts.filter(a=>a.severity===group.sev&&(showRead||!a.is_read)).length>0" style="margin-bottom:20px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
@@ -3857,7 +3863,7 @@ function initApiTokens() {
                     <div style="flex:1;min-width:0;">
                       <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
                         <span style="font-size:13.5px;font-weight:700;color:var(--text-1);line-height:1.3;" x-text="a.title"></span>
-                        <span x-show="!a.is_read" style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:99px;background:#fef9c3;color:#a16207;border:1px solid #fde68a;flex-shrink:0;">NEW</span>
+                        <span x-show="!a.is_read" style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:99px;background:#2a2614;color:#a16207;border:1px solid #3a2f15;flex-shrink:0;">NEW</span>
                         <span x-show="a.is_read" style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:99px;background:var(--bg);color:var(--text-3);border:1px solid var(--border);flex-shrink:0;">READ</span>
                       </div>
                       <div x-show="a.message" style="font-size:12.5px;color:var(--text-2);margin-bottom:5px;line-height:1.4;" x-text="a.message"></div>
@@ -3868,7 +3874,7 @@ function initApiTokens() {
                     </div>
                     <div class="al-actions" style="display:flex;gap:6px;opacity:0;transition:opacity .15s;flex-shrink:0;">
                       <button x-show="!a.is_read" @click="markAlertRead(a.alert_id)"
-                        style="padding:5px 12px;border-radius:9px;background:#f0f9ff;color:#0369a1;font-size:11.5px;font-weight:700;border:1px solid #bae6fd;cursor:pointer;">
+                        style="padding:5px 12px;border-radius:9px;background:#16222e;color:#0369a1;font-size:11.5px;font-weight:700;border:1px solid #bae6fd;cursor:pointer;">
                         Mark read
                       </button>
                       <button @click="deleteAlert(a.alert_id)" style="width:32px;height:32px;border-radius:9px;background:var(--bg);border:1px solid var(--border);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">🗑</button>
@@ -3988,7 +3994,7 @@ function initApiTokens() {
 
         <!-- Log detail modal -->
         <div x-show="selectedLog" x-cloak style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;" @click.self="selectedLog=null">
-          <div style="background:white;border-radius:18px;width:90%;max-width:800px;max-height:85vh;overflow:auto;padding:24px;">
+          <div style="background:var(--surface);border-radius:18px;width:90%;max-width:800px;max-height:85vh;overflow:auto;padding:24px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
               <h3 style="margin:0;font-size:18px;font-weight:600;" x-text="(selectedLog?.method||'')+' '+(selectedLog?.endpoint||'')"></h3>
               <button @click="selectedLog=null" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
@@ -4063,8 +4069,8 @@ function initApiTokens() {
             const span=we-ws; return span>0?Math.max(0,Math.min(100,(t-ws)/span*100)):0;
           },
           typeColor(item) {
-            if(item.item_type==='meeting') return {bg:'#eff6ff',border:'#bfdbfe',text:'#1d4ed8',dot:'#3b82f6'};
-            const p={critical:{bg:'#fff1f2',border:'#fecaca',text:'#dc2626',dot:'#ef4444'},high:{bg:'#fff7ed',border:'#fed7aa',text:'#c2410c',dot:'#f97316'},medium:{bg:'#231f33',border:'#ddd6fe',text:'#b39bf5',dot:'#8b5cf6'},low:{bg:'#f0fdf4',border:'#bbf7d0',text:'#15803d',dot:'#22c55e'}};
+            if(item.item_type==='meeting') return {bg:'#172431',border:'#bfdbfe',text:'#1d4ed8',dot:'#3b82f6'};
+            const p={critical:{bg:'#2a1a1e',border:'#fecaca',text:'#dc2626',dot:'#ef4444'},high:{bg:'#2a2015',border:'#3a2a17',text:'#c2410c',dot:'#f97316'},medium:{bg:'#231f33',border:'#ddd6fe',text:'#b39bf5',dot:'#8b5cf6'},low:{bg:'#15271f',border:'#bbf7d0',text:'#15803d',dot:'#22c55e'}};
             return p[item.priority]||p.medium;
           }
         }"
@@ -4141,7 +4147,7 @@ function initApiTokens() {
                           :style="'background:'+typeColor(item).bg+';color:'+typeColor(item).text+';border:1px solid '+typeColor(item).border"
                           x-text="item.item_type==='meeting'?'📅 Meeting':item.priority+' priority'"></span>
                         <span x-show="item.source==='auto'" style="font-size:9.5px;color:var(--text-3);background:var(--bg);padding:1px 6px;border-radius:6px;border:1px solid var(--border);">auto</span>
-                        <span x-show="item.source==='calendar'" style="font-size:9.5px;color:#1d4ed8;background:#eff6ff;padding:1px 6px;border-radius:6px;border:1px solid #bfdbfe;">calendar</span>
+                        <span x-show="item.source==='calendar'" style="font-size:9.5px;color:#1d4ed8;background:#172431;padding:1px 6px;border-radius:6px;border:1px solid #bfdbfe;">calendar</span>
                       </div>
                       <div x-show="item.notes" style="font-size:12px;color:var(--text-2);margin-top:2px;" x-text="item.notes"></div>
                     </div>
@@ -4149,7 +4155,7 @@ function initApiTokens() {
                     <div class="plan-item-actions" style="display:flex;gap:6px;flex-shrink:0;opacity:0;transition:opacity .15s;">
                       <button @click="toggleComplete(item)"
                         style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"
-                        :style="item.completed?'background:#f0fdf4;border-color:#bbf7d0':''"
+                        :style="item.completed?'background:#15271f;border-color:#bbf7d0':''"
                         x-text="item.completed?'↩':'✓'">
                       </button>
                       <button x-show="item.item_type!=='meeting'" @click="deleteItem(item.item_id)"
@@ -4225,22 +4231,22 @@ function initApiTokens() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
           <div class="card">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-              <div style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#f59e0b,#fcd34d);display:flex;align-items:center;justify-content:center;font-size:20px;">🌅</div>
+              <div style="width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#f59e0b,#5a4a1e);display:flex;align-items:center;justify-content:center;font-size:20px;">🌅</div>
               <div>
                 <div style="font-size:15px;font-weight:700;color:var(--text-1);">Start of Day</div>
                 <div style="font-size:12px;color:var(--text-3);" x-text="sod?.date"></div>
               </div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;" x-show="sod">
-              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#fff1f2,#ffe4e6);">
+              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#2a1a1e,#3a1e24);">
                 <div style="font-size:26px;font-weight:800;color:#e11d48;" x-text="sod?.overdue_count"></div>
                 <div style="font-size:11px;color:var(--text-3);font-weight:600;">Overdue</div>
               </div>
-              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#172431,#1b2a3a);">
                 <div style="font-size:26px;font-weight:800;color:#2563eb;" x-text="sod?.due_today_count"></div>
                 <div style="font-size:11px;color:var(--text-3);font-weight:600;">Due Today</div>
               </div>
-              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#fefce8,#fef9c3);">
+              <div style="text-align:center;padding:12px;border-radius:14px;background:linear-gradient(135deg,#282413,#2a2614);">
                 <div style="font-size:26px;font-weight:800;color:#ca8a04;" x-text="sod?.carry_forward_count"></div>
                 <div style="font-size:11px;color:var(--text-3);font-weight:600;">In Progress</div>
               </div>
@@ -4268,11 +4274,11 @@ function initApiTokens() {
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;" x-show="eod">
-              <div style="text-align:center;padding:14px;border-radius:14px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+              <div style="text-align:center;padding:14px;border-radius:14px;background:linear-gradient(135deg,#15271f,#173026);">
                 <div style="font-size:26px;font-weight:800;color:#16a34a;" x-text="eod?.completed_today"></div>
                 <div style="font-size:11px;color:var(--text-3);font-weight:600;">Completed</div>
               </div>
-              <div style="text-align:center;padding:14px;border-radius:14px;background:linear-gradient(135deg,#fefce8,#fef9c3);">
+              <div style="text-align:center;padding:14px;border-radius:14px;background:linear-gradient(135deg,#282413,#2a2614);">
                 <div style="font-size:26px;font-weight:800;color:#ca8a04;" x-text="eod?.still_pending"></div>
                 <div style="font-size:11px;color:var(--text-3);font-weight:600;">Still Pending</div>
               </div>
@@ -4281,7 +4287,7 @@ function initApiTokens() {
               <div class="section-title">Completed Today</div>
               <div style="display:flex;flex-direction:column;gap:7px;">
                 <template x-for="t in eod?.completed" :key="t.task_id">
-                  <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#f0fdf4;">
+                  <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#15271f;">
                     <span style="color:#16a34a;font-size:14px;">✓</span>
                     <span style="flex:1;font-size:13px;color:var(--text-1);" x-text="t.title"></span>
                   </div>
@@ -4316,13 +4322,13 @@ function initApiTokens() {
             <div>
               <label style="display:block;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">SMTP Host</label>
               <input x-model="emailCfg.smtp_host" placeholder="mail.company.com"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;background:var(--bg-tint);"
                 @focus="$el.style.borderColor='#2dd4e6'" @blur="$el.style.borderColor='var(--border)'">
             </div>
             <div>
               <label style="display:block;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Port</label>
               <input x-model.number="emailCfg.smtp_port" type="number" placeholder="25"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;background:var(--bg-tint);"
                 @focus="$el.style.borderColor='#2dd4e6'" @blur="$el.style.borderColor='var(--border)'">
             </div>
             <div>
@@ -4342,26 +4348,26 @@ function initApiTokens() {
             <div>
               <label style="display:block;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Recipient Email</label>
               <input x-model="emailCfg.recipient_email" type="email" placeholder="you@example.com"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;background:var(--bg-tint);"
                 @focus="$el.style.borderColor='#2dd4e6'" @blur="$el.style.borderColor='var(--border)'">
             </div>
             <div>
               <label style="display:block;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">SMTP User <span style="font-weight:400;color:var(--text-3);">(optional)</span></label>
               <input x-model="emailCfg.smtp_user" placeholder="Leave blank if no auth"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;background:var(--bg-tint);"
                 @focus="$el.style.borderColor='#2dd4e6'" @blur="$el.style.borderColor='var(--border)'">
             </div>
             <div>
               <label style="display:block;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Password <span style="font-weight:400;color:var(--text-3);">(optional)</span></label>
               <input x-model="emailCfg.smtp_password" type="password" placeholder="Leave blank if no auth"
-                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;"
+                style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--text-1);outline:none;background:var(--bg-tint);"
                 @focus="$el.style.borderColor='#2dd4e6'" @blur="$el.style.borderColor='var(--border)'">
             </div>
           </div>
 
           <!-- SOD / EOD schedule row -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
-            <div style="padding:16px;border-radius:14px;background:linear-gradient(135deg,#fefce8,#fef3c7);border:1.5px solid #fde68a;">
+            <div style="padding:16px;border-radius:14px;background:linear-gradient(135deg,#282413,#2a2214);border:1.5px solid #3a2f15;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <span style="font-size:18px;">🌅</span>
@@ -4373,10 +4379,10 @@ function initApiTokens() {
                 </label>
               </div>
               <input x-model="emailCfg.sod_time" type="time"
-                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1.5px solid #fcd34d;background:#fffbeb;font-size:14px;font-weight:700;color:#78350f;outline:none;">
+                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1.5px solid #5a4a1e;background:#241f12;font-size:14px;font-weight:700;color:#78350f;outline:none;">
               <div style="font-size:11px;color:#a16207;margin-top:6px;">Sends today's overdue + due items + project status</div>
             </div>
-            <div style="padding:16px;border-radius:14px;background:linear-gradient(135deg,#f0fdfa,#ccfbf1);border:1.5px solid #99f6e4;">
+            <div style="padding:16px;border-radius:14px;background:linear-gradient(135deg,#152a2a,#183a3a);border:1.5px solid #99f6e4;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <span style="font-size:18px;">🌇</span>
@@ -4388,7 +4394,7 @@ function initApiTokens() {
                 </label>
               </div>
               <input x-model="emailCfg.eod_time" type="time"
-                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1.5px solid #5eead4;background:#f0fdfa;font-size:14px;font-weight:700;color:#134e4a;outline:none;">
+                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:9px;border:1.5px solid #5eead4;background:#152a2a;font-size:14px;font-weight:700;color:#134e4a;outline:none;">
               <div style="font-size:11px;color:#0f766e;margin-top:6px;">Sends completed today + missed + carry-forward backlog</div>
             </div>
           </div>
@@ -4400,11 +4406,11 @@ function initApiTokens() {
               💾 Save Settings
             </button>
             <button @click="sendEmailNow('sod')" :disabled="emailSending"
-              style="padding:9px 18px;border-radius:10px;background:#fef9c3;border:1.5px solid #fde047;color:#854d0e;font-size:13px;font-weight:600;cursor:pointer;">
+              style="padding:9px 18px;border-radius:10px;background:#2a2614;border:1.5px solid #fde047;color:#854d0e;font-size:13px;font-weight:600;cursor:pointer;">
               🌅 Send SOD Now
             </button>
             <button @click="sendEmailNow('eod')" :disabled="emailSending"
-              style="padding:9px 18px;border-radius:10px;background:#ccfbf1;border:1.5px solid #5eead4;color:#134e4a;font-size:13px;font-weight:600;cursor:pointer;">
+              style="padding:9px 18px;border-radius:10px;background:#183a3a;border:1.5px solid #5eead4;color:#134e4a;font-size:13px;font-weight:600;cursor:pointer;">
               🌇 Send EOD Now
             </button>
             <span x-show="emailMsg" x-text="emailMsg"
@@ -4496,8 +4502,8 @@ function initApiTokens() {
                   <input type="number" x-model.number="item.weight" @change="recalcAggregate()" min="0.1" max="10" step="0.1" class="input" style="width:70px;padding:6px 8px;font-weight:700;font-size:14px;text-align:center;" />
                 </div>
                 <button @click="removeEstItem(item._id)"
-                  style="width:30px;height:30px;border:none;background:#fff1f2;color:#ef4444;border-radius:8px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;"
-                  onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='#fff1f2'">×</button>
+                  style="width:30px;height:30px;border:none;background:#2a1a1e;color:#ef4444;border-radius:8px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;"
+                  onmouseenter="this.style.background='#2a1a1e'" onmouseleave="this.style.background='#2a1a1e'">×</button>
               </div>
 
               <!-- Row 1: Story points + Complexity -->
@@ -4571,7 +4577,7 @@ function initApiTokens() {
                 <div>
                   <div class="section-title">Release Paperwork</div>
                   <div style="display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border-radius:12px;cursor:pointer;transition:background .15s;user-select:none;width:100%;"
-                    :style="item.has_release_paperwork ? 'background:#ede9fe' : 'background:#231f33'"
+                    :style="item.has_release_paperwork ? 'background:#241f33' : 'background:#231f33'"
                     @click="item.has_release_paperwork=!item.has_release_paperwork;calcItem(item)">
                     <div style="width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:all .15s;"
                       :style="item.has_release_paperwork ? 'background:#2dd4e6;color:#fff' : 'background:var(--border);color:transparent'">✓</div>
@@ -4581,7 +4587,7 @@ function initApiTokens() {
                 <div>
                   <div class="section-title">External Dep</div>
                   <div style="display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border-radius:12px;cursor:pointer;transition:background .15s;user-select:none;width:100%;"
-                    :style="item.has_external_dep ? 'background:#fef3c7' : 'background:#fffbeb'"
+                    :style="item.has_external_dep ? 'background:#2a2214' : 'background:#241f12'"
                     @click="item.has_external_dep=!item.has_external_dep;calcItem(item)">
                     <div style="width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:all .15s;"
                       :style="item.has_external_dep ? 'background:#f59e0b;color:#fff' : 'background:var(--border);color:transparent'">✓</div>
@@ -4915,11 +4921,11 @@ function initApiTokens() {
 
                 <!-- Constraint warning -->
                 <div x-show="timeline?.exceeds_constraint"
-                  style="padding:8px 14px;border-radius:12px;background:#fff1f2;border:1px solid #fecaca;font-size:12px;font-weight:700;color:#dc2626;flex-shrink:0;">
+                  style="padding:8px 14px;border-radius:12px;background:#2a1a1e;border:1px solid #fecaca;font-size:12px;font-weight:700;color:#dc2626;flex-shrink:0;">
                   🚨 <span x-text="'Exceeds deadline by '+constraintDiff()+' day'+(constraintDiff()!==1?'s':'')"></span>
                 </div>
                 <div x-show="timeline&&!timeline?.exceeds_constraint&&activeEst?.end_date_constraint"
-                  style="padding:8px 14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:12px;font-weight:700;color:#16a34a;flex-shrink:0;">
+                  style="padding:8px 14px;border-radius:12px;background:#15271f;border:1px solid #bbf7d0;font-size:12px;font-weight:700;color:#16a34a;flex-shrink:0;">
                   ✓ Within deadline
                 </div>
               </div>
@@ -4930,7 +4936,7 @@ function initApiTokens() {
                   <div style="border:1px solid var(--border);border-radius:16px;background:var(--surface);overflow:hidden;">
 
                     <!-- Milestone header -->
-                    <div style="padding:12px 16px;background:linear-gradient(135deg,#231f33,#ede9fe);border-bottom:1px solid #ddd6fe;display:flex;align-items:center;gap:10px;">
+                    <div style="padding:12px 16px;background:linear-gradient(135deg,#231f33,#241f33);border-bottom:1px solid #ddd6fe;display:flex;align-items:center;gap:10px;">
                       <div style="width:28px;height:28px;border-radius:8px;background:#2dd4e6;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;" x-text="msIdx+1"></div>
                       <div style="flex:1;min-width:0;">
                         <div style="font-size:13.5px;font-weight:700;color:#1e1b4b;" x-text="ms.name"></div>
@@ -5120,7 +5126,7 @@ function initApiTokens() {
             return g? g:{state:'unset',days:0};
           },
           gateStateColor(s){return {done:'#16a34a',breached:'#dc2626',at_risk:'#d97706',in_progress:'#0891b2',upcoming:'#6b7280',unset:'#9ca3af'}[s]||'#6b7280';},
-          gateStateBg(s){return {done:'#f0fdf4',breached:'#fff1f2',at_risk:'#fffbeb',in_progress:'#ecfeff',upcoming:'#283040',unset:'#283040'}[s]||'#283040';},
+          gateStateBg(s){return {done:'#15271f',breached:'#2a1a1e',at_risk:'#241f12',in_progress:'#152730',upcoming:'#283040',unset:'#283040'}[s]||'#283040';},
           gateStateLabel(g){
             if(g.state==='breached')return 'Breached '+g.days+'d';
             if(g.state==='at_risk')return 'At risk · '+g.days+'d';
@@ -5240,7 +5246,7 @@ function initApiTokens() {
             return {pending:'#6b7280',in_progress:'#d97706',done:'#16a34a',skipped:'#2dd4e6',blocked:'#dc2626'}[s]||'#6b7280';
           },
           itemStatusBg(s) {
-            return {pending:'#283040',in_progress:'#fffbeb',done:'#f0fdf4',skipped:'#231f33',blocked:'#fff1f2'}[s]||'#283040';
+            return {pending:'#283040',in_progress:'#241f12',done:'#15271f',skipped:'#231f33',blocked:'#2a1a1e'}[s]||'#283040';
           },
           getJiraProjects() {
             try{
@@ -5453,7 +5459,7 @@ function initApiTokens() {
                     x-text="(activeRelease?.health?.level||'').replace('_',' ')"></span>
                   <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#1c2531;color:#22b8c9;"
                     x-text="(activeRelease?.health?.derived_status||'').replace('_',' ')"></span>
-                  <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#ecfeff;color:#0e7490;"
+                  <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#152730;color:#0e7490;"
                     x-text="'Stage: '+(stageLabels[activeRelease?.health?.current_stage]||'—')"></span>
                 </div>
                 <div style="display:flex;align-items:center;">
@@ -5482,7 +5488,7 @@ function initApiTokens() {
                     <span x-text="activeRelease?.jira_project_key + ' / ' + activeRelease?.version"></span>
                   </div>
                 </div>
-                <div x-show="releaseJiraError" style="padding:12px 16px;background:#fff1f2;border-bottom:1px solid var(--border);color:#991b1b;font-size:12px;" x-text="releaseJiraError"></div>
+                <div x-show="releaseJiraError" style="padding:12px 16px;background:#2a1a1e;border-bottom:1px solid var(--border);color:#991b1b;font-size:12px;" x-text="releaseJiraError"></div>
                 <div x-show="!releaseJiraError && !releaseJiraLoading && releaseJiraIssues.length===0" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No Jira issues found</div>
                 <div x-show="!releaseJiraError && releaseJiraIssues.length>0" style="padding:8px 12px;display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;">
                   <template x-for="issue in releaseJiraIssues" :key="issue.key">
@@ -5575,7 +5581,7 @@ function initApiTokens() {
                         <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border);flex-wrap:wrap;">
                           <span style="font-size:11px;font-weight:700;color:#0891b2;min-width:70px;" x-text="iss.key"></span>
                           <span style="flex:1;font-size:12px;min-width:140px;" x-text="iss.summary"></span>
-                          <span x-show="iss.mine" style="font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px;background:#ecfeff;color:#0e7490;">mine</span>
+                          <span x-show="iss.mine" style="font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px;background:#152730;color:#0e7490;">mine</span>
                           <span style="font-size:10px;color:var(--text-3);" x-text="iss.status"></span>
                         </div>
                       </template>
@@ -5666,7 +5672,7 @@ function initApiTokens() {
                   <div style="min-width:0;">
                     <div style="font-size:13px;font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                       <span x-text="t.name"></span>
-                      <span x-show="t.is_default" style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;background:#fef9c3;color:#a16207;border:1px solid #fde68a;">DEFAULT</span>
+                      <span x-show="t.is_default" style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;background:#2a2614;color:#a16207;border:1px solid #3a2f15;">DEFAULT</span>
                     </div>
                     <div style="font-size:11px;color:var(--text-3);margin-top:3px;" x-text="(t.item_count||0)+' items'"></div>
                   </div>
@@ -5801,7 +5807,7 @@ function initApiTokens() {
             </div>
           </div>
 
-          <div x-show="glError" style="padding:14px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="glError"></div>
+          <div x-show="glError" style="padding:14px;border-radius:10px;background:#2a1a1e;border:1px solid #3a1e24;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="glError"></div>
 
           <!-- Summary Strip -->
           <div x-show="glData.total_mrs >= 0"
@@ -5830,7 +5836,7 @@ function initApiTokens() {
                         style="font-size:13.5px;font-weight:700;color:var(--text-1);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px;"
                         x-text="mr.title"></a>
                       <span x-show="mr.draft" style="padding:1px 7px;border-radius:6px;background:var(--bg);color:var(--text-2);font-size:10.5px;font-weight:700;">Draft</span>
-                      <span x-show="mr.has_conflicts" style="padding:1px 7px;border-radius:6px;background:#fff1f2;color:#ef4444;font-size:10.5px;font-weight:700;">Conflicts</span>
+                      <span x-show="mr.has_conflicts" style="padding:1px 7px;border-radius:6px;background:#2a1a1e;color:#ef4444;font-size:10.5px;font-weight:700;">Conflicts</span>
                     </div>
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--text-2);">
                       <span style="font-weight:600;color:#fc6d26;" x-text="mr.project_name"></span>
@@ -5898,7 +5904,7 @@ function initApiTokens() {
                               </td>
                               <td style="color:#fc6d26;font-weight:600;white-space:nowrap;" x-text="mr.project_name"></td>
                               <td>
-                                <span :style="mr.draft?'background:#283040;color:#64748b':mr.has_conflicts?'background:#fff1f2;color:#ef4444':'background:#f0fdf4;color:#15803d'"
+                                <span :style="mr.draft?'background:#283040;color:#64748b':mr.has_conflicts?'background:#2a1a1e;color:#ef4444':'background:#15271f;color:#15803d'"
                                   style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;"
                                   x-text="mr.draft?'Draft':mr.has_conflicts?'Conflicts':'Ready'"></span>
                               </td>
@@ -5926,7 +5932,7 @@ function initApiTokens() {
                       <div style="font-size:11.5px;color:var(--text-3);" x-text="proj.path"></div>
                     </div>
                     <div style="margin-left:auto;display:flex;gap:8px;">
-                      <span style="padding:3px 10px;border-radius:10px;background:#fff7f3;color:#c2410c;font-size:11px;font-weight:700;border:1px solid #fed7aa;" x-text="proj.open+' open'"></span>
+                      <span style="padding:3px 10px;border-radius:10px;background:#fff7f3;color:#c2410c;font-size:11px;font-weight:700;border:1px solid #3a2a17;" x-text="proj.open+' open'"></span>
                       <span x-show="proj.draft>0" style="padding:3px 10px;border-radius:10px;background:var(--bg);color:var(--text-2);font-size:11px;font-weight:700;border:1px solid var(--border);" x-text="proj.draft+' draft'"></span>
                     </div>
                   </div>
@@ -6044,7 +6050,7 @@ function initApiTokens() {
           </template>
 
           <!-- Error -->
-          <div x-show="jiraError" style="padding:16px 20px;border-radius:12px;background:#fff1f2;border:1.5px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="jiraError"></div>
+          <div x-show="jiraError" style="padding:16px 20px;border-radius:12px;background:#2a1a1e;border:1.5px solid #3a1e24;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="jiraError"></div>
 
           <!-- Summary stats -->
           <div x-show="jiraData.team && jiraData.team.length" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
@@ -6088,7 +6094,7 @@ function initApiTokens() {
                     <div style="font-size:11.5px;color:var(--text-2);" x-text="member.total+' open issue'+(member.total!==1?'s':'')"></div>
                   </div>
                   <!-- Workload pill -->
-                  <div :style="'padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.total>=8?'background:#fff1f2;color:#be123c;':member.total>=4?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
+                  <div :style="'padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.total>=8?'background:#2a1a1e;color:#be123c;':member.total>=4?'background:#241f12;color:#b45309;':'background:#15271f;color:#15803d;')"
                     x-text="member.total>=8?'Heavy':member.total>=4?'Moderate':'Light'"></div>
                 </div>
 
@@ -6106,7 +6112,7 @@ function initApiTokens() {
                 <div style="padding:8px 16px 14px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;">
                   <template x-for="issue in member.issues.slice(0,10)" :key="issue.key">
                     <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border);">
-                      <span style="font-size:10px;font-weight:700;color:#0052cc;background:#eff6ff;padding:1px 5px;border-radius:4px;flex-shrink:0;margin-top:1px;" x-text="issue.key"></span>
+                      <span style="font-size:10px;font-weight:700;color:#0052cc;background:#172431;padding:1px 5px;border-radius:4px;flex-shrink:0;margin-top:1px;" x-text="issue.key"></span>
                       <div style="flex:1;min-width:0;">
                         <div style="font-size:12px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="issue.summary"></div>
                         <div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap;">
@@ -6157,7 +6163,7 @@ function initApiTokens() {
         </div>
 
         <!-- Error -->
-        <div x-show="workloadError" style="padding:12px 16px;border-radius:8px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="workloadError"></div>
+        <div x-show="workloadError" style="padding:12px 16px;border-radius:8px;background:#2a1a1e;border:1px solid #3a1e24;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="workloadError"></div>
 
         <!-- Compressed Summary Strip -->
         <div x-show="workloadData.summary" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;">
@@ -6200,7 +6206,7 @@ function initApiTokens() {
                 <td style="text-align:center;font-weight:600;" x-text="member.workload.mr_count"></td>
                 <td style="text-align:center;font-weight:700;color:var(--text-1);" x-text="member.workload.total_active"></td>
                 <td>
-                  <span :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.workload.capacity_status==='heavy'?'background:#fff1f2;color:#be123c;':member.workload.capacity_status==='moderate'?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
+                  <span :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.workload.capacity_status==='heavy'?'background:#2a1a1e;color:#be123c;':member.workload.capacity_status==='moderate'?'background:#241f12;color:#b45309;':'background:#15271f;color:#15803d;')"
                     x-text="member.workload.capacity_status==='heavy'?'Heavy':member.workload.capacity_status==='moderate'?'Moderate':'Light'"></span>
                 </td>
                 <td style="text-align:center;color:var(--text-3);">
@@ -6221,7 +6227,7 @@ function initApiTokens() {
                           <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);">
                             <span x-text="t.title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                             <span style="font-size:9px;padding:1px 5px;border-radius:4px;margin-left:6px;flex-shrink:0;"
-                                  :style="t.is_overdue||t.priority==='critical'||t.priority==='high' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706'"
+                                  :style="t.is_overdue||t.priority==='critical'||t.priority==='high' ? 'background:#2a1a1e;color:#dc2626' : 'background:#2a2214;color:#d97706'"
                                   x-text="t.is_overdue ? 'overdue' : t.priority"></span>
                           </div>
                         </template>
@@ -6234,7 +6240,7 @@ function initApiTokens() {
                           <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);">
                             <span style="color:#d97706;font-family:monospace;flex-shrink:0;margin-right:6px;" x-text="j.key"></span>
                             <span x-text="j.summary" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                            <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#fef3c7;color:#d97706;margin-left:6px;flex-shrink:0;" x-text="j.status"></span>
+                            <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#2a2214;color:#d97706;margin-left:6px;flex-shrink:0;" x-text="j.status"></span>
                           </div>
                         </template>
                         <div x-show="!(wlDetail[member.member_id]?.jira||[]).length" style="font-size:11px;color:var(--text-3);">No Jira issues</div>
@@ -6247,7 +6253,7 @@ function initApiTokens() {
                             <span style="color:#e2336b;font-family:monospace;flex-shrink:0;margin-right:6px;" x-text="'!'+m.iid"></span>
                             <span x-text="m.title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                             <span style="font-size:9px;padding:1px 5px;border-radius:4px;margin-left:6px;flex-shrink:0;"
-                                  :style="m.is_review ? 'background:#fde8f0;color:#e2336b' : 'background:#d1fae5;color:#059669'"
+                                  :style="m.is_review ? 'background:#fde8f0;color:#e2336b' : 'background:#173026;color:#059669'"
                                   x-text="m.is_review ? 'review' : m.state"></span>
                           </div>
                         </template>
@@ -6300,7 +6306,7 @@ function initApiTokens() {
         </div>
 
         <!-- Error -->
-        <div x-show="sprintWorkloadError" style="padding:12px 16px;border-radius:8px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="sprintWorkloadError"></div>
+        <div x-show="sprintWorkloadError" style="padding:12px 16px;border-radius:8px;background:#2a1a1e;border:1px solid #3a1e24;color:#be123c;font-size:13px;margin-bottom:16px;" x-text="sprintWorkloadError"></div>
 
         <!-- Summary Strip -->
         <div x-show="sprintWorkloadData.summary" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;">
@@ -6346,7 +6352,7 @@ function initApiTokens() {
                 </td>
                 <td style="text-align:center;font-weight:700;" x-text="member.jira_count"></td>
                 <td>
-                  <span :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.capacity_status==='heavy'?'background:#fff1f2;color:#be123c;':member.capacity_status==='moderate'?'background:#fffbeb;color:#b45309;':'background:#f0fdf4;color:#15803d;')"
+                  <span :style="'padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;'+(member.capacity_status==='heavy'?'background:#2a1a1e;color:#be123c;':member.capacity_status==='moderate'?'background:#241f12;color:#b45309;':'background:#15271f;color:#15803d;')"
                     x-text="member.capacity_status==='heavy'?'Heavy':member.capacity_status==='moderate'?'Moderate':'Light'"></span>
                 </td>
                 <td style="font-size:11px;color:var(--text-2);">
@@ -6372,7 +6378,7 @@ function initApiTokens() {
                                 <span x-text="issue.summary" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
                               </div>
                               <span style="font-size:9px;padding:2px 5px;border-radius:4px;margin-left:6px;flex-shrink:0;"
-                                :style="issue.priority==='Highest'||issue.priority==='Critical'?'background:#fff1f2;color:#dc2626':issue.priority==='High'?'background:#fff7ed;color:#c2410c':'background:#fef3c7;color:#d97706'"
+                                :style="issue.priority==='Highest'||issue.priority==='Critical'?'background:#2a1a1e;color:#dc2626':issue.priority==='High'?'background:#2a2015;color:#c2410c':'background:#2a2214;color:#d97706'"
                                 x-text="issue.priority"></span>
                             </div>
                           </template>
@@ -6421,7 +6427,7 @@ function initApiTokens() {
                   <td style="padding:8px;" x-text="m.role||'—'"></td>
                   <td style="padding:8px;">
                     <span style="font-size:10px;padding:2px 7px;border-radius:10px;"
-                          :style="m.is_active ? 'background:#d1fae5;color:#059669' : 'background:#283040;color:#6b7280'"
+                          :style="m.is_active ? 'background:#173026;color:#059669' : 'background:#283040;color:#6b7280'"
                           x-text="m.is_active ? 'Active' : 'Inactive'"></span>
                   </td>
                   <td style="padding:8px;">
@@ -6473,14 +6479,14 @@ function initApiTokens() {
               <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #2dd4e6;overflow:hidden;box-sizing:border-box;">
                 <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">📋 Local Tasks</span>
-                  <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWork.tasks||[]).length+' tasks'"></span>
+                  <span style="margin-left:auto;font-size:10px;font-weight:700;background:#1b2a3a;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWork.tasks||[]).length+' tasks'"></span>
                 </div>
                 <div style="max-height:200px;overflow-y:auto;background:var(--surface);">
                   <template x-for="t in (myWork.tasks||[]).slice(0,10)" :key="t.task_id">
                     <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:12px;">
                       <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></div>
                       <span style="font-size:9px;padding:1px 5px;border-radius:4px;flex-shrink:0;"
-                            :style="t.is_overdue ? 'background:#fee2e2;color:#dc2626' : t.priority==='high'||t.priority==='critical' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706'"
+                            :style="t.is_overdue ? 'background:#2a1a1e;color:#dc2626' : t.priority==='high'||t.priority==='critical' ? 'background:#2a1a1e;color:#dc2626' : 'background:#2a2214;color:#d97706'"
                             x-text="t.is_overdue?'overdue':t.priority"></span>
                     </div>
                   </template>
@@ -6492,14 +6498,14 @@ function initApiTokens() {
               <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #d97706;overflow:hidden;">
                 <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                   <span style="font-size:13px;font-weight:700;">🔵 Jira Assigned</span>
-                  <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWork.jira||[]).length+' issues'"></span>
+                  <span style="margin-left:auto;font-size:10px;font-weight:700;background:#2a2214;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWork.jira||[]).length+' issues'"></span>
                 </div>
                 <div style="max-height:200px;overflow-y:auto;background:var(--surface);">
                   <template x-for="j in (myWork.jira||[])" :key="j.key">
                     <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:12px;">
                       <span style="color:#d97706;font-family:monospace;font-size:10px;flex-shrink:0;" x-text="j.key"></span>
                       <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="j.summary"></div>
-                      <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#fef3c7;color:#d97706;flex-shrink:0;" x-text="j.status"></span>
+                      <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#2a2214;color:#d97706;flex-shrink:0;" x-text="j.status"></span>
                     </div>
                   </template>
                   <div x-show="!(myWork.jira||[]).length" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No Jira issues — configure Jira integration in Settings</div>
@@ -6517,7 +6523,7 @@ function initApiTokens() {
                       <span style="color:#e2336b;font-family:monospace;font-size:10px;flex-shrink:0;" x-text="'!'+m.iid"></span>
                       <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="m.title"></div>
                       <span style="font-size:9px;padding:1px 5px;border-radius:4px;flex-shrink:0;"
-                            :style="m.is_review ? 'background:#fde8f0;color:#e2336b' : 'background:#d1fae5;color:#059669'"
+                            :style="m.is_review ? 'background:#fde8f0;color:#e2336b' : 'background:#173026;color:#059669'"
                             x-text="m.is_review ? 'review' : m.state"></span>
                     </div>
                   </template>
@@ -6536,14 +6542,14 @@ function initApiTokens() {
                   <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #2dd4e6;overflow:hidden;box-sizing:border-box;">
                     <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">📋 Local Tasks</span>
-                      <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.tasks||[]).length+' tasks'"></span>
+                      <span style="margin-left:auto;font-size:10px;font-weight:700;background:#1b2a3a;color:#2563eb;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.tasks||[]).length+' tasks'"></span>
                     </div>
                     <div style="max-height:180px;overflow-y:auto;background:var(--surface);">
                       <template x-for="t in (myWorkTeamData.tasks||[])" :key="t.task_id">
                         <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:12px;">
                           <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="t.title"></div>
                           <span style="font-size:9px;padding:1px 5px;border-radius:4px;flex-shrink:0;"
-                                :style="t.is_overdue ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706'"
+                                :style="t.is_overdue ? 'background:#2a1a1e;color:#dc2626' : 'background:#2a2214;color:#d97706'"
                                 x-text="t.is_overdue?'overdue':t.priority"></span>
                         </div>
                       </template>
@@ -6553,14 +6559,14 @@ function initApiTokens() {
                   <div style="border-radius:10px;border:var(--card-border-width) solid var(--border);border-left:var(--card-accent-border-width) solid #d97706;overflow:hidden;">
                     <div style="display:flex;align-items:center;gap:8px;padding:var(--card-padding);border-bottom:1px solid var(--border);background:var(--surface);">
                       <span style="font-size:13px;font-weight:700;">🔵 Jira Assigned</span>
-                      <span style="margin-left:auto;font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.jira||[]).length+' issues'"></span>
+                      <span style="margin-left:auto;font-size:10px;font-weight:700;background:#2a2214;color:#d97706;padding:2px 8px;border-radius:10px;" x-text="(myWorkTeamData.jira||[]).length+' issues'"></span>
                     </div>
                     <div style="max-height:180px;overflow-y:auto;background:var(--surface);">
                       <template x-for="j in (myWorkTeamData.jira||[])" :key="j.key">
                         <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:12px;">
                           <span style="color:#d97706;font-family:monospace;font-size:10px;" x-text="j.key"></span>
                           <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="j.summary"></div>
-                          <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#fef3c7;color:#d97706;flex-shrink:0;" x-text="j.status"></span>
+                          <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#2a2214;color:#d97706;flex-shrink:0;" x-text="j.status"></span>
                         </div>
                       </template>
                       <div x-show="!(myWorkTeamData.jira||[]).length" style="padding:16px;text-align:center;color:var(--text-3);font-size:12px;">No Jira issues</div>
@@ -6577,7 +6583,7 @@ function initApiTokens() {
                           <span style="color:#e2336b;font-family:monospace;font-size:10px;" x-text="'!'+m.iid"></span>
                           <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="m.title"></div>
                           <span style="font-size:9px;padding:1px 5px;border-radius:4px;flex-shrink:0;"
-                                :style="m.is_review ? 'background:#fde8f0;color:#e2336b' : 'background:#d1fae5;color:#059669'"
+                                :style="m.is_review ? 'background:#fde8f0;color:#e2336b' : 'background:#173026;color:#059669'"
                                 x-text="m.is_review ? 'review' : m.state"></span>
                         </div>
                       </template>
@@ -6691,13 +6697,13 @@ function initApiTokens() {
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                       <span style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-mono);" x-text="issue.key"></span>
                       <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#283040;color:var(--text-2);font-weight:600;" x-text="issue.type"></span>
-                      <span x-show="issue.priority==='Highest'||issue.priority==='Critical'" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fff1f2;color:#dc2626;font-weight:700;">Critical</span>
+                      <span x-show="issue.priority==='Highest'||issue.priority==='Critical'" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#2a1a1e;color:#dc2626;font-weight:700;">Critical</span>
                     </div>
                     <div style="font-size:13px;font-weight:500;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;" x-text="issue.summary"></div>
                   </div>
                   <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600;"
-                      :style="issue.cat==='indeterminate'?'background:#eff6ff;color:#2563eb':issue.cat==='done'?'background:#f0fdf4;color:#16a34a':'background:#1c212c;color:var(--text-3)'"
+                      :style="issue.cat==='indeterminate'?'background:#172431;color:#2563eb':issue.cat==='done'?'background:#15271f;color:#16a34a':'background:#1c212c;color:var(--text-3)'"
                       x-text="issue.status"></div>
                     <div x-show="issue.due_date" style="font-size:10px;color:var(--text-3);margin-top:3px;" x-text="'Due: '+issue.due_date"></div>
                   </div>
@@ -6718,7 +6724,7 @@ function initApiTokens() {
                   <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--font-mono);" x-text="issue.key"></span><span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#283040;color:var(--text-2);font-weight:600;" x-text="issue.type"></span></div>
                   <div style="font-size:13px;font-weight:500;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;" x-text="issue.summary"></div>
                 </div>
-                <div style="font-size:11px;padding:3px 8px;border-radius:6px;background:#eff6ff;color:#2563eb;font-weight:600;" x-text="issue.status"></div>
+                <div style="font-size:11px;padding:3px 8px;border-radius:6px;background:#172431;color:#2563eb;font-weight:600;" x-text="issue.status"></div>
               </a>
             </template>
           </div>
@@ -6729,19 +6735,19 @@ function initApiTokens() {
             <div x-show="!myHubData?.jira?.bugs?.length" style="padding:32px;text-align:center;color:var(--text-3);">No bugs assigned to you 🐛</div>
             <template x-for="issue in (myHubData?.jira?.bugs||[])" :key="issue.key">
               <a :href="issue.web_url" target="_blank" style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border);text-decoration:none;transition:background .12s;"
-                 onmouseenter="this.style.background='#fff1f2'" onmouseleave="this.style.background='transparent'">
+                 onmouseenter="this.style.background='#2a1a1e'" onmouseleave="this.style.background='transparent'">
                 <div style="width:4px;height:36px;border-radius:99px;flex-shrink:0;background:#dc2626;"></div>
                 <div style="flex:1;min-width:0;">
                   <div style="display:flex;align-items:center;gap:6px;">
                     <span style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--font-mono);" x-text="issue.key"></span>
-                    <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fff1f2;color:#dc2626;font-weight:600;">Bug</span>
-                    <span x-show="issue.priority==='Highest'||issue.priority==='Critical'" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fff1f2;color:#dc2626;font-weight:700;">🔥 Critical</span>
+                    <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#2a1a1e;color:#dc2626;font-weight:600;">Bug</span>
+                    <span x-show="issue.priority==='Highest'||issue.priority==='Critical'" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#2a1a1e;color:#dc2626;font-weight:700;">🔥 Critical</span>
                   </div>
                   <div style="font-size:13px;font-weight:500;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;" x-text="issue.summary"></div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                   <div style="font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600;"
-                    :style="issue.cat==='indeterminate'?'background:#eff6ff;color:#2563eb':'background:#1c212c;color:var(--text-3)'"
+                    :style="issue.cat==='indeterminate'?'background:#172431;color:#2563eb':'background:#1c212c;color:var(--text-3)'"
                     x-text="issue.status"></div>
                 </div>
               </a>
@@ -6764,9 +6770,9 @@ function initApiTokens() {
                   <div style="font-size:11px;color:var(--text-3);margin-top:2px;" x-text="mr.project_name + ' · !' + mr.id + ' · ' + mr.source_branch"></div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
-                  <div x-show="mr.draft" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#fef3c7;color:#92400e;font-weight:600;margin-bottom:3px;">Draft</div>
+                  <div x-show="mr.draft" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#2a2214;color:#92400e;font-weight:600;margin-bottom:3px;">Draft</div>
                   <div x-show="!mr.draft && !mr.is_reviewed" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#fef9ec;color:#d97706;font-weight:600;margin-bottom:3px;">Awaiting review</div>
-                  <div x-show="mr.is_reviewed" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#f0fdf4;color:#16a34a;font-weight:600;margin-bottom:3px;">Reviewed ✓</div>
+                  <div x-show="mr.is_reviewed" style="font-size:10px;padding:2px 7px;border-radius:5px;background:#15271f;color:#16a34a;font-weight:600;margin-bottom:3px;">Reviewed ✓</div>
                   <div style="font-size:10px;color:var(--text-3);" x-text="'Raised: ' + mr.created_at"></div>
                 </div>
               </a>
@@ -6786,14 +6792,14 @@ function initApiTokens() {
             </div>
             <template x-for="mr in (myHubData?.book_of_work||[])" :key="mr.id+mr.project_name">
               <a :href="mr.web_url" target="_blank" style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);text-decoration:none;transition:background .12s;"
-                 onmouseenter="this.style.background='#fff7ed'" onmouseleave="this.style.background='transparent'">
-                <div style="width:32px;height:32px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👁️</div>
+                 onmouseenter="this.style.background='#2a2015'" onmouseleave="this.style.background='transparent'">
+                <div style="width:32px;height:32px;border-radius:8px;background:#2a2015;border:1px solid #3a2a17;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👁️</div>
                 <div style="flex:1;min-width:0;">
                   <div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="mr.title"></div>
                   <div style="font-size:11px;color:var(--text-3);margin-top:2px;" x-text="mr.project_name + ' · !' + mr.id + ' by @' + mr.author_user"></div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
-                  <div style="font-size:10px;padding:2px 8px;border-radius:5px;background:#fff7ed;color:#c2410c;font-weight:700;border:1px solid #fed7aa;">Review needed</div>
+                  <div style="font-size:10px;padding:2px 8px;border-radius:5px;background:#2a2015;color:#c2410c;font-weight:700;border:1px solid #3a2a17;">Review needed</div>
                   <div style="font-size:10px;color:var(--text-3);margin-top:3px;" x-text="'Raised: ' + mr.created_at"></div>
                 </div>
               </a>
@@ -6860,11 +6866,11 @@ function initApiTokens() {
                   <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--text-1);" x-text="sprintData?.stats?.total||0"></div>
                   <div style="font-size:8px;color:var(--text-3);margin-top:1px;font-weight:600;">Total</div>
                 </div>
-                <div style="text-align:center;padding:6px;background:#f0fdf4;border-radius:6px;">
+                <div style="text-align:center;padding:6px;background:#15271f;border-radius:6px;">
                   <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:#16a34a;" x-text="sprintData?.stats?.done||0"></div>
                   <div style="font-size:8px;color:#16a34a;margin-top:1px;font-weight:600;">Done</div>
                 </div>
-                <div style="text-align:center;padding:6px;background:#eff6ff;border-radius:6px;">
+                <div style="text-align:center;padding:6px;background:#172431;border-radius:6px;">
                   <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:#2563eb;" x-text="sprintData?.stats?.in_progress||0"></div>
                   <div style="font-size:8px;color:#2563eb;margin-top:1px;font-weight:600;">In Prog</div>
                 </div>
@@ -6889,7 +6895,7 @@ function initApiTokens() {
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:13px;font-weight:700;color:var(--text-1);" x-text="sprintData?.sprint?.name||'Sprint Board'"></span>
               <span style="font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;"
-                :style="sprintData?.sprint?.state==='active'?'background:#dcfce7;color:#16a34a':sprintData?.sprint?.state==='closed'?'background:#283040;color:#6b7280':'background:#dbeafe;color:#2563eb'"
+                :style="sprintData?.sprint?.state==='active'?'background:#173026;color:#16a34a':sprintData?.sprint?.state==='closed'?'background:#283040;color:#6b7280':'background:#1b2a3a;color:#2563eb'"
                 x-text="sprintData?.sprint?.state||''"></span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
@@ -6956,14 +6962,14 @@ function initApiTokens() {
                 <!-- Status -->
                 <div>
                   <span style="font-size:10px;padding:3px 6px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
-                    :style="item.cat==='done'?'background:#dcfce7;color:#16a34a':item.cat==='indeterminate'?'background:#dbeafe;color:#2563eb':'background:#283040;color:#6b7280'"
+                    :style="item.cat==='done'?'background:#173026;color:#16a34a':item.cat==='indeterminate'?'background:#1b2a3a;color:#2563eb':'background:#283040;color:#6b7280'"
                     x-text="item.status"></span>
                 </div>
 
                 <!-- Priority -->
                 <div>
                   <span style="font-size:10px;padding:3px 6px;border-radius:4px;font-weight:600;white-space:nowrap;display:inline-block;"
-                    :style="item.priority==='Highest'||item.priority==='Critical'?'background:#fff1f2;color:#dc2626':item.priority==='High'?'background:#fff7ed;color:#c2410c':item.priority==='Low'||item.priority==='Lowest'?'background:#f0f0f0;color:#6b7280':'background:#fef9ec;color:#d97706'"
+                    :style="item.priority==='Highest'||item.priority==='Critical'?'background:#2a1a1e;color:#dc2626':item.priority==='High'?'background:#2a2015;color:#c2410c':item.priority==='Low'||item.priority==='Lowest'?'background:#f0f0f0;color:#6b7280':'background:#fef9ec;color:#d97706'"
                     x-text="item.priority"></span>
                 </div>
 
@@ -6980,10 +6986,10 @@ function initApiTokens() {
                     <a :href="item.mr?.web_url" target="_blank" style="text-decoration:none;display:block;">
                       <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;flex-wrap:wrap;">
                         <span style="font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;"
-                          :style="item.mr?.state==='merged'?'background:#f0fdf4;color:#16a34a;':item.mr?.draft?'background:#fef3c7;color:#92400e':'background:#eff6ff;color:#2563eb'"
+                          :style="item.mr?.state==='merged'?'background:#15271f;color:#16a34a;':item.mr?.draft?'background:#2a2214;color:#92400e':'background:#172431;color:#2563eb'"
                           :title="item.mr?.state"
                           x-text="item.mr?.state==='merged'?'✓ Merged':item.mr?.draft?'D Draft':'O Open'"></span>
-                        <span x-show="!item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:9px;padding:2px 5px;border-radius:3px;background:#fff7ed;color:#c2410c;font-weight:600;">Needs Review</span>
+                        <span x-show="!item.mr?.is_reviewed && item.mr?.state!=='merged'" style="font-size:9px;padding:2px 5px;border-radius:3px;background:#2a2015;color:#c2410c;font-weight:600;">Needs Review</span>
                       </div>
                       <div style="font-size:9px;color:var(--text-3);word-wrap:break-word;" :title="item.mr?.title" x-text="item.mr?.title"></div>
                     </a>
@@ -7037,11 +7043,11 @@ function initApiTokens() {
                   <div>
                     <div style="font-size:12px;font-weight:600;color:var(--text-1);">
                       <span x-text="comment.author"></span>
-                      <span style="font-size:10px;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:600;" :style="comment.is_external ? 'background:#dbeafe;color:#2563eb' : 'background:#dcfce7;color:#16a34a'" x-text="comment.is_external ? 'JIRA' : 'LOCAL'"></span>
+                      <span style="font-size:10px;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:600;" :style="comment.is_external ? 'background:#1b2a3a;color:#2563eb' : 'background:#173026;color:#16a34a'" x-text="comment.is_external ? 'JIRA' : 'LOCAL'"></span>
                     </div>
                     <div style="font-size:10px;color:var(--text-3);margin-top:2px;" x-text="comment.created_at"></div>
                   </div>
-                  <button x-show="!comment.is_external" @click="deleteComment(comment.id)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;font-weight:600;">Delete</button>
+                  <button x-show="!comment.is_external" @click="deleteComment(comment.id)" style="background:#2a1a1e;color:#dc2626;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;font-weight:600;">Delete</button>
                 </div>
                 <div style="font-size:12px;color:var(--text-2);line-height:1.5;word-wrap:break-word;" x-text="comment.text"></div>
               </div>
@@ -7104,7 +7110,7 @@ function initApiTokens() {
                 <tr class="border-b hover:bg-gray-50">
                   <td class="px-4 py-2 font-medium" x-text="project.name"></td>
                   <template x-for="month in resourcingData.months" :key="month">
-                    <td class="px-2 py-2 text-center text-sm" :style="'background-color: ' + (project.months[month].total_pct === 0 ? '#283040' : project.months[month].total_pct <= 75 ? '#f0fdf4' : project.months[month].total_pct <= 100 ? '#fffbeb' : '#fff1f2')">
+                    <td class="px-2 py-2 text-center text-sm" :style="'background-color: ' + (project.months[month].total_pct === 0 ? '#283040' : project.months[month].total_pct <= 75 ? '#15271f' : project.months[month].total_pct <= 100 ? '#241f12' : '#2a1a1e')">
                       <div :style="'color: ' + (project.months[month].total_pct === 0 ? '#9ca3af' : project.months[month].total_pct <= 75 ? '#15803d' : project.months[month].total_pct <= 100 ? '#b45309' : '#be123c')" class="font-semibold">
                         <span x-show="project.months[month].total_pct > 0" x-text="project.months[month].total_pct+'%'"></span>
                         <span x-show="project.months[month].total_pct > 0" class="text-xs block" x-text="project.months[month].member_count+'p'"></span>
@@ -7119,7 +7125,7 @@ function initApiTokens() {
                 <tr class="border-b hover:bg-gray-50">
                   <td class="px-4 py-2 font-medium" x-text="member.name"></td>
                   <template x-for="month in resourcingData.months" :key="month">
-                    <td class="px-2 py-2 text-center text-sm" :style="'background-color: ' + (member.months[month].total_pct === 0 ? '#283040' : member.months[month].total_pct <= 75 ? '#f0fdf4' : member.months[month].total_pct <= 100 ? '#fffbeb' : '#fff1f2')">
+                    <td class="px-2 py-2 text-center text-sm" :style="'background-color: ' + (member.months[month].total_pct === 0 ? '#283040' : member.months[month].total_pct <= 75 ? '#15271f' : member.months[month].total_pct <= 100 ? '#241f12' : '#2a1a1e')">
                       <div :style="'color: ' + (member.months[month].total_pct === 0 ? '#9ca3af' : member.months[month].total_pct <= 75 ? '#15803d' : member.months[month].total_pct <= 100 ? '#b45309' : '#be123c')" class="font-semibold">
                         <span x-show="member.months[month].total_pct > 0" x-text="member.months[month].total_pct+'%'"></span>
                         <span x-show="member.months[month].total_pct > 0" class="text-xs block" x-text="member.months[month].project_count+'p'"></span>
@@ -7322,7 +7328,7 @@ function initApiTokens() {
             <!-- GitLab Token -->
             <div style="padding:18px;background:var(--surface);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-                <div style="width:32px;height:32px;border-radius:8px;background:#fff3ee;display:flex;align-items:center;justify-content:center;font-size:16px;">🦊</div>
+                <div style="width:32px;height:32px;border-radius:8px;background:#2a2018;display:flex;align-items:center;justify-content:center;font-size:16px;">🦊</div>
                 <div style="font-size:13px;font-weight:700;color:var(--text-1);">GitLab API Token</div>
               </div>
               <div style="display:grid;gap:12px;margin-bottom:14px;">
@@ -7348,7 +7354,7 @@ function initApiTokens() {
               <button @click="saveGitLab()" style="padding:9px 16px;border-radius:8px;background:#fc6d26;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s ease;" @mouseenter="$el.style.background='#e65100'" @mouseleave="$el.style.background='#fc6d26'">Save GitLab Settings</button>
             </div>
 
-            <div x-show="tokenMsg" style="padding:12px 14px;border-radius:9px;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;font-size:12px;font-weight:600;" x-text="tokenMsg"></div>
+            <div x-show="tokenMsg" style="padding:12px 14px;border-radius:9px;background:#15271f;border:1px solid #bbf7d0;color:#15803d;font-size:12px;font-weight:600;" x-text="tokenMsg"></div>
           </div>
         </div>
       </div>
@@ -7359,7 +7365,7 @@ function initApiTokens() {
 <!-- General Settings -->
           <div class="card" style="margin-bottom:20px;" x-data="{settings:null}" x-init="fetch('/api/settings/general').then(r=>r.json()).then(d=>settings=d)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:18px;">⚙️</div>
+              <div style="width:36px;height:36px;border-radius:10px;background:#15271f;display:flex;align-items:center;justify-content:center;font-size:18px;">⚙️</div>
               <div>
                 <div style="font-size:15px;font-weight:800;color:var(--text-1);">General Settings</div>
                 <div style="font-size:12px;color:var(--text-3);">System configuration and backup information</div>
@@ -7387,7 +7393,7 @@ function initApiTokens() {
                 </div>
               </div>
               <!-- Backup Recommendation -->
-              <div style="padding:10px 12px;border-radius:8px;background:#fef3c7;border:1px solid #fcd34d;font-size:12px;color:#92400e;">
+              <div style="padding:10px 12px;border-radius:8px;background:#2a2214;border:1px solid #5a4a1e;font-size:12px;color:#f6b54a;">
                 <strong>📌 Action:</strong> <span x-text="settings.backup?.recommendation"></span>
               </div>
               <!-- System Info -->
@@ -7404,7 +7410,7 @@ function initApiTokens() {
 <!-- System / Database Info -->
           <div class="card" style="margin-bottom:20px;" x-data="{info:null}" x-init="fetch('/api/system/info').then(r=>r.json()).then(d=>info=d)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🗄️</div>
+              <div style="width:36px;height:36px;border-radius:10px;background:#172431;display:flex;align-items:center;justify-content:center;font-size:18px;">🗄️</div>
               <div>
                 <div style="font-size:15px;font-weight:800;color:var(--text-1);">Database</div>
                 <div style="font-size:12px;color:var(--text-3);">Storage location and connection settings</div>
@@ -7435,7 +7441,7 @@ function initApiTokens() {
           <!-- Email settings -->
           <div class="card" style="margin-bottom:20px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;font-size:18px;">📧</div>
+              <div style="width:36px;height:36px;border-radius:10px;background:#241f12;display:flex;align-items:center;justify-content:center;font-size:18px;">📧</div>
               <div>
                 <div style="font-size:15px;font-weight:800;color:var(--text-1);">Email Briefings</div>
                 <div style="font-size:12px;color:var(--text-3);">Automated SOD &amp; EOD emails via Gmail / SMTP</div>
@@ -7487,15 +7493,15 @@ function initApiTokens() {
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
-              <div style="padding:12px;border-radius:10px;background:#fffbeb;border:1.5px solid #fef3c7;">
+              <div style="padding:12px;border-radius:10px;background:#241f12;border:1.5px solid #2a2214;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                   <input type="checkbox" x-model="emailCfg.sod_enabled" style="width:16px;height:16px;accent-color:#f59e0b;">
                   <span style="font-size:12px;font-weight:700;color:#92400e;" x-text="emailCfg.sod_enabled?'SOD Enabled':'SOD Disabled'"></span>
                 </div>
                 <input x-model="emailCfg.sod_time" type="time"
-                  style="width:100%;padding:7px 10px;border-radius:8px;border:1.5px solid #fde68a;font-size:13px;color:#92400e;box-sizing:border-box;background:var(--surface);">
+                  style="width:100%;padding:7px 10px;border-radius:8px;border:1.5px solid #3a2f15;font-size:13px;color:#92400e;box-sizing:border-box;background:var(--surface);">
               </div>
-              <div style="padding:12px;border-radius:10px;background:#f0fdfa;border:1.5px solid #99f6e4;">
+              <div style="padding:12px;border-radius:10px;background:#152a2a;border:1.5px solid #99f6e4;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                   <input type="checkbox" x-model="emailCfg.eod_enabled" style="width:16px;height:16px;accent-color:#0d9488;">
                   <span style="font-size:12px;font-weight:700;color:#134e4a;" x-text="emailCfg.eod_enabled?'EOD Enabled':'EOD Disabled'"></span>
@@ -7507,9 +7513,9 @@ function initApiTokens() {
             <div style="display:flex;gap:10px;margin-top:14px;align-items:center;flex-wrap:wrap;">
               <button @click="saveEmailConfig()" class="btn-primary" style="font-size:13px;">Save Email Settings</button>
               <button @click="sendEmailNow('sod')" :disabled="emailSending"
-                style="padding:8px 16px;border-radius:9px;background:#fffbeb;border:1.5px solid #fde68a;color:#92400e;font-size:12.5px;font-weight:700;cursor:pointer;">Send SOD Now</button>
+                style="padding:8px 16px;border-radius:9px;background:#241f12;border:1.5px solid #3a2f15;color:#92400e;font-size:12.5px;font-weight:700;cursor:pointer;">Send SOD Now</button>
               <button @click="sendEmailNow('eod')" :disabled="emailSending"
-                style="padding:8px 16px;border-radius:9px;background:#f0fdfa;border:1.5px solid #99f6e4;color:#0d9488;font-size:12.5px;font-weight:700;cursor:pointer;">Send EOD Now</button>
+                style="padding:8px 16px;border-radius:9px;background:#152a2a;border:1.5px solid #99f6e4;color:#0d9488;font-size:12.5px;font-weight:700;cursor:pointer;">Send EOD Now</button>
               <span x-show="emailMsg" x-text="emailMsg" :style="emailMsgOk?'color:#16a34a;font-size:12px;font-weight:600;':'color:#ef4444;font-size:12px;font-weight:600;'"></span>
             </div>
           </div>
@@ -7562,7 +7568,7 @@ function initApiTokens() {
 
             <!-- Status Messages -->
             <div x-show="adminStatus" style="margin-top:16px;padding:12px 14px;border-radius:9px;font-size:13px;font-weight:600;"
-              :style="adminStatus?.type === 'error' ? 'background:#fff1f2;border:1px solid #fecdd3;color:#be123c;' : adminStatus?.type === 'success' ? 'background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;' : 'background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;'">
+              :style="adminStatus?.type === 'error' ? 'background:#2a1a1e;border:1px solid #3a1e24;color:#be123c;' : adminStatus?.type === 'success' ? 'background:#15271f;border:1px solid #bbf7d0;color:#15803d;' : 'background:#172431;border:1px solid #bfdbfe;color:#2563eb;'">
               <p style="margin:0;" x-text="adminStatus?.message"></p>
             </div>
           </div>
@@ -7570,7 +7576,7 @@ function initApiTokens() {
           <!-- Activity Logs -->
           <div class="card" style="margin-top:20px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:18px;">📊</div>
+              <div style="width:36px;height:36px;border-radius:10px;background:#2a2214;display:flex;align-items:center;justify-content:center;font-size:18px;">📊</div>
               <div>
                 <div style="font-size:15px;font-weight:800;color:var(--text-1);">Activity Log</div>
                 <div style="font-size:12px;color:var(--text-3);">Track all create, update, and delete operations</div>
@@ -7591,7 +7597,7 @@ function initApiTokens() {
                   .finally(() => { this.activityLoading = false; });
               }
             }">
-              <button @click="loadActivities()" style="padding:8px 16px;border-radius:9px;background:#fef3c7;border:1px solid #fcd34d;color:#b45309;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;">
+              <button @click="loadActivities()" style="padding:8px 16px;border-radius:9px;background:#2a2214;border:1px solid #5a4a1e;color:#b45309;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;">
                 <span x-show="!activityLoading">📂 Load Activity Log</span>
                 <span x-show="activityLoading">Loading…</span>
               </button>
@@ -7615,7 +7621,7 @@ function initApiTokens() {
                         <td style="padding:10px 12px;color:var(--text-1);font-weight:500;" x-text="log.entity_type"></td>
                         <td style="padding:10px 12px;">
                           <span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;"
-                            :style="log.action==='created'?'background:#d1fae5;color:#047857;':log.action==='updated'?'background:#dbeafe;color:#1e40af;':'background:#fee2e2;color:#b91c1c;'"
+                            :style="log.action==='created'?'background:#173026;color:#047857;':log.action==='updated'?'background:#1b2a3a;color:#1e40af;':'background:#2a1a1e;color:#b91c1c;'"
                             x-text="log.action"></span>
                         </td>
                         <td style="padding:10px 12px;color:var(--text-1);" x-text="log.description"></td>
@@ -7667,7 +7673,7 @@ function initApiTokens() {
         style="padding:3px 10px;border-radius:99px;background:rgba(99,102,241,.25);border:1px solid rgba(99,102,241,.35);font-size:11px;font-weight:700;color:#c7d2fe;"
         x-text="briefingData.dueToday+' due today'"></div>
       <div x-show="briefingData.reminders.length > 0"
-        style="padding:3px 10px;border-radius:99px;background:rgba(245,158,11,.22);border:1px solid rgba(245,158,11,.3);font-size:11px;font-weight:700;color:#fde68a;"
+        style="padding:3px 10px;border-radius:99px;background:rgba(245,158,11,.22);border:1px solid rgba(245,158,11,.3);font-size:11px;font-weight:700;color:#3a2f15;"
         x-text="briefingData.reminders.length+' reminder'+(briefingData.reminders.length>1?'s':'')"></div>
     </div>
   </div>
@@ -8024,7 +8030,7 @@ function initApiTokens() {
 <!-- ══ COMMITMENT MODAL ══ -->
 <div x-show="commitmentModal.open" x-cloak class="modal-backdrop" @click.self="commitmentModal.open=false">
   <div class="modal-box">
-    <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#fcd34d);">
+    <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#5a4a1e);">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:18px;font-weight:800;">New Commitment</div>
@@ -8251,7 +8257,7 @@ function initApiTokens() {
           <template x-for="(proj,idx) in (applicationModal.data.jira_projects||[])" :key="idx">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border);">
               <span style="font-size:13px;color:var(--text-1);font-weight:600;" x-text="proj"></span>
-              <button @click="removeJiraProject(idx)" style="padding:4px 8px;border-radius:6px;background:#fee2e2;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
+              <button @click="removeJiraProject(idx)" style="padding:4px 8px;border-radius:6px;background:#2a1a1e;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
             </div>
           </template>
           <div x-show="!(applicationModal.data.jira_projects?.length)" style="padding:12px;text-align:center;color:var(--text-3);font-size:12px;">No Jira projects added yet</div>
@@ -8272,7 +8278,7 @@ function initApiTokens() {
           <template x-for="(proj,idx) in (applicationModal.data.gitlab_projects||[])" :key="idx">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border);">
               <span style="font-size:13px;color:var(--text-1);font-weight:600;" x-text="proj"></span>
-              <button @click="removeGitLabProject(idx)" style="padding:4px 8px;border-radius:6px;background:#fee2e2;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
+              <button @click="removeGitLabProject(idx)" style="padding:4px 8px;border-radius:6px;background:#2a1a1e;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
             </div>
           </template>
           <div x-show="!(applicationModal.data.gitlab_projects?.length)" style="padding:12px;text-align:center;color:var(--text-3);font-size:12px;">No GitLab projects added yet</div>
@@ -8304,7 +8310,7 @@ function initApiTokens() {
             <div style="padding:12px;background:var(--surface);border-radius:8px;border:1px solid var(--border);">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                 <span style="font-size:13px;color:var(--text-1);font-weight:600;" x-text="sprint.name"></span>
-                <button @click="removeSprint(idx)" style="padding:4px 8px;border-radius:6px;background:#fee2e2;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
+                <button @click="removeSprint(idx)" style="padding:4px 8px;border-radius:6px;background:#2a1a1e;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text-3);">
                 <div>Board: <span style="color:var(--text-1);font-weight:600;" x-text="sprint.board_id||'—'"></span></div>
