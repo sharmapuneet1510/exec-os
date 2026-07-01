@@ -5,7 +5,30 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from db.models import TaskORM, ProjectORM, MilestoneORM, CommitmentORM, AlertORM, ReleaseORM
+from db.models import DeliveryReleaseORM, DeliveryReleaseItemORM
+from services.release_health import release_health
 from web.deps import get_redis
+
+
+def _releases_at_risk(db):
+    """Breached/at-risk release gates for SOD/EOD briefings."""
+    today = date.today()
+    out = []
+    releases = db.query(DeliveryReleaseORM).filter(DeliveryReleaseORM.status != "released").all()
+    for r in releases:
+        items = db.query(DeliveryReleaseItemORM).filter(
+            DeliveryReleaseItemORM.release_id == r.release_id).all()
+        if not items:
+            continue
+        h = release_health(items, today)
+        if h["derived_status"] == "COMPLETED":
+            continue
+        for g in h["items"]:
+            if g["state"] in ("breached", "at_risk"):
+                out.append({"release_id": r.release_id, "name": r.name, "item": g["title"],
+                            "stage": g["stage"], "state": g["state"],
+                            "planned": g["planned_date"], "days": g["days"]})
+    return out
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -165,6 +188,7 @@ def sod_summary(db: Session = Depends(get_db)):
         "overdue": [{"task_id": t.task_id, "title": t.title, "priority": t.priority} for t in overdue[:10]],
         "due_today": [{"task_id": t.task_id, "title": t.title, "priority": t.priority} for t in due_today[:10]],
         "carry_forward": [{"task_id": t.task_id, "title": t.title} for t in carry_forward[:10]],
+        "releases_at_risk": _releases_at_risk(db),
     }
 
 
@@ -181,4 +205,5 @@ def eod_summary(db: Session = Depends(get_db)):
         "still_pending": len(pending),
         "completed": [{"task_id": t.task_id, "title": t.title} for t in completed_today[:20]],
         "pending": [{"task_id": t.task_id, "title": t.title, "priority": t.priority} for t in pending[:10]],
+        "releases_at_risk": _releases_at_risk(db),
     }
