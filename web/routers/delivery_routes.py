@@ -7,8 +7,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from db.models import DeliveryTemplateORM, DeliveryTemplateItemORM, DeliveryReleaseORM, DeliveryReleaseItemORM
+from db.models import (DeliveryTemplateORM, DeliveryTemplateItemORM, DeliveryReleaseORM,
+                       DeliveryReleaseItemORM, DeliveryReleaseSprintORM, SprintConfigORM)
 from services.release_health import release_health
+from services.jira_service import get_jira_service
 
 router = APIRouter(prefix="/api/delivery", tags=["delivery"])
 
@@ -433,3 +435,71 @@ def delete_release_item(release_id: str, item_id: str, db: Session = Depends(get
         raise HTTPException(404, "item not found")
     db.delete(i)
     db.commit()
+
+
+# ── Jira sprint attachment (curated, multiple per release) ──────────────────
+
+class SprintAttachIn(BaseModel):
+    board_id: str = ""
+    sprint_id: str
+    sprint_name: str = ""
+
+
+def _my_jira_email(db) -> str:
+    cfg = db.query(SprintConfigORM).first()
+    return (cfg.my_jira_email or "").lower() if cfg else ""
+
+
+@router.post("/releases/{release_id}/sprints", status_code=201)
+def attach_sprint(release_id: str, body: SprintAttachIn, db: Session = Depends(get_db)):
+    if not db.query(DeliveryReleaseORM).filter(DeliveryReleaseORM.release_id == release_id).first():
+        raise HTTPException(404, "release not found")
+    row = DeliveryReleaseSprintORM(release_id=release_id, board_id=body.board_id,
+                                   sprint_id=body.sprint_id, sprint_name=body.sprint_name)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"attach_id": row.attach_id, "sprint_id": row.sprint_id, "sprint_name": row.sprint_name}
+
+
+@router.get("/releases/{release_id}/sprints")
+def list_sprints(release_id: str, db: Session = Depends(get_db)):
+    release = db.query(DeliveryReleaseORM).filter(DeliveryReleaseORM.release_id == release_id).first()
+    if not release:
+        raise HTTPException(404, "release not found")
+    my_email = _my_jira_email(db)
+    jira = get_jira_service(release.application_id, db) if release.application_id else None
+    out = []
+    rows = db.query(DeliveryReleaseSprintORM).filter(
+        DeliveryReleaseSprintORM.release_id == release_id).all()
+    for s in rows:
+        issues = []
+        if jira and release.jira_project_key and s.sprint_id:
+            try:
+                raw = jira.get_sprint_issues(release.jira_project_key, int(s.sprint_id))
+            except Exception:
+                raw = []
+            for it in raw:
+                f = it.get("fields", {})
+                ass = (f.get("assignee") or {}).get("emailAddress", "") or ""
+                issues.append({
+                    "key": it.get("key", ""),
+                    "summary": f.get("summary", ""),
+                    "status": (f.get("status") or {}).get("name", ""),
+                    "mine": bool(my_email) and ass.lower() == my_email,
+                })
+        out.append({"attach_id": s.attach_id, "board_id": s.board_id, "sprint_id": s.sprint_id,
+                    "sprint_name": s.sprint_name, "issues": issues})
+    return {"release_id": release_id, "sprints": out}
+
+
+@router.delete("/releases/{release_id}/sprints/{attach_id}", status_code=204)
+def detach_sprint(release_id: str, attach_id: str, db: Session = Depends(get_db)):
+    row = db.query(DeliveryReleaseSprintORM).filter(
+        DeliveryReleaseSprintORM.attach_id == attach_id,
+        DeliveryReleaseSprintORM.release_id == release_id).first()
+    if not row:
+        raise HTTPException(404, "attachment not found")
+    db.delete(row)
+    db.commit()
+    return None
