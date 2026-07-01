@@ -5028,6 +5028,9 @@ function initApiTokens() {
           newTmplForm:{open:false,name:'',description:'',is_default:false},
           newItemForm:{open:false,title:'',category:'pre_release',responsible_role:'',is_required:true},
           newRelForm:{open:false,editing:false,editing_id:'',name:'',version:'',application_id:'',project_id:'',jira_project_key:'',start_date:'',release_date:'',target_date:'',uat_date:'',sign_off_date:'',template_id:'',release_manager:'',status:'planned',description:''},
+          relSprints:[], sprintPicker:[], newSprintId:'', sprintLoading:false,
+          STAGES:['requirement_gathering','development','qa','uat','in_prod'],
+          stageLabels:{requirement_gathering:'Req Gathering',development:'Development',qa:'QA',uat:'UAT',in_prod:'In Prod'},
           async init() { await this.loadAll(); },
           async loadAll() {
             [this.templates,this.releases,this.members]=await Promise.all([
@@ -5105,6 +5108,62 @@ function initApiTokens() {
             if (this.activeRelease?.jira_project_key && this.activeRelease?.version) {
               await this.loadReleaseJira();
             }
+            await this.loadSprints();
+          },
+          // ── Release Planner: stage stepper + gate health ──
+          gateState(itemId) {
+            const g=(this.activeRelease?.health?.items||[]).find(x=>x.item_id===itemId);
+            return g? g:{state:'unset',days:0};
+          },
+          gateStateColor(s){return {done:'#16a34a',breached:'#dc2626',at_risk:'#d97706',in_progress:'#0891b2',upcoming:'#6b7280',unset:'#9ca3af'}[s]||'#6b7280';},
+          gateStateBg(s){return {done:'#f0fdf4',breached:'#fff1f2',at_risk:'#fffbeb',in_progress:'#ecfeff',upcoming:'#f3f4f6',unset:'#f3f4f6'}[s]||'#f3f4f6';},
+          gateStateLabel(g){
+            if(g.state==='breached')return 'Breached '+g.days+'d';
+            if(g.state==='at_risk')return 'At risk · '+g.days+'d';
+            return {done:'Done',in_progress:'In progress',upcoming:'Upcoming',unset:'No date'}[g.state]||g.state;
+          },
+          stageState(stage){
+            const h=this.activeRelease?.health; if(!h) return '';
+            const cur=this.STAGES.indexOf(h.current_stage), idx=this.STAGES.indexOf(stage);
+            const items=(h.items||[]).filter(g=>g.stage===stage);
+            if(items.some(g=>g.state==='breached')) return 'breach';
+            if(items.length && items.every(g=>g.state==='done')) return 'done';
+            if(idx===cur) return 'current';
+            if(idx<cur) return 'done';
+            return '';
+          },
+          async setItemPlanned(itemId,val){
+            await fetch('/api/delivery/releases/'+this.activeRelease.release_id+'/items/'+itemId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({planned_date:val||''})});
+            await this.loadRelease(this.activeRelease.release_id);
+          },
+          completedTimeline(){
+            return (this.activeRelease?.items||[]).filter(i=>i.completed_at)
+              .sort((a,b)=>new Date(a.completed_at)-new Date(b.completed_at));
+          },
+          fmtDate(s){ if(!s) return '—'; try{return new Date(s).toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'});}catch(e){return s;} },
+          // ── Jira sprint attachment ──
+          async loadSprints(){
+            if(!this.activeRelease) { this.relSprints=[]; return; }
+            try{ this.relSprints=(await fetch('/api/delivery/releases/'+this.activeRelease.release_id+'/sprints').then(r=>r.json())).sprints||[]; }
+            catch(e){ this.relSprints=[]; }
+          },
+          async loadSprintPicker(){
+            if(!this.activeRelease?.application_id || !this.activeRelease?.jira_project_key){ this.sprintPicker=[]; return; }
+            this.sprintLoading=true;
+            try{ this.sprintPicker=(await fetch('/api/jira/sprints/'+this.activeRelease.release_id).then(r=>r.json())).sprints||[]; }
+            catch(e){ this.sprintPicker=[]; }
+            finally{ this.sprintLoading=false; }
+          },
+          async attachSprint(){
+            if(!this.newSprintId) return;
+            const sp=this.sprintPicker.find(s=>String(s.id)===String(this.newSprintId));
+            await fetch('/api/delivery/releases/'+this.activeRelease.release_id+'/sprints',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({board_id:String(sp?.originBoardId||''),sprint_id:String(this.newSprintId),sprint_name:sp?.name||('Sprint '+this.newSprintId)})});
+            this.newSprintId='';
+            await this.loadSprints();
+          },
+          async detachSprint(attachId){
+            await fetch('/api/delivery/releases/'+this.activeRelease.release_id+'/sprints/'+attachId,{method:'DELETE'});
+            await this.loadSprints();
           },
           async editRelease(id) {
             const rel=await fetch('/api/delivery/releases/'+id).then(r=>r.json());
@@ -5380,6 +5439,37 @@ function initApiTokens() {
                 </div>
               </div>
 
+              <!-- Stage stepper + health -->
+              <div x-show="activeRelease?.health" class="card" style="margin-bottom:14px;padding:16px 20px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text-2);">Delivery pipeline</div>
+                  <span x-show="activeRelease?.health"
+                    :style="'background:'+gateStateBg(activeRelease?.health?.level==='breached'?'breached':activeRelease?.health?.level==='at_risk'?'at_risk':'done')+';color:'+gateStateColor(activeRelease?.health?.level==='breached'?'breached':activeRelease?.health?.level==='at_risk'?'at_risk':'done')+';'"
+                    style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;text-transform:capitalize;"
+                    x-text="(activeRelease?.health?.level||'').replace('_',' ')"></span>
+                  <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#eef2ff;color:#4338ca;"
+                    x-text="(activeRelease?.health?.derived_status||'').replace('_',' ')"></span>
+                  <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#ecfeff;color:#0e7490;"
+                    x-text="'Stage: '+(stageLabels[activeRelease?.health?.current_stage]||'—')"></span>
+                </div>
+                <div style="display:flex;align-items:center;">
+                  <template x-for="(stage,idx) in STAGES" :key="stage">
+                    <div style="display:flex;align-items:center;flex:1;" :style="idx===STAGES.length-1?'flex:0 0 auto;':''">
+                      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;width:84px;text-align:center;">
+                        <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid;"
+                          :style="stageState(stage)==='done'?'background:#16a34a;border-color:#16a34a;color:#fff;':stageState(stage)==='current'?'background:#0891b2;border-color:#0891b2;color:#fff;':stageState(stage)==='breach'?'background:#dc2626;border-color:#dc2626;color:#fff;':'background:var(--bg);border-color:var(--border);color:var(--text-3);'"
+                          x-text="stageState(stage)==='done'?'✓':stageState(stage)==='breach'?'!':stageState(stage)==='current'?'●':(idx+1)"></div>
+                        <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;"
+                          :style="['done','current','breach'].includes(stageState(stage))?'color:var(--text-1);':'color:var(--text-3);'"
+                          x-text="stageLabels[stage]"></div>
+                      </div>
+                      <div x-show="idx<STAGES.length-1" style="flex:1;height:2px;min-width:14px;"
+                        :style="['done','breach'].includes(stageState(stage))?'background:#16a34a;':'background:var(--border);'"></div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <!-- Jira Issues Section -->
               <div x-show="activeRelease?.jira_project_key && activeRelease?.version" class="card" style="margin-bottom:14px;padding:0;">
                 <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg);border-radius:16px 16px 0 0;">
@@ -5425,6 +5515,21 @@ function initApiTokens() {
                           <div :style="item.status==='done'?'text-decoration:line-through;color:var(--text-3);':''" style="font-size:12.5px;font-weight:600;color:var(--text-1);" x-text="item.title"></div>
                           <div x-show="item.responsible_role" style="font-size:11px;color:var(--text-3);" x-text="item.responsible_role"></div>
                         </div>
+                        <!-- Planned vs actual gate dates -->
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;">
+                          <div style="display:flex;align-items:center;gap:4px;">
+                            <span style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;">Plan</span>
+                            <input type="date" :value="item.planned_date||''" @change="setItemPlanned(item.item_id,$event.target.value)"
+                              style="font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-1);width:120px;"/>
+                          </div>
+                          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-3);">
+                            <span style="text-transform:uppercase;letter-spacing:.04em;">Actual</span>
+                            <span :style="item.completed_at?'color:#16a34a;font-weight:600;':''" x-text="item.completed_at?fmtDate(item.completed_at):'—'"></span>
+                          </div>
+                        </div>
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;flex-shrink:0;white-space:nowrap;"
+                          :style="'background:'+gateStateBg(gateState(item.item_id).state)+';color:'+gateStateColor(gateState(item.item_id).state)+';'"
+                          x-text="gateStateLabel(gateState(item.item_id))"></span>
                         <span x-show="item.is_required" style="font-size:10px;font-weight:700;color:#dc2626;flex-shrink:0;">REQ</span>
                         <span style="font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;flex-shrink:0;"
                           :style="'background:'+itemStatusBg(item.status)+';color:'+itemStatusColor(item.status)+';border:1px solid '+itemStatusColor(item.status)+'30'"
@@ -5437,6 +5542,60 @@ function initApiTokens() {
 
               <div x-show="!(activeRelease?.items||[]).length" style="text-align:center;padding:40px;color:var(--text-3);font-size:13px;">
                 No checklist items. This release was created without a template.
+              </div>
+
+              <!-- Jira Sprints -->
+              <div class="card" style="margin-bottom:14px;padding:0;">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg);border-radius:16px 16px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text-2);">🏃 Jira Sprints</div>
+                  <div style="font-size:11px;color:var(--text-3);">— issues become the release work list</div>
+                  <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+                    <select x-model="newSprintId" @focus="loadSprintPicker()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-1);max-width:200px;">
+                      <option value="" x-text="sprintLoading?'Loading…':'Select sprint…'"></option>
+                      <template x-for="s in sprintPicker" :key="s.id"><option :value="s.id" x-text="s.name+(s.state?' ('+s.state+')':'')"></option></template>
+                    </select>
+                    <button @click="attachSprint()" :disabled="!newSprintId" class="btn-secondary" style="font-size:11px;padding:5px 10px;" :style="!newSprintId?'opacity:.5;cursor:not-allowed;':''">+ Add</button>
+                  </div>
+                </div>
+                <div style="padding:10px 14px;">
+                  <div x-show="!relSprints.length" style="text-align:center;padding:16px;color:var(--text-3);font-size:12px;">No sprints attached.</div>
+                  <template x-for="sp in relSprints" :key="sp.attach_id">
+                    <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--bg);">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:#f5f3ff;color:#6d28d9;" x-text="sp.sprint_name"></span>
+                        <span style="font-size:11px;color:var(--text-3);" x-text="sp.issues.length+' issues · '+sp.issues.filter(i=>i.mine).length+' mine'"></span>
+                        <button @click="detachSprint(sp.attach_id)" style="margin-left:auto;font-size:13px;color:var(--text-3);background:none;border:none;cursor:pointer;">✕</button>
+                      </div>
+                      <div x-show="!sp.issues.length" style="font-size:11px;color:var(--text-3);padding:2px 0;">No issues (Jira not configured or empty sprint).</div>
+                      <template x-for="iss in sp.issues" :key="iss.key">
+                        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border);flex-wrap:wrap;">
+                          <span style="font-size:11px;font-weight:700;color:#0891b2;min-width:70px;" x-text="iss.key"></span>
+                          <span style="flex:1;font-size:12px;min-width:140px;" x-text="iss.summary"></span>
+                          <span x-show="iss.mine" style="font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:99px;background:#ecfeff;color:#0e7490;">mine</span>
+                          <span style="font-size:10px;color:var(--text-3);" x-text="iss.status"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Completion history -->
+              <div x-show="completedTimeline().length" class="card" style="margin-bottom:14px;padding:0;">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg);border-radius:16px 16px 0 0;">
+                  <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text-2);">✓ Completion history</div>
+                </div>
+                <div style="padding:14px 18px;">
+                  <div style="border-left:2px solid #16a34a;padding-left:16px;display:flex;flex-direction:column;gap:12px;">
+                    <template x-for="it in completedTimeline()" :key="it.item_id">
+                      <div style="position:relative;">
+                        <div style="position:absolute;left:-22px;top:3px;width:10px;height:10px;border-radius:50%;background:#16a34a;"></div>
+                        <div style="font-size:13px;font-weight:600;color:var(--text-1);" x-text="it.title"></div>
+                        <div style="font-size:11.5px;color:var(--text-3);" x-text="'completed '+fmtDate(it.completed_at)"></div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
