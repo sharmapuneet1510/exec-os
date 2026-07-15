@@ -1,0 +1,3 @@
+We are leveraging AI to automate the extraction of data lineage from the source code. A custom AST parser first analyzes the code to capture the technical relationships, which are then provided to an LLM to generate consistent, deterministic, and business-readable explanations of the extraction, transformation, business logic, and regulatory reporting flow.
+
+The objective is to replace manual documentation with a clear, business-friendly view of the end-to-end data lineage, enabling the Operations team to investigate issues more quickly and confidently.
